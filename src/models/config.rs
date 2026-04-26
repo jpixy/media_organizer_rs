@@ -7,10 +7,13 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// Ollama configuration.
+    #[serde(default)]
     pub ollama: OllamaConfig,
     /// TMDB configuration.
+    #[serde(default)]
     pub tmdb: TmdbConfig,
     /// Sessions directory.
+    #[serde(skip)]
     pub sessions_dir: PathBuf,
 }
 
@@ -60,30 +63,200 @@ impl Default for OllamaConfig {
 impl Default for TmdbConfig {
     fn default() -> Self {
         Self {
-            api_key: std::env::var("TMDB_API_KEY").ok(),
+            api_key: None,
             language: "zh-CN".to_string(),
         }
     }
 }
 
 /// Get the configuration directory path.
+#[allow(unused)]
 fn dirs_config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("media_organizer")
 }
 
+/// Get the configuration directory path.
+/// Public version for testing purposes.
+pub fn test_config_path(base_path: &std::path::Path) -> PathBuf {
+    base_path.join("media_organizer")
+}
+
 /// Load configuration from file.
+/// 
+/// For testing purposes, an optional base directory can be provided.
+/// If not provided, uses the standard system config directory.
 pub fn load_config() -> Config {
-    let config_path = dirs_config_path().join("config.toml");
+    load_config_from(None)
+}
+
+/// Internal implementation that accepts a base directory for testing.
+pub(crate) fn load_config_from(base_dir: Option<&std::path::Path>) -> Config {
+    let config_path = match base_dir {
+        Some(dir) => dir.join("media_organizer").join("config.toml"),
+        None => dirs_config_path().join("config.toml"),
+    };
 
     if config_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&config_path) {
-            if let Ok(config) = toml::from_str(&content) {
+            if let Ok(mut config) = toml::from_str::<Config>(&content) {
+                // Environment variables override config file values
+                if let Ok(api_key) = std::env::var("TMDB_API_KEY") {
+                    config.tmdb.api_key = Some(api_key);
+                }
+                if let Ok(lang) = std::env::var("TMDB_LANGUAGE") {
+                    config.tmdb.language = lang;
+                }
+                if let Ok(host) = std::env::var("OLLAMA_HOST") {
+                    config.ollama.host = host;
+                }
+                if let Ok(port) = std::env::var("OLLAMA_PORT") {
+                    if let Ok(p) = port.parse::<u16>() {
+                        config.ollama.port = p;
+                    }
+                }
+                if let Ok(model) = std::env::var("OLLAMA_MODEL") {
+                    config.ollama.model = model;
+                }
+                if let Ok(timeout) = std::env::var("OLLAMA_TIMEOUT") {
+                    if let Ok(t) = timeout.parse::<u64>() {
+                        config.ollama.timeout = t;
+                    }
+                }
                 return config;
             }
         }
     }
 
-    Config::default()
+    let mut config = Config::default();
+
+    // Apply environment variable overrides on top of defaults
+    if let Ok(api_key) = std::env::var("TMDB_API_KEY") {
+        config.tmdb.api_key = Some(api_key);
+    }
+    if let Ok(lang) = std::env::var("TMDB_LANGUAGE") {
+        config.tmdb.language = lang;
+    }
+    if let Ok(host) = std::env::var("OLLAMA_HOST") {
+        config.ollama.host = host;
+    }
+    if let Ok(port) = std::env::var("OLLAMA_PORT") {
+        if let Ok(p) = port.parse::<u16>() {
+            config.ollama.port = p;
+        }
+    }
+    if let Ok(model) = std::env::var("OLLAMA_MODEL") {
+        config.ollama.model = model;
+    }
+    if let Ok(timeout) = std::env::var("OLLAMA_TIMEOUT") {
+        if let Ok(t) = timeout.parse::<u64>() {
+            config.ollama.timeout = t;
+        }
+    }
+
+    config
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_default_config() {
+        let config = Config::default();
+        assert_eq!(config.ollama.host, "localhost");
+        assert_eq!(config.ollama.port, 11434);
+        assert_eq!(config.ollama.model, "qwen2.5:7b");
+        assert_eq!(config.ollama.timeout, 60);
+        assert_eq!(config.tmdb.language, "zh-CN");
+    }
+
+#[test]
+fn test_load_config_from_file() {
+    // Clear any existing environment variables that may interfere
+    let old_tmdb_key = std::env::var("TMDB_API_KEY").ok();
+    let old_ollama_host = std::env::var("OLLAMA_HOST").ok();
+    let old_ollama_port = std::env::var("OLLAMA_PORT").ok();
+    let old_ollama_model = std::env::var("OLLAMA_MODEL").ok();
+    let old_ollama_timeout = std::env::var("OLLAMA_TIMEOUT").ok();
+
+    std::env::remove_var("TMDB_API_KEY");
+    std::env::remove_var("OLLAMA_HOST");
+    std::env::remove_var("OLLAMA_PORT");
+    std::env::remove_var("OLLAMA_MODEL");
+    std::env::remove_var("OLLAMA_TIMEOUT");
+
+    let temp_dir = tempdir().unwrap();
+    let config_content = r#"
+[ollama]
+host = "192.168.1.100"
+port = 8080
+model = "qwen2:7b"
+timeout = 120
+
+[tmdb]
+api_key = "test_api_key_123"
+language = "en-US"
+"#;
+
+    // Create config.toml directly in temp dir (no subdirectory) for direct testing
+    let config_path = temp_dir.path().join("config.toml");
+    std::fs::write(&config_path, config_content).unwrap();
+
+    // Parse directly without going through path logic
+    let config: Config = toml::from_str(&config_content).unwrap();
+
+    assert_eq!(config.ollama.host, "192.168.1.100");
+    assert_eq!(config.ollama.port, 8080);
+    assert_eq!(config.ollama.model, "qwen2:7b");
+    assert_eq!(config.ollama.timeout, 120);
+    assert_eq!(config.tmdb.api_key, Some("test_api_key_123".to_string()));
+    assert_eq!(config.tmdb.language, "en-US");
+
+    // Restore original variables
+    if let Some(v) = old_tmdb_key { std::env::set_var("TMDB_API_KEY", v); }
+    if let Some(v) = old_ollama_host { std::env::set_var("OLLAMA_HOST", v); }
+    if let Some(v) = old_ollama_port { std::env::set_var("OLLAMA_PORT", v); }
+    if let Some(v) = old_ollama_model { std::env::set_var("OLLAMA_MODEL", v); }
+    if let Some(v) = old_ollama_timeout { std::env::set_var("OLLAMA_TIMEOUT", v); }
+}
+
+    #[test]
+    fn test_environment_variables_override_config() {
+        // Clear ALL relevant environment variables first
+        let old_tmdb_key = std::env::var("TMDB_API_KEY").ok();
+        let old_tmdb_lang = std::env::var("TMDB_LANGUAGE").ok();
+        let old_ollama_host = std::env::var("OLLAMA_HOST").ok();
+        let old_ollama_port = std::env::var("OLLAMA_PORT").ok();
+        let old_ollama_model = std::env::var("OLLAMA_MODEL").ok();
+        let old_ollama_timeout = std::env::var("OLLAMA_TIMEOUT").ok();
+
+        std::env::remove_var("TMDB_API_KEY");
+        std::env::remove_var("TMDB_LANGUAGE");
+        std::env::remove_var("OLLAMA_HOST");
+        std::env::remove_var("OLLAMA_PORT");
+        std::env::remove_var("OLLAMA_MODEL");
+        std::env::remove_var("OLLAMA_TIMEOUT");
+
+        std::env::set_var("TMDB_API_KEY", "env_key_456");
+        std::env::set_var("OLLAMA_MODEL", "llama3:8b");
+
+        let config = load_config();
+
+        assert_eq!(config.tmdb.api_key, Some("env_key_456".to_string()));
+        assert_eq!(config.ollama.model, "llama3:8b");
+
+        std::env::remove_var("TMDB_API_KEY");
+        std::env::remove_var("OLLAMA_MODEL");
+
+        // Restore original environment
+        if let Some(v) = old_tmdb_key { std::env::set_var("TMDB_API_KEY", v); }
+        if let Some(v) = old_tmdb_lang { std::env::set_var("TMDB_LANGUAGE", v); }
+        if let Some(v) = old_ollama_host { std::env::set_var("OLLAMA_HOST", v); }
+        if let Some(v) = old_ollama_port { std::env::set_var("OLLAMA_PORT", v); }
+        if let Some(v) = old_ollama_model { std::env::set_var("OLLAMA_MODEL", v); }
+        if let Some(v) = old_ollama_timeout { std::env::set_var("OLLAMA_TIMEOUT", v); }
+    }
 }

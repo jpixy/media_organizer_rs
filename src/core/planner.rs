@@ -531,9 +531,11 @@ impl Planner {
             );
 
             // Create metadata with extracted IDs
-            let mut path_meta = metadata::CandidateMetadata::default();
-            path_meta.tmdb_id = path_tmdb_id;
-            path_meta.imdb_id = path_imdb_id.clone();
+            let path_meta = metadata::CandidateMetadata {
+                tmdb_id: path_tmdb_id,
+                imdb_id: path_imdb_id.clone(),
+                ..Default::default()
+            };
 
             if media_type == MediaType::Movies {
                 if let Some(movie_metadata) = self.try_direct_id_lookup(&path_meta).await? {
@@ -2650,7 +2652,7 @@ impl Planner {
     fn strip_sorting_prefix(name: &str) -> &str {
         // Pattern 1: Single ASCII letter + separator (_, -, .)
         // e.g., "A_剧名", "X-电影", "Z.标题"
-        if let Some(re) = regex::Regex::new(r"^[A-Za-z][_\-.]").ok() {
+        if let Ok(re) = regex::Regex::new(r"^[A-Za-z][_\-.]") {
             if re.is_match(name) && name.len() > 2 {
                 let stripped = &name[2..];
                 if !stripped.is_empty() {
@@ -2662,7 +2664,7 @@ impl Planner {
 
         // Pattern 2: Numbers + separator (_, -, .)
         // e.g., "01_剧名", "001-电影", "1.标题"
-        if let Some(re) = regex::Regex::new(r"^(\d{1,3})[_\-.]").ok() {
+        if let Ok(re) = regex::Regex::new(r"^(\d{1,3})[_\-.]") {
             if let Some(caps) = re.captures(name) {
                 let prefix_len = caps.get(0).map(|m| m.len()).unwrap_or(0);
                 if prefix_len > 0 && name.len() > prefix_len {

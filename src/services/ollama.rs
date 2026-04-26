@@ -47,6 +47,28 @@ impl OllamaConfig {
             timeout_secs,
         }
     }
+
+    /// Create configuration from loaded application config.
+    /// Environment variables override values from config file.
+    pub fn from_config(config: &crate::models::config::OllamaConfig) -> Self {
+        // Environment variables take precedence over config file
+        let base_url = std::env::var("OLLAMA_HOST")
+            .unwrap_or_else(|_| format!("http://{}:{}", config.host, config.port));
+
+        let model = std::env::var("OLLAMA_MODEL")
+            .unwrap_or_else(|_| config.model.clone());
+
+        let timeout_secs = std::env::var("OLLAMA_TIMEOUT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(config.timeout);
+
+        Self {
+            base_url,
+            model,
+            timeout_secs,
+        }
+    }
 }
 
 impl Default for OllamaConfig {

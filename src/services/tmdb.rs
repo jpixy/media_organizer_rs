@@ -30,6 +30,20 @@ impl TmdbConfig {
             use_bearer,
         })
     }
+
+    /// Create config from loaded application config.
+    pub fn from_config(config: &crate::models::config::TmdbConfig) -> Result<Self> {
+        let api_key = config.api_key.clone().ok_or(crate::Error::TmdbApiKeyMissing)?;
+
+        // Bearer tokens start with "eyJ" (base64 encoded JWT header)
+        let use_bearer = api_key.starts_with("eyJ");
+
+        Ok(Self {
+            api_key,
+            language: config.language.clone(),
+            use_bearer,
+        })
+    }
 }
 
 /// TMDB API client.

@@ -1,15 +1,17 @@
-//! Filename parser module using AI.
+//! Filename parser module using hunch library.
 //!
-//! Uses Ollama to parse video filenames and extract:
+//! Uses hunch media filename parser to extract:
 //! - Original title (usually English)
 //! - Localized title (Chinese)
 //! - Release year
-//! - Media type hints (movie vs TV show)
+//! - Season/episode numbers
+//! - Technical metadata
 
 use crate::models::media::MediaType;
 use crate::services::ollama::OllamaClient;
 use crate::Result;
 use chrono::Datelike;
+use hunch::hunch;
 use serde::{Deserialize, Serialize};
 
 /// Parsed filename information.
@@ -166,8 +168,31 @@ impl FilenameParser {
         )
     }
 
-    /// Parse a single filename using AI.
+    /// Parse a single filename using hunch library as primary parser.
     pub async fn parse(&self, filename: &str, media_type: MediaType) -> Result<ParsedFilename> {
+        // Step 1: Primary parser - hunch library
+        let media_info = hunch(filename);
+        let mut parsed = ParsedFilename::default();
+        
+        if let Some(title) = media_info.title() {
+            if title.is_ascii() {
+                parsed.original_title = Some(title.to_string());
+            } else {
+                parsed.title = Some(title.to_string());
+            }
+        }
+        
+        parsed.year = media_info.year().map(|y| y as u16);
+        parsed.season = media_info.season().map(|s| s as u16);
+        parsed.episode = media_info.episode().map(|e| e as u16);
+        parsed.confidence = 0.9;
+        
+        // Check if hunch returned valid result
+        if parsed.title.is_some() || parsed.original_title.is_some() {
+            return Ok(parsed);
+        }
+        
+        // Fallback to AI parser if hunch fails
         let prompt = self.generate_prompt(filename, media_type);
 
         tracing::debug!("Parsing filename: {}", filename);

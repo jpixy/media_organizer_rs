@@ -7,6 +7,7 @@ use media_organizer::cli::{
     args::{Cli, Commands, PlanType, SessionsAction},
     commands::{execute, export_import, index, plan, rollback, search, sessions, verify},
 };
+use media_organizer::models::config::load_config;
 use media_organizer::preflight;
 
 #[tokio::main]
@@ -16,6 +17,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize logging
     init_logging(cli.verbose);
+
+    // Load configuration (config.toml + environment variables)
+    let config = load_config();
+    tracing::debug!("Configuration loaded: {:?}", config);
 
     // Run the appropriate command
     match cli.command {

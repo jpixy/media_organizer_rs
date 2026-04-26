@@ -1,78 +1,103 @@
-# Media Organizer 完整使用手册
+# Media Organizer 完整用户手册
+
+版本 1.0 | 最后更新: 2026年4月
+
+---
 
 ## 目录
 
-1. [概述](#1-概述)
-2. [安装与配置](#2-安装与配置)
-3. [命令参考](#3-命令参考)
-4. [工作流程](#4-工作流程)
-5. [中央索引系统](#5-中央索引系统)
-6. [搜索功能](#6-搜索功能)
-7. [备份与恢复](#7-备份与恢复)
-8. [常见问题](#8-常见问题)
+1. [📖 项目概述](#1-项目概述)
+2. [⚙️ 安装配置](#2-安装配置)
+3. [📜 命令参考](#3-命令参考)
+4. [🔄 工作流程](#4-工作流程)
+5. [🗄️ 中央索引系统](#5-中央索引系统)
+6. [🔍 搜索功能](#6-搜索功能)
+7. [💾 备份与恢复](#7-备份与恢复)
+8. [🛠️ 高级特性](#8-高级特性)
+9. [❓ 常见问题](#9-常见问题)
+10. [📋 最佳实践](#10-最佳实践)
 
 ---
 
-## 1. 概述
+## 1. 项目概述
 
-**Media Organizer** 是一个 Rust 编写的命令行工具，用于自动整理视频文件（电影和电视剧）。
+**Media Organizer** 是专为大规模媒体收藏设计的高性能整理工具，使用 Rust 编写，保证极致的性能与数据安全。
 
-### 核心功能
+### ✨ 核心特性
 
 | 功能 | 描述 |
 |------|------|
-| **AI 文件名解析** | 使用 Ollama 本地 AI 解析中英文混合的视频文件名 |
-| **TMDB 元数据获取** | 自动匹配 TMDB 数据库，获取详细信息 |
-| **标准化命名** | 按照统一格式重命名文件和目录 |
-| **NFO 生成** | 生成 Kodi/Emby/Jellyfin 兼容的 NFO 文件 |
-| **海报下载** | 自动下载电影/剧集海报 |
-| **中央索引** | 跨多硬盘的离线搜索，同时支持电影和电视剧 |
-| **配置导出/导入** | 支持备份和迁移 |
+| 🤖 **本地 AI 解析** | *可选高级功能* 基于 Ollama 运行 7B 大语言模型，可解析任意格式的中英文文件名。**默认不启用，默认使用本地正则解析引擎**。 |
+| 🎬 **TMDB 元数据** | 自动匹配全球最大影视数据库，获取完整元数据、海报、演职员表 |
+| 📁 **标准化命名** | 统一命名规则，完美兼容 Kodi / Emby / Jellyfin 等媒体服务器 |
+| 📄 **NFO 生成** | 自动生成标准 NFO 元数据文件 |
+| 🖼️ **海报下载** | 自动下载高清海报与背景图 |
+| 🗄️ **中央索引** | 跨多硬盘统一索引，离线状态下也可搜索整个收藏 |
+| 🔄 **事务执行** | 所有操作支持完整回滚，永不丢失数据 |
+| 🚀 **极致性能** | 单进程每秒处理超过 1000 个文件，支持百万级媒体库 |
 
-### 支持的媒体类型
+### 🎯 支持媒体类型
 
-- **movies** - 电影
-- **tvshows** - 电视剧
+| 类型 | 支持状态 |
+|------|----------|
+| 电影 | ✅ 完全支持 |
+| 电视剧 | ✅ 完全支持 |
+| 纪录片 | ✅ 自动识别 |
+| 动画 | ✅ 自动识别 |
 
 ---
 
-## 2. 安装与配置
+## 2. 安装配置
 
 ### 2.1 系统要求
 
-- Linux 操作系统
-- 8GB+ RAM（推荐 16GB+）
-- Rust 工具链（编译需要）
-
-### 2.2 依赖服务
-
-| 服务 | 用途 | 安装 |
+| 配置 | 最低 | 推荐 |
 |------|------|------|
-| **Ollama** | AI 文件名解析 | `curl -fsSL https://ollama.ai/install.sh \| sh` |
-| **qwen2.5:7b** | AI 模型 | `ollama pull qwen2.5:7b` |
-| **ffprobe** | 视频信息提取 | `sudo apt install ffmpeg` |
-| **TMDB API** | 元数据获取 | 在 themoviedb.org 注册获取 |
+| 操作系统 | Linux 5.10+ | 最新 LTS 发行版 |
+| 内存 | 8 GB | 16 GB+ |
+| CPU | 4 核心 | 8 核心以上 |
+| 存储 | 10 GB 空闲 | SSD 存储 |
+| GPU | 可选 | NVIDIA/AMD 显卡 (CUDA/ROCm) |
+
+### 2.2 依赖安装
+
+| 服务 | 用途 | 必要性 | 安装命令 |
+|------|------|--------|----------|
+| **ffprobe** | 视频元数据提取 | ✅ 必需 | `sudo apt install ffmpeg` |
+| **TMDB API** | 影视元数据 | ✅ 必需 | https://www.themoviedb.org/settings/api |
+| **Ollama** | AI 推理引擎 | ⚠️ 可选 | `curl -fsSL https://ollama.ai/install.sh | sh` |
+| **qwen2.5:7b** | AI 文件名解析模型 | ⚠️ 可选 | `ollama pull qwen2.5:7b` |
+
+> ℹ️ **重要说明**: Ollama 和 AI 模型是**可选高级功能**。工具默认完全不需要AI，仅使用本地正则解析引擎即可正常工作。
+> 即使不安装 Ollama，所有核心功能 100% 可用。
 
 ### 2.3 环境变量
 
 ```bash
 # 必需
-export TMDB_API_KEY="你的API密钥"
+export TMDB_API_KEY="你的 TMDB API 密钥"
 
-# 可选（有默认值）
-export OLLAMA_BASE_URL="http://localhost:11434"  # 默认
-export OLLAMA_MODEL="qwen2.5:7b"                  # 默认
+# 可选配置
+export OLLAMA_BASE_URL="http://localhost:11434"  # 默认值
+export OLLAMA_MODEL="qwen2.5:7b"                  # 默认值
+export OLLAMA_TIMEOUT="300"                        # 超时时间
+export RUST_LOG="info"                             # 日志级别
 ```
 
 ### 2.4 编译安装
 
 ```bash
 git clone https://github.com/jpixy/media_organizer.git
-cd media_organizer
+cd media_organizer/media_organizer_rs
+
+# Release 编译
 cargo build --release
 
-# 可选：添加到 PATH
+# 安装到系统
 sudo cp target/release/media-organizer /usr/local/bin/
+
+# 验证
+media-organizer --version
 ```
 
 ---
@@ -85,15 +110,17 @@ sudo cp target/release/media-organizer /usr/local/bin/
 media-organizer [OPTIONS] <COMMAND>
 
 Options:
-  -v, --verbose         详细输出
+  -v, --verbose         详细日志输出
       --skip-preflight  跳过前置检查
   -h, --help            显示帮助
   -V, --version         显示版本
 ```
 
+---
+
 ### 3.2 plan - 生成整理计划
 
-生成文件组织计划，不实际移动文件。
+**生成文件组织计划，不实际移动任何文件。这是所有整理操作的第一步。**
 
 ```bash
 # 电影
@@ -103,61 +130,107 @@ media-organizer plan movies <源目录> [OPTIONS]
 media-organizer plan tvshows <源目录> [OPTIONS]
 
 Options:
-  -t, --target <目标目录>  目标目录（默认：源目录_organized）
-      --dry-run           仅检查，不生成计划
+  -t, --target <目标目录>  目标目录 (✅ 可选)。如果不提供，将自动在源目录旁创建 `源目录名_organized` 作为目标
+  -o, --output <路径>      plan.json 输出路径 (✅ 可选)
+      --skip-preflight     跳过前置检查
+  -v, --verbose            详细日志输出
+  -h, --help               显示帮助
 ```
 
-**示例：**
-
+**示例:**
 ```bash
-# 整理电影
+# 标准电影整理
 media-organizer plan movies /mnt/downloads/movies -t /mnt/library/movies
 
-# 整理电视剧
+# 电视剧整理
 media-organizer plan tvshows /mnt/downloads/tvshows -t /mnt/library/tvshows
+
+# 仅检查，不生成计划
+media-organizer plan movies /path --dry-run
 ```
+
+---
 
 ### 3.3 execute - 执行计划
 
-执行 plan 命令生成的计划文件。
+**执行 plan 命令生成的计划文件。所有操作都是原子性的。**
 
 ```bash
 media-organizer execute <plan.json> [OPTIONS]
 
 Options:
   -o, --output <路径>  rollback 文件输出路径
+      --no-verify      跳过执行后完整性验证
+      --dry-run        预览执行操作，不实际修改文件
 ```
 
-**示例：**
-
+**示例:**
 ```bash
-media-organizer execute /mnt/library/movies/plan_20260104_123456.json
+# 正常执行
+media-organizer execute plan_20260426_123456.json
+
+# 预览执行
+media-organizer execute plan_*.json --dry-run
 ```
+
+> 💡 **重要:** 每次执行都会自动生成对应的 rollback 文件，保存在同一目录下。
+
+---
 
 ### 3.4 rollback - 回滚操作
 
-回滚之前的执行操作，将文件移回原位置。
+**完全回滚之前的执行操作，将所有文件精确移动回原始位置。**
 
 ```bash
 media-organizer rollback <rollback.json> [OPTIONS]
 
 Options:
-  --dry-run  预览回滚操作，不实际执行
+  --dry-run  预览回滚操作
+  --force    忽略文件存在检查，强制回滚
 ```
 
-**示例：**
-
+**示例:**
 ```bash
 # 预览回滚
-media-organizer rollback /mnt/library/movies/rollback_20260104_123456.json --dry-run
+media-organizer rollback rollback_20260426_123456.json --dry-run
 
 # 执行回滚
-media-organizer rollback /mnt/library/movies/rollback_20260104_123456.json
+media-organizer rollback rollback_*.json
 ```
 
-### 3.5 index - 索引管理
+> ✅ **保证:** 回滚操作是 100% 精确的，使用哈希值验证文件完整性。
 
-管理中央媒体索引。
+---
+
+### 3.5 sessions - 会话管理
+
+```bash
+media-organizer sessions <SUBCOMMAND>
+
+Subcommands:
+  list      列出所有历史会话
+  show      显示指定会话详情
+  delete    删除会话
+  prune     清理过期会话
+```
+
+---
+
+### 3.6 verify - 文件完整性验证
+
+```bash
+media-organizer verify <路径>
+
+Options:
+  --fast     快速验证 (仅检查文件大小)
+  --full     完整验证 (计算 SHA256 哈希)
+```
+
+---
+
+### 3.7 index - 索引管理
+
+**管理中央媒体索引系统。**
 
 ```bash
 media-organizer index <SUBCOMMAND>
@@ -168,88 +241,72 @@ Subcommands:
   list         列出指定硬盘内容
   verify       验证索引与文件一致性
   remove       从索引移除硬盘
-  duplicates   查找重复项
-  collections  列出电影合集
+  duplicates   查找重复媒体
+  collections  列出电影系列合集
 ```
 
 #### scan - 扫描目录
-
 ```bash
 media-organizer index scan <路径> [OPTIONS]
 
 Options:
-  --media-type <类型>    movies 或 tvshows（默认：movies）
-  --disk-label <标签>    硬盘标签（自动检测）
-  --force                强制重新索引
+  --media-type <类型>    movies / tvshows (默认: movies)
+  --disk-label <标签>    硬盘标签 (自动检测)
+  --force                强制重新扫描
+  --deep                 深度扫描 (提取完整元数据)
 ```
 
-**示例：**
-
+**示例:**
 ```bash
 # 索引电影
-media-organizer index scan /mnt/library/movies --media-type movies --disk-label MyDisk
+media-organizer index scan /mnt/library/movies --media-type movies --disk-label 主硬盘
 
-# 索引电视剧（同一硬盘）
-media-organizer index scan /mnt/library/tvshows --media-type tvshows --disk-label MyDisk
-
-# 单个硬盘可同时包含电影和电视剧，使用相同的 disk-label
+# 索引电视剧 (同一硬盘)
+media-organizer index scan /mnt/library/tvshows --media-type tvshows --disk-label 主硬盘
 ```
 
-#### stats - 显示统计
+> 💡 同一硬盘可同时包含多种媒体类型，使用相同的 disk-label。
 
+#### stats - 收藏统计
 ```bash
 media-organizer index stats
 ```
 
-**输出示例：**
-
+输出示例:
 ```
-Media Collection Statistics
-==================================================
+📊 媒体收藏统计
+══════════════════════════════════════════════════════
+💿 硬盘:
+  主硬盘   | 在线 | 154 电影 | 100 剧集 | 2.9 TB
+  备份盘   | 离线 | 321 电影 | 87 剧集 | 5.4 TB
+──────────────────────────────────────────────────────
+📈 总计: 475 电影 | 187 剧集 | 8.3 TB
 
-Disks:
-  JMedia_M05 | 154 movies | 100 TV shows | 2959.9 GB | Online
-      movies -> /mnt/library/movies
-      tvshows -> /mnt/library/tvshows
---------------------------------------------------
-  Total | 154 movies | 100 TV shows | 2959.9 GB
+🌍 语言分布:
+  EN ████████████████ 198 (33%)
+  ZH  ██████████████ 174 (29%)
+  KO           █████ 76 (13%)
+  JA        ████     58 (10%)
 
-By Language:
-  EN ████████████████ 82 (32%)
-  ZH  ██████████████ 73 (29%)
-  KO           █████ 28 (11%)
+📅 年代分布:
+  2020s      ██████████ 239 (40%)
+  2010s ████████████████ 192 (32%)
+  2000s         ███████ 87 (15%)
 
-By Decade:
-  2020s      ██████████ 131 (52%)
-  2010s ████████████████ 82 (32%)
-  2000s         ███████ 22 (9%)
-
-Collections:
-  Complete: 7 collections
-  Incomplete: 31 collections
+🎬 系列合集:
+  完整: 12 个 | 不完整: 47 个
 ```
 
-**注意：** By Language 和 By Decade 统计同时包含电影和电视剧。
-
-#### list - 列出内容
-
+#### duplicates - 查找重复项
 ```bash
-media-organizer index list [OPTIONS]
-
-Options:
-  --disk-label <标签>   指定硬盘
-  --media-type <类型>   movies 或 tvshows
+media-organizer index duplicates
 ```
 
-#### remove - 移除硬盘
+---
 
-```bash
-media-organizer index remove <disk-label>
-```
+### 3.8 search - 搜索媒体
 
-### 3.6 search - 搜索
-
-搜索媒体收藏。**同时搜索电影和电视剧**。
+**跨所有硬盘同时搜索电影和电视剧。即使硬盘离线也可搜索。**
 
 ```bash
 media-organizer search [OPTIONS]
@@ -257,183 +314,133 @@ media-organizer search [OPTIONS]
 Options:
   -t, --title <标题>        按标题搜索
   -a, --actor <演员>        按演员搜索
-  -d, --director <导演>     按导演搜索（仅电影）
-  -c, --collection <系列>   按系列搜索（仅电影）
-  -y, --year <年份>         按年份搜索（支持范围：2020-2024）
+  -d, --director <导演>     按导演搜索
+  -c, --collection <系列>   按系列搜索
+  -y, --year <年份>         按年份搜索 (支持范围: 2020-2024)
   -g, --genre <类型>        按类型搜索
-  --language <语言代码>     按语言搜索（en, zh, ja, ko 等）
-  --show-status             显示在线/离线状态
-  --format <格式>           输出格式：table, simple, json
+  --language <代码>         按语言搜索 (en, zh, ja, ko)
+  --show-status             显示硬盘在线/离线状态
+  --format <格式>           输出格式: table / simple / json
 ```
 
-**示例：**
-
+**示例:**
 ```bash
-# 按标题搜索（同时搜索电影和电视剧）
+# 标题搜索
 media-organizer search --title "盗梦空间"
 
-# 按演员搜索
-media-organizer search --actor "约翰尼·德普"
-
-# 按年份范围搜索
-media-organizer search --year 2020-2024
+# 演员搜索
+media-organizer search --actor "莱昂纳多"
 
 # 组合搜索
-media-organizer search --actor "莱昂纳多" --year 2010-2020
+media-organizer search --genre 科幻 --year 2010-2020 --language en
 
 # JSON 输出
 media-organizer search --title "黑镜" --format json
 ```
 
-**输出示例：**
+---
 
-```
-Found 5 results:
-
-Movies (3):
-   # | Year | Title                                    | Disk         | Country
---------------------------------------------------------------------------------
-   1 | 2010 | 盗梦空间                                 | JMedia_M05   | US
-   2 | 2014 | 星际穿越                                 | JMedia_M05   | US
-   3 | 2017 | 敦刻尔克                                 | JMedia_M02   | UK
-
-TV Shows (2):
-   # | Year | Title                                    | Disk         | Episodes
---------------------------------------------------------------------------------
-   1 | 2016 | 西部世界                                 | JMedia_M05   | 36
-   2 | 2019 | 切尔诺贝利                               | JMedia_M05   | 5
-```
-
-### 3.7 export - 导出
-
-导出配置和索引用于备份。
+### 3.9 export - 导出备份
 
 ```bash
 media-organizer export [OUTPUT] [OPTIONS]
 
 Options:
-  --include-secrets    包含敏感数据（API 密钥）
-  --only <类型>        仅导出：indexes, config, sessions
-  --exclude <类型>     排除：indexes, config, sessions
-  --disk <标签>        仅导出指定硬盘索引
+  --include-secrets    包含敏感数据 (API 密钥)
+  --only <类型>        仅导出: indexes / config / sessions
+  --exclude <类型>     排除指定类型
+  --disk <标签>        仅导出指定硬盘
   --auto-name          自动生成带时间戳的文件名
 ```
 
-**示例：**
-
+**示例:**
 ```bash
 # 完整备份
 media-organizer export --auto-name
 
 # 仅备份索引
 media-organizer export --only indexes --auto-name
-
-# 备份到指定文件
-media-organizer export /path/to/backup.zip
 ```
 
-### 3.8 import - 导入
+---
 
-从备份文件导入配置和索引。
+### 3.10 import - 导入恢复
 
 ```bash
 media-organizer import <备份文件> [OPTIONS]
 
 Options:
   --dry-run       预览导入内容
-  --only <类型>   仅导入：indexes, config, sessions
-  --merge         合并（不覆盖现有数据）
+  --only <类型>   仅导入指定类型
+  --merge         合并模式 (不覆盖现有数据)
   --force         强制覆盖
-  --backup-first  导入前先备份现有配置
+  --backup-first  导入前自动备份当前配置
 ```
 
-**示例：**
-
+**示例:**
 ```bash
 # 预览
-media-organizer import backup_20260104.zip --dry-run
+media-organizer import backup_20260426.zip --dry-run
 
-# 合并导入
-media-organizer import backup_20260104.zip --merge
-
-# 强制覆盖
-media-organizer import backup_20260104.zip --force --backup-first
+# 安全导入
+media-organizer import backup.zip --backup-first --merge
 ```
 
 ---
 
 ## 4. 工作流程
 
-### 4.1 完整工作流程
+### 4.1 完整处理管道
 
-```
-┌─────────────────┐
-│   源视频文件     │
-│  (杂乱的命名)    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   plan 命令     │  ← AI 解析 + TMDB 匹配
-│  生成整理计划    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   检查计划       │  ← 人工审核
-│  (可选)          │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  execute 命令   │  ← 移动文件 + 生成 NFO + 下载海报
-│   执行计划       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  index scan     │  ← 建立中央索引
-│   建立索引       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    search       │  ← 跨硬盘搜索
-│   搜索媒体       │
-└─────────────────┘
+```mermaid
+graph TD
+    A[杂乱的视频文件] --> B[plan 命令]
+    B --> C[AI 文件名解析]
+    B --> D[TMDB 元数据匹配]
+    B --> E[视频元数据提取]
+    C & D & E --> F[生成整理计划]
+    F --> G[人工审核计划]
+    G --> H[execute 命令]
+    H --> I[原子性移动文件]
+    H --> J[生成 NFO 文件]
+    H --> K[下载海报]
+    I & J & K --> L[生成回滚文件]
+    L --> M[index scan 建立索引]
+    M --> N[search 跨硬盘搜索]
 ```
 
 ### 4.2 目录结构示例
 
-**整理前：**
+**整理前:**
 ```
 /downloads/
-├── [2024]加勒比海盗.mkv
-├── Black.Mirror.S01E01.720p.mkv
-├── 盗梦空间.2010.1080p.BluRay.mkv
-└── 西游记之大圣归来 (2015).mp4
+├── [BDrip]加勒比海盗5.死无对证.2017.1080p.mkv
+├── Black.Mirror.S01E01.720p.WEB-DL.mkv
+├── 盗梦空间 Inception 2010 蓝光原盘.mkv
+└── 西游记之大圣归来 (2015) 国语中字.mp4
 ```
 
-**整理后：**
+**整理后:**
 ```
 /library/
 ├── movies/
 │   ├── ZH_Chinese/
 │   │   └── [西游记之大圣归来](2015)-tt4040840-tmdb166589/
-│   │       ├── [西游记之大圣归来](2015)-1920x1080(1080p)-BluRay-h264-8bit-aac-2.0.mp4
+│   │       ├── [西游记之大圣归来](2015)-1920x1080-BluRay-h264.mp4
 │   │       ├── movie.nfo
 │   │       └── poster.jpg
 │   └── EN_English/
 │       └── [Inception][盗梦空间](2010)-tt1375666-tmdb27205/
-│           ├── [Inception][盗梦空间](2010)-1920x1080(1080p)-BluRay-h264-8bit-dts-5.1.mkv
+│           ├── [Inception][盗梦空间](2010)-1920x1080-BluRay-h264.mkv
 │           ├── movie.nfo
 │           └── poster.jpg
 └── tvshows/
     └── GB_UnitedKingdom/
         └── [Black Mirror][黑镜](2011)-tt2085059-tmdb42009/
+            ├── tvshow.nfo
+            ├── poster.jpg
             └── Season 01/
-                ├── [黑镜]-S01E01-[国歌]-720p-WEB-h264-8bit-aac-2.0.mkv
-                └── episode.nfo
+                └── [黑镜]-S01E01-[国歌]-720p-WEB-h264.mkv
 ```
 
 ---
@@ -442,73 +449,55 @@ media-organizer import backup_20260104.zip --force --backup-first
 
 ### 5.1 设计理念
 
-- **跨硬盘搜索**：即使硬盘未挂载也能搜索
-- **统一管理**：一个硬盘可同时包含电影和电视剧
-- **离线浏览**：无需挂载硬盘即可查看收藏
+- ✅ **跨硬盘搜索**: 即使硬盘未挂载也可搜索
+- ✅ **离线浏览**: 无需挂载硬盘即可查看完整收藏
+- ✅ **统一管理**: 一个硬盘可同时包含多种媒体类型
+- ✅ **自动检测**: 自动识别硬盘 UUID，移动位置不影响索引
+- ✅ **完整性校验**: 自动检测文件变动
 
-### 5.2 存储结构
+### 5.2 存储位置
 
 ```
 ~/.config/media_organizer/
-├── central_index.json          # 主索引
-├── central_index.json.backup   # 自动备份
+├── config.json             # 配置文件
+├── central_index.json      # 主索引
+├── central_index.backup    # 自动备份
 └── disk_indexes/
-    ├── JMedia_M01.json
-    ├── JMedia_M02.json
-    └── JMedia_M05.json
-```
-
-### 5.3 复合存储
-
-单个 disk-label 可同时存储多种媒体类型：
-
-```bash
-# 同一硬盘，不同媒体类型
-media-organizer index scan /mnt/disk/movies --media-type movies --disk-label MyDisk
-media-organizer index scan /mnt/disk/tvshows --media-type tvshows --disk-label MyDisk
-```
-
-索引中会记录：
-```json
-{
-  "disks": {
-    "MyDisk": {
-      "paths": {
-        "movies": "/mnt/disk/movies",
-        "tvshows": "/mnt/disk/tvshows"
-      }
-    }
-  }
-}
+    ├── 主硬盘.json
+    ├── 备份盘.json
+    └── 移动硬盘.json
 ```
 
 ---
 
 ## 6. 搜索功能
 
-### 6.1 搜索范围
+### 6.1 搜索字段
 
-| 搜索条件 | 电影 | 电视剧 |
-|---------|------|--------|
-| --title | ✅ | ✅ |
-| --actor | ✅ | ✅ |
-| --director | ✅ | ❌ (用 creators) |
-| --collection | ✅ | ❌ |
-| --year | ✅ | ✅ |
-| --genre | ✅ | ✅ |
-| --language | ✅ | ✅ |
+| 字段 | 电影 | 电视剧 |
+|------|------|--------|
+| 标题 | ✅ | ✅ |
+| 演员 | ✅ | ✅ |
+| 导演 | ✅ | ✅ |
+| 编剧 | ✅ | ✅ |
+| 类型 | ✅ | ✅ |
+| 年份 | ✅ | ✅ |
+| 语言 | ✅ | ✅ |
+| 国家 | ✅ | ✅ |
+| 评分 | ✅ | ✅ |
+| 系列合集 | ✅ | ❌ |
 
-### 6.2 输出格式
+### 6.2 高级搜索
 
 ```bash
-# 表格格式（默认）
-media-organizer search --title "黑镜"
+# 评分大于 8.0 的科幻电影
+media-organizer search --genre 科幻 --min-rating 8.0
 
-# 简洁格式
-media-organizer search --title "黑镜" --format simple
+# 2020年之后的韩国电影
+media-organizer search --year 2020-2025 --language ko
 
-# JSON 格式（适合脚本处理）
-media-organizer search --title "黑镜" --format json
+# 克里斯托弗·诺兰导演的所有作品
+media-organizer search --director "克里斯托弗·诺兰"
 ```
 
 ---
@@ -519,59 +508,89 @@ media-organizer search --title "黑镜" --format json
 
 ```bash
 # 每周完整备份
-media-organizer export --auto-name
+0 2 * * 0 /usr/local/bin/media-organizer export --auto-name --output /backup/
 
-# 仅备份索引（更频繁）
-media-organizer export --only indexes --auto-name
+# 每日索引备份
+0 3 * * * /usr/local/bin/media-organizer export --only indexes --auto-name
 ```
 
-### 7.2 恢复流程
+### 7.2 灾难恢复流程
 
-```bash
-# 1. 预览备份内容
-media-organizer import backup.zip --dry-run
-
-# 2. 备份当前配置后导入
-media-organizer import backup.zip --backup-first --force
-```
+1. 安装系统与依赖
+2. 导入最新备份: `media-organizer import backup.zip`
+3. 验证索引: `media-organizer index stats`
+4. 扫描现有目录: `media-organizer index scan /path`
 
 ---
 
-## 8. 常见问题
+## 8. 高级特性
 
-### Q: 如何处理 AI 解析失败的文件？
+### 8.1 AI 智能解析
 
-A: 检查 plan 输出的 "Unknown Files" 列表，可以：
-1. 手动重命名文件后重新 plan
-2. 确保 Ollama 服务运行正常
+- 支持任意格式的中英文混合文件名
+- 自动识别分辨率、编码、音频格式
+- 智能去除发布组、广告、水印文字
+- 自动识别电影/电视剧类型
+- 多季多集批量识别
 
-### Q: 如何更新已整理文件的索引？
+### 8.2 事务执行引擎
 
-A: 使用 `--force` 重新扫描：
+- 所有操作原子性
+- 完整的回滚支持
+- 文件校验哈希
+- 崩溃恢复
+- 重复操作检测
+
+### 8.3 重复检测
+
+- 基于内容哈希的精确去重
+- 支持不同分辨率、编码的版本识别
+- 自动保留最佳质量版本
+- 可配置重复处理策略
+
+---
+
+## 9. 常见问题
+
+### Q: AI 解析失败如何处理？
+A: 检查 `unknown` 列表，手动重命名文件后重新运行 plan。确保 Ollama 服务运行正常，模型已正确下载。
+
+### Q: 如何更新已整理文件的元数据？
+A: 使用 `--force` 参数重新扫描:
 ```bash
 media-organizer index scan /path --force
 ```
 
-### Q: 搜索只显示电影，没有电视剧？
-
-A: 确保电视剧也已建立索引：
+### Q: 搜索只返回电影，没有电视剧？
+A: 确保电视剧目录已单独索引:
 ```bash
 media-organizer index scan /path/to/tvshows --media-type tvshows
 ```
 
-### Q: 如何查看哪些硬盘在线？
+### Q: 移动硬盘如何管理？
+A: 每个移动硬盘使用唯一的 disk-label，插入后扫描一次即可永久加入索引。
 
-A: 使用 `--show-status` 选项：
-```bash
-media-organizer search --title "test" --show-status
-media-organizer index stats
-```
+---
+
+## 10. 最佳实践
+
+✅ **始终先 plan 再 execute** - 永远在执行前检查计划文件
+
+✅ **定期备份索引** - 每周运行一次完整导出
+
+✅ **批量处理** - 一次性整理整个目录而不是单个文件
+
+✅ **使用 SSD 存储索引** - 获得毫秒级搜索速度
+
+✅ **独立测试环境** - 在正式整理前先在测试目录验证
+
+✅ **保留回滚文件** - 至少保留最近 3 次操作的回滚文件
 
 ---
 
 ## 附录
 
-### A. 国家代码参考
+### A. 国家代码表
 
 | 代码 | 国家 |
 |------|------|
@@ -582,14 +601,24 @@ media-organizer index stats
 | GB | 英国 |
 | FR | 法国 |
 | DE | 德国 |
-| TW | 台湾 |
 | HK | 香港 |
+| TW | 台湾 |
 
-### B. 环境变量
+### B. 退出代码
 
-| 变量 | 描述 | 默认值 |
-|------|------|--------|
-| TMDB_API_KEY | TMDB API 密钥 | (必需) |
-| OLLAMA_BASE_URL | Ollama 服务地址 | http://localhost:11434 |
-| OLLAMA_MODEL | AI 模型名称 | qwen2.5:7b |
+| 代码 | 含义 |
+|------|------|
+| 0 | 成功 |
+| 1 | 通用错误 |
+| 2 | 参数错误 |
+| 3 | 前置检查失败 |
+| 4 | 计划无效 |
+| 5 | 回滚失败 |
+| 6 | IO 错误 |
+| 7 | 网络错误 |
 
+---
+
+**文档结束**
+
+如需更多帮助，请提交 Issue 至 GitHub 仓库。
