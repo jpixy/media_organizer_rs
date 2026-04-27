@@ -7,6 +7,15 @@ mod tmdb;
 use crate::Result;
 use colored::Colorize;
 
+/// Check severity level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckSeverity {
+    /// Check must pass to continue.
+    Required,
+    /// Check failure is a warning only.
+    Optional,
+}
+
 /// Result of a preflight check.
 #[derive(Debug)]
 pub struct CheckResult {
@@ -14,24 +23,27 @@ pub struct CheckResult {
     pub success: bool,
     pub message: String,
     pub hint: Option<String>,
+    pub severity: CheckSeverity,
 }
 
 impl CheckResult {
-    pub fn ok(name: &str, message: &str) -> Self {
+    pub fn ok(name: &str, message: &str, severity: CheckSeverity) -> Self {
         Self {
             name: name.to_string(),
             success: true,
             message: message.to_string(),
             hint: None,
+            severity,
         }
     }
 
-    pub fn fail(name: &str, message: &str, hint: &str) -> Self {
+    pub fn fail(name: &str, message: &str, hint: &str, severity: CheckSeverity) -> Self {
         Self {
             name: name.to_string(),
             success: false,
             message: message.to_string(),
             hint: Some(hint.to_string()),
+            severity,
         }
     }
 }
@@ -63,12 +75,24 @@ pub fn print_results(results: &[CheckResult]) {
                 result.message
             );
         } else {
-            println!(
-                "{} {}: {}",
-                "[FAIL]".red(),
-                result.name.bold(),
-                result.message
-            );
+            match result.severity {
+                CheckSeverity::Required => {
+                    println!(
+                        "{} {}: {}",
+                        "[FAIL]".red(),
+                        result.name.bold(),
+                        result.message
+                    );
+                }
+                CheckSeverity::Optional => {
+                    println!(
+                        "{} {}: {}",
+                        "[WARN]".yellow(),
+                        result.name.bold(),
+                        result.message
+                    );
+                }
+            }
             if let Some(ref hint) = result.hint {
                 println!("  {} {}", "->".yellow(), hint);
             }
@@ -76,7 +100,9 @@ pub fn print_results(results: &[CheckResult]) {
     }
 }
 
-/// Check if all preflight checks passed.
-pub fn all_passed(results: &[CheckResult]) -> bool {
-    results.iter().all(|r| r.success)
+/// Check if all required preflight checks passed.
+pub fn all_required_passed(results: &[CheckResult]) -> bool {
+    results.iter()
+        .filter(|r| r.severity == CheckSeverity::Required)
+        .all(|r| r.success)
 }

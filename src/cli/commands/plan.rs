@@ -4,6 +4,7 @@
 //! Coordinates scanning, parsing, TMDB lookup, and plan generation.
 
 use crate::core::planner::{self, Planner};
+use crate::models::config::Config;
 use crate::models::media::MediaType;
 use crate::Result;
 use colored::Colorize;
@@ -14,11 +15,12 @@ pub async fn plan_movies(
     source: &Path,
     target: Option<&Path>,
     output: Option<&Path>,
+    config: &Config,
 ) -> Result<()> {
     println!("{}", "[PLAN] Planning movies organization...".bold().cyan());
     println!();
 
-    plan_media(source, target, output, MediaType::Movies).await
+    plan_media(source, target, output, MediaType::Movies, config).await
 }
 
 /// Execute the plan command for TV shows.
@@ -26,6 +28,7 @@ pub async fn plan_tvshows(
     source: &Path,
     target: Option<&Path>,
     output: Option<&Path>,
+    config: &Config,
 ) -> Result<()> {
     println!(
         "{}",
@@ -33,7 +36,7 @@ pub async fn plan_tvshows(
     );
     println!();
 
-    plan_media(source, target, output, MediaType::TvShows).await
+    plan_media(source, target, output, MediaType::TvShows, config).await
 }
 
 /// Common planning logic for both movies and TV shows.
@@ -42,6 +45,7 @@ async fn plan_media(
     target: Option<&Path>,
     output: Option<&Path>,
     media_type: MediaType,
+    config: &Config,
 ) -> Result<()> {
     // Validate source path
     if !source.exists() {
@@ -75,7 +79,7 @@ async fn plan_media(
     println!();
 
     // Create planner and generate plan
-    let planner = Planner::new()?;
+    let planner = Planner::with_application_config(config)?;
     let plan = planner.generate(source, &target_path, media_type).await?;
 
     // Print summary

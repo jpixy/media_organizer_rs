@@ -188,6 +188,27 @@ impl Planner {
         })
     }
 
+    /// Create a new planner with application configuration.
+    pub fn with_application_config(config: &crate::models::config::Config) -> Result<Self> {
+        // 转换应用配置到服务层配置
+        let tmdb_client = if let Some(api_key) = &config.tmdb.api_key {
+            let tmdb_config = crate::services::tmdb::TmdbConfig {
+                api_key: api_key.clone(),
+                language: config.tmdb.language.clone(),
+                use_bearer: api_key.starts_with("eyJ"),
+            };
+            Some(TmdbClient::new(tmdb_config))
+        } else {
+            None
+        };
+
+        Ok(Self {
+            config: PlannerConfig::default(),
+            parser: FilenameParser::new(),
+            tmdb_client,
+        })
+    }
+
     /// Generate a plan for organizing videos.
     pub async fn generate(
         &self,

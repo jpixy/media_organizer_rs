@@ -36,14 +36,14 @@ async fn main() -> anyhow::Result<()> {
                     target,
                     output,
                 } => {
-                    plan::plan_movies(&source, target.as_deref(), output.as_deref()).await?;
+                    plan::plan_movies(&source, target.as_deref(), output.as_deref(), &config).await?;
                 }
                 PlanType::Tvshows {
                     source,
                     target,
                     output,
                 } => {
-                    plan::plan_tvshows(&source, target.as_deref(), output.as_deref()).await?;
+                    plan::plan_tvshows(&source, target.as_deref(), output.as_deref(), &config).await?;
                 }
             }
         }
@@ -166,7 +166,7 @@ async fn run_preflight_checks() -> anyhow::Result<()> {
 
     println!();
 
-    if !preflight::all_passed(&results) {
+    if !preflight::all_required_passed(&results) {
         anyhow::bail!("Preflight checks failed. Fix the issues above and try again.");
     }
 
