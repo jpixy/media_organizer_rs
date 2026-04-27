@@ -4,6 +4,7 @@ mod ffprobe;
 mod ollama;
 mod tmdb;
 
+use crate::models::config::Config;
 use crate::Result;
 use colored::Colorize;
 
@@ -49,7 +50,7 @@ impl CheckResult {
 }
 
 /// Run all preflight checks.
-pub async fn run_preflight_checks() -> Result<Vec<CheckResult>> {
+pub async fn run_preflight_checks(config: &Config) -> Result<Vec<CheckResult>> {
     let mut results = Vec::new();
 
     // Check ffprobe
@@ -59,7 +60,7 @@ pub async fn run_preflight_checks() -> Result<Vec<CheckResult>> {
     results.push(ollama::check().await);
 
     // Check TMDB
-    results.push(tmdb::check().await);
+    results.push(tmdb::check(config).await);
 
     Ok(results)
 }

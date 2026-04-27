@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Plan { media_type } => {
             // Run preflight checks unless skipped
             if !cli.skip_preflight {
-                run_preflight_checks().await?;
+                run_preflight_checks(&config).await?;
             }
 
             match media_type {
@@ -155,13 +155,13 @@ fn init_logging(verbose: bool) {
 }
 
 /// Run preflight checks and exit if any fail.
-async fn run_preflight_checks() -> anyhow::Result<()> {
+async fn run_preflight_checks(config: &media_organizer::models::config::Config) -> anyhow::Result<()> {
     use colored::Colorize;
 
     println!("{}", "Running preflight checks...".bold());
     println!();
 
-    let results = preflight::run_preflight_checks().await?;
+    let results = preflight::run_preflight_checks(config).await?;
     preflight::print_results(&results);
 
     println!();
