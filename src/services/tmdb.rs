@@ -1,4 +1,4 @@
-//! TMDB API client.
+ //! TMDB API client.
 
 use crate::Result;
 use serde::Deserialize;

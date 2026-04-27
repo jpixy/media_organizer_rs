@@ -162,6 +162,10 @@ pub(crate) fn load_config_from(base_dir: Option<&std::path::Path>) -> Config {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use std::sync::Mutex;
+
+    // Global mutex to serialize tests that modify environment variables
+    static TEST_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_default_config() {
@@ -175,6 +179,9 @@ mod tests {
 
 #[test]
 fn test_load_config_from_file() {
+    // Serialize all env-modifying tests
+    let _lock = TEST_MUTEX.lock().unwrap();
+
     // Clear any existing environment variables that may interfere
     let old_tmdb_key = std::env::var("TMDB_API_KEY").ok();
     let old_ollama_host = std::env::var("OLLAMA_HOST").ok();
@@ -225,6 +232,9 @@ language = "en-US"
 
     #[test]
     fn test_environment_variables_override_config() {
+        // Serialize all env-modifying tests
+        let _lock = TEST_MUTEX.lock().unwrap();
+
         // Clear ALL relevant environment variables first
         let old_tmdb_key = std::env::var("TMDB_API_KEY").ok();
         let old_tmdb_lang = std::env::var("TMDB_LANGUAGE").ok();
