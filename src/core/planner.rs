@@ -247,7 +247,7 @@ impl Planner {
 
         // Step 3.6: SAFETY CHECK - Detect duplicate target paths
         // This prevents data loss from files overwriting each other
-        self.validate_no_duplicate_targets(&items)?;
+        self.validate_no_duplicate_targets(&mut items)?;
 
         // Step 4: Create plan
         let plan = Plan {
@@ -296,7 +296,6 @@ impl Planner {
 
         // Caches
         let mut tvshow_cache: HashMap<PathBuf, TvShowMetadata> = HashMap::new();
-        let mut movie_cache: HashMap<PathBuf, MovieMetadata> = HashMap::new();
         let season_episodes_cache: SeasonEpisodesCache = Arc::new(RwLock::new(HashMap::new()));
 
         // Step 2: Run ffprobe in parallel for all videos (up to 8 concurrent)
@@ -350,85 +349,50 @@ impl Planner {
                             tvshow_cache.insert(top_dir.clone(), meta.clone());
                         }
                     }
-                    // Cache the movie metadata for same-directory siblings
-                    if media_type == MediaType::Movies {
-                        if let Some(ref meta) = item.movie_metadata {
-                            movie_cache.insert(top_dir.clone(), meta.clone());
-                        }
-                    }
                     items.push(item);
                     pb.inc(1);
 
                     // Process remaining files using cached metadata
                     // Skip the representative video (already processed above)
                     let cached_show = tvshow_cache.get(top_dir).cloned();
-                    let cached_movie = movie_cache.get(top_dir).cloned();
                     for video in group_videos
                         .iter()
                         .filter(|v| v.path != representative_video.path)
                     {
                         pb.set_message(format!("Processing: {}", &video.filename));
 
-                        // For movies with cached metadata, use the cached match
+                        // For movies, process each file independently without using a shared cache
                         if media_type == MediaType::Movies {
-                            if let Some(ref cached) = cached_movie {
-                                match self
-                                    .process_sibling_movie(
-                                        video,
-                                        target,
-                                        cached,
-                                        ffprobe_map.get(&video.path),
-                                    )
-                                    .await
-                                {
-                                    Ok(item) => {
-                                        items.push(item);
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!(
-                                            "Failed to process sibling movie {}: {}",
-                                            video.filename,
-                                            e
-                                        );
-                                        unknown.push(UnknownItem {
-                                            source: video.clone(),
-                                            reason: e.to_string(),
-                                        });
-                                    }
+                            match self
+                                .process_single_video_optimized(
+                                    video,
+                                    target,
+                                    media_type,
+                                    None,
+                                    &season_episodes_cache,
+                                    ffprobe_map.get(&video.path),
+                                )
+                                .await
+                            {
+                                Ok(Some((item, _))) => {
+                                    items.push(item);
                                 }
-                            } else {
-                                // No cached movie, process independently
-                                match self
-                                    .process_single_video_optimized(
-                                        video,
-                                        target,
-                                        media_type,
-                                        None,
-                                        &season_episodes_cache,
-                                        ffprobe_map.get(&video.path),
-                                    )
-                                    .await
-                                {
-                                    Ok(Some((item, _))) => {
-                                        items.push(item);
-                                    }
-                                    Ok(None) => {
-                                        unknown.push(UnknownItem {
-                                            source: video.clone(),
-                                            reason: "Failed to find TMDB match".to_string(),
-                                        });
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!(
-                                            "Failed to process {}: {}",
-                                            video.filename,
-                                            e
-                                        );
-                                        unknown.push(UnknownItem {
-                                            source: video.clone(),
-                                            reason: e.to_string(),
-                                        });
-                                    }
+                                Ok(None) => {
+                                    unknown.push(UnknownItem {
+                                        source: video.clone(),
+                                        reason: "Failed to find TMDB match".to_string(),
+                                    });
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to process {}: {}",
+                                        video.filename,
+                                        e
+                                    );
+                                    unknown.push(UnknownItem {
+                                        source: video.clone(),
+                                        reason: e.to_string(),
+                                    });
                                 }
                             }
                         } else {
@@ -2504,18 +2468,24 @@ impl Planner {
 
     /// SAFETY CHECK: Validate that no two items have the same target path.
     /// This prevents data loss from files overwriting each other.
-    fn validate_no_duplicate_targets(&self, items: &[PlanItem]) -> Result<()> {
+    pub fn validate_no_duplicate_targets(&self, items: &mut [PlanItem]) -> Result<()> {
         use std::collections::HashMap;
 
-        let mut target_to_sources: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
+        let mut target_to_sources: HashMap<PathBuf, Vec<(usize, PathBuf)>> = HashMap::new();
 
-        for item in items {
+        for (idx, item) in items.iter().enumerate() {
+            // 只检查 Pending 状态的项目，跳过已经被标记为 Skip/Error 的项目
+            // 避免重复调用时重复处理已经处理过的冲突
+            if item.status != PlanItemStatus::Pending {
+                continue;
+            }
+
             for op in &item.operations {
                 if matches!(op.op, OperationType::Move) {
                     target_to_sources
                         .entry(op.to.clone())
                         .or_default()
-                        .push(item.source.path.clone());
+                        .push((idx, item.source.path.clone()));
                 }
             }
         }
@@ -2526,32 +2496,39 @@ impl Planner {
             .collect();
 
         if !duplicates.is_empty() {
-            let mut error_msg = String::from(
-                "CRITICAL: Duplicate target paths detected! This would cause data loss.\n\n",
+            let mut removed_count = 0;
+            let mut warning_msg = String::from(
+                "⚠️  WARNING: Duplicate target paths detected, marking as unknown to prevent data loss:\n\n",
             );
 
             for (target, sources) in duplicates.iter() {
-                error_msg.push_str(&format!("Target: {:?}\n", target));
-                error_msg.push_str("  Would overwrite these source files:\n");
-                for src in sources.iter() {
-                    error_msg.push_str(&format!("    - {:?}\n", src));
+                warning_msg.push_str(&format!("Target: {:?}\n", target));
+                warning_msg.push_str("  These files would collide:\n");
+                for (idx, src) in sources.iter().skip(1) {
+                    warning_msg.push_str(&format!("    - {:?}\n", src));
+                    // Mark duplicate items as failed, remove their operations
+                    if let Some(item) = items.get_mut(*idx) {
+                        item.status = PlanItemStatus::Skip;
+                        item.operations.clear();
+                        removed_count += 1;
+                    }
                 }
-                error_msg.push('\n');
+                warning_msg.push('\n');
             }
 
-            let total_affected: usize = duplicates.iter().map(|(_, s)| s.len()).sum();
-            error_msg.push_str(&format!(
-                "Total: {} duplicate targets affecting {} files.\n",
-                duplicates.len(),
-                total_affected
+            warning_msg.push_str(&format!(
+                "⚠️  Marked {} duplicate items as unknown, they will be skipped.\n",
+                removed_count
             ));
-            error_msg.push_str("Plan generation aborted to prevent data loss.");
+            warning_msg.push_str("Plan will continue with the remaining valid items.");
 
-            tracing::error!("{}", error_msg);
-            return Err(crate::Error::other(error_msg));
+            tracing::warn!("{}", warning_msg);
+            println!("{}", warning_msg);
+            println!();
+        } else {
+            tracing::info!("Safety check passed: No duplicate target paths");
         }
 
-        tracing::info!("Safety check passed: No duplicate target paths");
         Ok(())
     }
 
@@ -3173,7 +3150,25 @@ impl Planner {
             english_results = results;
         }
 
-        // Priority 1: Find common results (intersection by TMDB ID)
+        // Priority 1: Chinese title results (最高优先级 - 中文结果)
+        if !chinese_results.is_empty() {
+            let query = chinese_title.as_deref().unwrap_or("");
+            if let Some(best) = self.select_best_movie_match(&chinese_results, query) {
+                let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
+                if self.is_reasonable_match_with_year(
+                    query,
+                    &best.title,
+                    &best.original_title,
+                    parsed.year,
+                    tmdb_year,
+                ) {
+                    tracing::info!("TMDB found (Chinese match): {}", best.title);
+                    return self.get_movie_details(client, best.id).await;
+                }
+            }
+        }
+
+        // Priority 2: Find common results (intersection by TMDB ID)
         if !chinese_results.is_empty() && !english_results.is_empty() {
             let chinese_ids: std::collections::HashSet<u64> =
                 chinese_results.iter().map(|r| r.id).collect();
@@ -3197,7 +3192,7 @@ impl Planner {
             }
         }
 
-        // Priority 2: English title results (more reliable for international movies)
+        // Priority 3: English title results (国际电影 fallback)
         if !english_results.is_empty() {
             let query = english_title.as_deref().unwrap_or("");
             if let Some(best) = self.select_best_movie_match(&english_results, query) {
@@ -3210,24 +3205,6 @@ impl Planner {
                     tmdb_year,
                 ) {
                     tracing::info!("TMDB found (English match): {}", best.title);
-                    return self.get_movie_details(client, best.id).await;
-                }
-            }
-        }
-
-        // Priority 3: Chinese title results
-        if !chinese_results.is_empty() {
-            let query = chinese_title.as_deref().unwrap_or("");
-            if let Some(best) = self.select_best_movie_match(&chinese_results, query) {
-                let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
-                if self.is_reasonable_match_with_year(
-                    query,
-                    &best.title,
-                    &best.original_title,
-                    parsed.year,
-                    tmdb_year,
-                ) {
-                    tracing::info!("TMDB found (Chinese match): {}", best.title);
                     return self.get_movie_details(client, best.id).await;
                 }
             }
@@ -4061,13 +4038,30 @@ impl Planner {
         // Require minimum vote count for non-exact matches to ensure quality
         if !best_exact {
             let vote_count = results[best_idx].vote_count.unwrap_or(0);
-            if vote_count < 10 {
+            
+            // 提高最低投票数阈值，拒绝冷门/不存在的匹配结果
+            if vote_count < 50 {
                 tracing::warn!(
                     "Movie match too uncertain (low votes): '{}' ({} votes) - skipping",
                     results[best_idx].title,
                     vote_count
                 );
                 return None;
+            }
+            
+            // 非精确匹配时，要求分数显著高于第二名
+            if scored_results.len() > 1 {
+                let (_, second_score, _) = scored_results[1];
+                if best_score - second_score < 5000 {
+                    tracing::warn!(
+                        "Ambiguous movie match: '{}' (score {}) vs '{}' (score {}) - skipping",
+                        results[best_idx].title,
+                        best_score,
+                        results[scored_results[1].0].title,
+                        second_score
+                    );
+                    return None;
+                }
             }
         }
 
