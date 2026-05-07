@@ -1,0 +1,18 @@
+# Media Organizer 配置文件示例
+# 将此文件复制到 ~/.config/media_organizer/config.toml
+
+[ollama]
+# AI 解析开关。默认关闭 (false)，仅使用本地解析（hunch + regex）
+# 开启后，当本地解析失败时会调用 Ollama AI 作为后备
+enabled = false
+host = "localhost"
+port = 11434
+model = "qwen2.5:7b"
+timeout = 60
+
+[tmdb]
+# TMDB API Key (必需)
+# 获取方式: https://www.themoviedb.org/settings/api
+# 支持 v3 API Key 和 v4 Bearer Token (以 "eyJ" 开头)
+api_key = "your_tmdb_api_key_here"
+language = "zh-CN"

@@ -73,7 +73,7 @@ async fn scan_directory(
                 "{}",
                 format!(
                     "[WARN] Disk '{}' already indexed ({} movies, {} TV shows)",
-                    label, existing.disk.movie_count, existing.disk.tvshow_count
+                    label, existing.disk.movie_count, existing.disk.tv_series_count
                 )
                 .yellow()
             );
@@ -109,7 +109,7 @@ async fn scan_directory(
     println!();
     println!("{}", "[INDEX] Complete!".bold().green());
     println!("  Movies indexed: {}", disk_index.disk.movie_count);
-    println!("  TV shows indexed: {}", disk_index.disk.tvshow_count);
+    println!("  TV shows indexed: {}", disk_index.disk.tv_series_count);
     println!(
         "  Total size: {:.2} GB",
         disk_index.disk.total_size_bytes as f64 / 1_073_741_824.0
@@ -118,7 +118,7 @@ async fn scan_directory(
     println!(
         "  Central index: {} movies, {} TV shows across {} disks",
         central.statistics.total_movies,
-        central.statistics.total_tvshows,
+        central.statistics.total_tv_series,
         central.statistics.total_disks
     );
 
@@ -147,7 +147,7 @@ async fn show_stats() -> Result<()> {
             "  {} | {} movies | {} TV shows | {:.1} GB | {}",
             label.bold(),
             disk.movie_count,
-            disk.tvshow_count,
+            disk.tv_series_count,
             disk.total_size_bytes as f64 / 1_073_741_824.0,
             status
         );
@@ -171,7 +171,7 @@ async fn show_stats() -> Result<()> {
         "  {} | {} movies | {} TV shows | {:.1} GB",
         "Total".bold(),
         index.statistics.total_movies,
-        index.statistics.total_tvshows,
+        index.statistics.total_tv_series,
         index.statistics.total_size_bytes as f64 / 1_073_741_824.0
     );
     println!();
@@ -181,7 +181,7 @@ async fn show_stats() -> Result<()> {
         println!("{}", "By Country:".bold());
         let mut countries: Vec<_> = index.statistics.by_country.iter().collect();
         countries.sort_by(|a, b| b.1.cmp(a.1));
-        let total = index.statistics.total_movies + index.statistics.total_tvshows;
+        let total = index.statistics.total_movies + index.statistics.total_tv_series;
         for (country, count) in countries.iter().take(10) {
             let pct = **count as f64 / total as f64 * 100.0;
             let bar_len = (pct / 2.0) as usize;
@@ -225,7 +225,7 @@ async fn list_disk(disk_label: &str, media_type: &str) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     let show_movies = media_type == "all" || media_type == "movies";
-    let show_tvshows = media_type == "all" || media_type == "tvshows";
+    let show_tv_series = media_type == "all" || media_type == "tv_series";
 
     if show_movies {
         let movies: Vec<_> = index
@@ -251,19 +251,19 @@ async fn list_disk(disk_label: &str, media_type: &str) -> Result<()> {
         }
     }
 
-    if show_tvshows {
-        let tvshows: Vec<_> = index
-            .tvshows
+    if show_tv_series {
+        let tv_series: Vec<_> = index
+            .tv_series
             .iter()
             .filter(|t| t.disk == disk_label)
             .collect();
 
-        if !tvshows.is_empty() {
+        if !tv_series.is_empty() {
             println!(
                 "{}",
-                format!("TV Shows on {} ({}):", disk_label, tvshows.len()).bold()
+                format!("TV Shows on {} ({}):", disk_label, tv_series.len()).bold()
             );
-            for tvshow in tvshows {
+            for tvshow in tv_series {
                 println!(
                     "  [{}] {} - {} episodes",
                     tvshow.year.map(|y| y.to_string()).unwrap_or_default(),
@@ -286,7 +286,7 @@ async fn verify_index(path: &Path) -> Result<()> {
 
     let index = indexer::load_central_index()?;
     let movies: Vec<_> = index.movies.iter().filter(|m| m.disk == label).collect();
-    let tvshows: Vec<_> = index.tvshows.iter().filter(|t| t.disk == label).collect();
+    let tv_series: Vec<_> = index.tv_series.iter().filter(|t| t.disk == label).collect();
 
     let mut valid = 0;
     let mut missing = 0;
@@ -301,9 +301,9 @@ async fn verify_index(path: &Path) -> Result<()> {
         }
     }
 
-    for tvshow in &tvshows {
-        let tvshow_path = path.join(&tvshow.relative_path);
-        if tvshow_path.exists() {
+    for tvshow in &tv_series {
+        let tv_series_path = path.join(&tvshow.relative_path);
+        if tv_series_path.exists() {
             valid += 1;
         } else {
             missing += 1;
@@ -347,14 +347,14 @@ async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
     let mut index = indexer::load_central_index()?;
 
     let movies_before = index.movies.len();
-    let tvshows_before = index.tvshows.len();
+    let tv_series_before = index.tv_series.len();
 
     index.movies.retain(|m| m.disk != disk_label);
-    index.tvshows.retain(|t| t.disk != disk_label);
+    index.tv_series.retain(|t| t.disk != disk_label);
     index.disks.remove(disk_label);
 
     let movies_removed = movies_before - index.movies.len();
-    let tvshows_removed = tvshows_before - index.tvshows.len();
+    let tv_series_removed = tv_series_before - index.tv_series.len();
 
     index.rebuild_indexes();
     index.update_statistics();
@@ -370,7 +370,7 @@ async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
         "{}",
         format!(
             "[OK] Removed disk '{}': {} movies, {} TV shows",
-            disk_label, movies_removed, tvshows_removed
+            disk_label, movies_removed, tv_series_removed
         )
         .bold()
         .green()
@@ -423,7 +423,7 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     let show_movies = media_type == "all" || media_type == "movies";
-    let show_tvshows = media_type == "all" || media_type == "tvshows";
+    let show_tv_series = media_type == "all" || media_type == "tv_series";
 
     let mut duplicates: Vec<DuplicateGroup> = Vec::new();
 
@@ -464,25 +464,25 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
     }
 
     // Find duplicate TV shows
-    if show_tvshows {
-        let mut tmdb_to_tvshows: std::collections::HashMap<u64, Vec<_>> =
+    if show_tv_series {
+        let mut tmdb_to_tv_series: std::collections::HashMap<u64, Vec<_>> =
             std::collections::HashMap::new();
 
-        for tvshow in &index.tvshows {
+        for tvshow in &index.tv_series {
             if let Some(tmdb_id) = tvshow.tmdb_id {
-                tmdb_to_tvshows.entry(tmdb_id).or_default().push(tvshow);
+                tmdb_to_tv_series.entry(tmdb_id).or_default().push(tvshow);
             }
         }
 
-        for (tmdb_id, tvshows) in tmdb_to_tvshows {
-            if tvshows.len() > 1 {
-                let total_size: u64 = tvshows.iter().map(|t| t.size_bytes).sum();
+        for (tmdb_id, tv_series) in tmdb_to_tv_series {
+            if tv_series.len() > 1 {
+                let total_size: u64 = tv_series.iter().map(|t| t.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
                     tmdb_id,
-                    title: tvshows[0].title.clone(),
-                    year: tvshows[0].year,
-                    media_type: "tvshow".to_string(),
-                    entries: tvshows
+                    title: tv_series[0].title.clone(),
+                    year: tv_series[0].year,
+                    media_type: "tv_series".to_string(),
+                    entries: tv_series
                         .iter()
                         .map(|t| DuplicateEntry {
                             disk: t.disk.clone(),
@@ -552,7 +552,7 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                     let year_str = group.year.map(|y| format!("({})", y)).unwrap_or_default();
                     let type_badge = match group.media_type.as_str() {
                         "movie" => "[MOVIE]".cyan(),
-                        "tvshow" => "[TVSHOW]".magenta(),
+                        "tv_series" => "[TV_SERIES]".magenta(),
                         _ => "[?]".white(),
                     };
 

@@ -1,6 +1,6 @@
 //! Central index management - scanning, building, and searching.
 
-use crate::models::index::{CentralIndex, CollectionInfo, DiskIndex, MovieEntry, TvShowEntry};
+use crate::models::index::{CentralIndex, CollectionInfo, DiskIndex, MovieEntry, TvSeriesEntry};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -214,9 +214,9 @@ pub fn scan_directory(
                             total_size += movie.size_bytes;
                             index.movies.push(movie);
                         }
-                        Ok(ParsedNfo::TvShow(tvshow)) => {
+                        Ok(ParsedNfo::TvSeries(tvshow)) => {
                             total_size += tvshow.size_bytes;
-                            index.tvshows.push(tvshow);
+                            index.tv_series.push(tvshow);
                         }
                         Err(e) => {
                             tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
@@ -228,13 +228,13 @@ pub fn scan_directory(
     }
 
     index.disk.movie_count = index.movies.len();
-    index.disk.tvshow_count = index.tvshows.len();
+    index.disk.tv_series_count = index.tv_series.len();
     index.disk.total_size_bytes = total_size;
 
     tracing::info!(
         "Scan complete: {} movies, {} TV shows",
         index.movies.len(),
-        index.tvshows.len()
+        index.tv_series.len()
     );
 
     Ok(index)
@@ -243,7 +243,7 @@ pub fn scan_directory(
 /// Parsed NFO result.
 enum ParsedNfo {
     Movie(MovieEntry),
-    TvShow(TvShowEntry),
+    TvSeries(TvSeriesEntry),
 }
 
 /// Parse a movie.nfo or tvshow.nfo file.
@@ -271,8 +271,8 @@ fn parse_nfo_file(
         let movie = parse_movie_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes)?;
         Ok(ParsedNfo::Movie(movie))
     } else if content.contains("<tvshow>") {
-        let tvshow = parse_tvshow_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes)?;
-        Ok(ParsedNfo::TvShow(tvshow))
+        let tvshow = parse_tv_series_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes)?;
+        Ok(ParsedNfo::TvSeries(tvshow))
     } else {
         anyhow::bail!("Unknown NFO format");
     }
@@ -417,13 +417,13 @@ fn parse_movie_nfo(
 }
 
 /// Parse tvshow NFO content.
-fn parse_tvshow_nfo(
+fn parse_tv_series_nfo(
     content: &str,
     disk_label: &str,
     disk_uuid: &Option<String>,
     relative_path: &str,
     size_bytes: u64,
-) -> Result<TvShowEntry> {
+) -> Result<TvSeriesEntry> {
     let get_tag = |tag: &str| -> Option<String> {
         let pattern = format!(r"<{}>(.*?)</{}>", tag, tag);
         regex::Regex::new(&pattern)
@@ -491,7 +491,7 @@ fn parse_tvshow_nfo(
     let seasons = get_tag("season").and_then(|s| s.parse().ok()).unwrap_or(1);
     let episodes = get_tag("episode").and_then(|e| e.parse().ok()).unwrap_or(0);
 
-    Ok(TvShowEntry {
+    Ok(TvSeriesEntry {
         id: uuid::Uuid::new_v4().to_string(),
         disk: disk_label.to_string(),
         disk_uuid: disk_uuid.clone(),
@@ -561,13 +561,13 @@ fn country_name_to_code(name: &str) -> String {
 ///
 /// Supports composite storage: if a disk already exists in the central index,
 /// the new scan is merged by media type instead of completely replacing it.
-/// This allows one disk label to have both movies and tvshows with different paths.
+/// This allows one disk label to have both movies and tv_series with different paths.
 pub fn merge_disk_into_central(central: &mut CentralIndex, disk: DiskIndex) {
     let label = disk.disk.label.clone();
 
     // Determine what media types are being added in this scan
     let has_movies = !disk.movies.is_empty();
-    let has_tvshows = !disk.tvshows.is_empty();
+    let has_tv_series = !disk.tv_series.is_empty();
 
     // Update or merge disk info
     if let Some(existing_disk) = central.disks.get_mut(&label) {
@@ -583,19 +583,19 @@ pub fn merge_disk_into_central(central: &mut CentralIndex, disk: DiskIndex) {
         }
 
         tracing::info!(
-            "Merging into existing disk '{}': movies={}, tvshows={}",
+            "Merging into existing disk '{}': movies={}, tv_series={}",
             label,
             has_movies,
-            has_tvshows
+            has_tv_series
         );
     } else {
         // New disk: insert directly
         central.disks.insert(label.clone(), disk.disk.clone());
         tracing::info!(
-            "Adding new disk '{}': movies={}, tvshows={}",
+            "Adding new disk '{}': movies={}, tv_series={}",
             label,
             has_movies,
-            has_tvshows
+            has_tv_series
         );
     }
 
@@ -606,15 +606,15 @@ pub fn merge_disk_into_central(central: &mut CentralIndex, disk: DiskIndex) {
         central.movies.extend(disk.movies);
     }
 
-    if has_tvshows {
-        central.tvshows.retain(|t| t.disk != label);
-        central.tvshows.extend(disk.tvshows);
+    if has_tv_series {
+        central.tv_series.retain(|t| t.disk != label);
+        central.tv_series.extend(disk.tv_series);
     }
 
     // Update disk counts in the disk info
     if let Some(disk_info) = central.disks.get_mut(&label) {
         disk_info.movie_count = central.movies.iter().filter(|m| m.disk == label).count();
-        disk_info.tvshow_count = central.tvshows.iter().filter(|t| t.disk == label).count();
+        disk_info.tv_series_count = central.tv_series.iter().filter(|t| t.disk == label).count();
         disk_info.total_size_bytes = central
             .movies
             .iter()
@@ -622,7 +622,7 @@ pub fn merge_disk_into_central(central: &mut CentralIndex, disk: DiskIndex) {
             .map(|m| m.size_bytes)
             .sum::<u64>()
             + central
-                .tvshows
+                .tv_series
                 .iter()
                 .filter(|t| t.disk == label)
                 .map(|t| t.size_bytes)
@@ -639,7 +639,7 @@ pub fn merge_disk_into_central(central: &mut CentralIndex, disk: DiskIndex) {
 #[derive(Debug)]
 pub struct SearchResults {
     pub movies: Vec<MovieEntry>,
-    pub tvshows: Vec<TvShowEntry>,
+    pub tv_series: Vec<TvSeriesEntry>,
     pub collections: Vec<CollectionInfo>,
 }
 
@@ -657,7 +657,7 @@ pub fn search(
     country: Option<&str>,
 ) -> SearchResults {
     let mut movie_ids: Option<std::collections::HashSet<String>> = None;
-    let mut tvshow_ids: Option<std::collections::HashSet<String>> = None;
+    let mut tv_series_ids: Option<std::collections::HashSet<String>> = None;
 
     // Helper to intersect sets
     fn intersect(
@@ -685,7 +685,7 @@ pub fn search(
             .flat_map(|(_, ids)| ids.clone())
             .collect();
         intersect(&mut movie_ids, ids.clone());
-        intersect(&mut tvshow_ids, ids);
+        intersect(&mut tv_series_ids, ids);
     }
 
     // Search by director
@@ -712,7 +712,7 @@ pub fn search(
             .flat_map(|(_, ids)| ids.clone())
             .collect();
         intersect(&mut movie_ids, ids.clone());
-        intersect(&mut tvshow_ids, ids);
+        intersect(&mut tv_series_ids, ids);
     }
 
     // Search by country
@@ -721,10 +721,10 @@ pub fn search(
         if let Some(ids) = index.indexes.by_country.get(&country_upper) {
             let id_set: std::collections::HashSet<String> = ids.iter().cloned().collect();
             intersect(&mut movie_ids, id_set.clone());
-            intersect(&mut tvshow_ids, id_set);
+            intersect(&mut tv_series_ids, id_set);
         } else {
             movie_ids = Some(std::collections::HashSet::new());
-            tvshow_ids = Some(std::collections::HashSet::new());
+            tv_series_ids = Some(std::collections::HashSet::new());
         }
     }
 
@@ -733,17 +733,17 @@ pub fn search(
         if let Some(ids) = index.indexes.by_year.get(&y) {
             let id_set: std::collections::HashSet<String> = ids.iter().cloned().collect();
             intersect(&mut movie_ids, id_set.clone());
-            intersect(&mut tvshow_ids, id_set);
+            intersect(&mut tv_series_ids, id_set);
         } else {
             movie_ids = Some(std::collections::HashSet::new());
-            tvshow_ids = Some(std::collections::HashSet::new());
+            tv_series_ids = Some(std::collections::HashSet::new());
         }
     } else if let Some((start, end)) = year_range {
         let ids: std::collections::HashSet<String> = (start..=end)
             .flat_map(|y| index.indexes.by_year.get(&y).cloned().unwrap_or_default())
             .collect();
         intersect(&mut movie_ids, ids.clone());
-        intersect(&mut tvshow_ids, ids);
+        intersect(&mut tv_series_ids, ids);
     }
 
     // Get movies
@@ -759,15 +759,15 @@ pub fn search(
     };
 
     // Get TV shows
-    let mut tvshows: Vec<TvShowEntry> = if let Some(ref ids) = tvshow_ids {
+    let mut tv_series: Vec<TvSeriesEntry> = if let Some(ref ids) = tv_series_ids {
         index
-            .tvshows
+            .tv_series
             .iter()
             .filter(|t| ids.contains(&t.id))
             .cloned()
             .collect()
     } else {
-        index.tvshows.clone()
+        index.tv_series.clone()
     };
 
     // Filter by title
@@ -780,7 +780,7 @@ pub fn search(
                     .map(|t| t.to_lowercase().contains(&query_lower))
                     .unwrap_or(false)
         });
-        tvshows.retain(|t| {
+        tv_series.retain(|t| {
             t.title.to_lowercase().contains(&query_lower)
                 || t.original_title
                     .as_ref()
@@ -791,7 +791,7 @@ pub fn search(
 
     // Sort by year descending
     movies.sort_by(|a, b| b.year.cmp(&a.year));
-    tvshows.sort_by(|a, b| b.year.cmp(&a.year));
+    tv_series.sort_by(|a, b| b.year.cmp(&a.year));
 
     // Search collections
     let collections: Vec<CollectionInfo> = if let Some(collection_query) = collection {
@@ -808,7 +808,7 @@ pub fn search(
 
     SearchResults {
         movies,
-        tvshows,
+        tv_series,
         collections,
     }
 }

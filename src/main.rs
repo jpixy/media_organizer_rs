@@ -38,12 +38,12 @@ async fn main() -> anyhow::Result<()> {
                 } => {
                     plan::plan_movies(&source, target.as_deref(), output.as_deref(), &config).await?;
                 }
-                PlanType::Tvshows {
+                PlanType::TvSeries {
                     source,
                     target,
                     output,
                 } => {
-                    plan::plan_tvshows(&source, target.as_deref(), output.as_deref(), &config).await?;
+                    plan::plan_tv_series(&source, target.as_deref(), output.as_deref(), &config).await?;
                 }
             }
         }

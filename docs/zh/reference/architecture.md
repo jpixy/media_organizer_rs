@@ -10,7 +10,7 @@
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │  │                              CLI 入口                                  │  │
 │  │                                                                        │  │
-│  │   plan movies/tvshows <source> [--target]                             │  │
+│  │   plan movies/tv_series <source> [--target]                             │  │
 │  │   execute <plan.json>                                                  │  │
 │  │   rollback <rollback.json>                                            │  │
 │  │   index <path> | search <query> | export/import                       │  │

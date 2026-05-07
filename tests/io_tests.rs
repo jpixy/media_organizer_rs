@@ -47,21 +47,21 @@ fn test_plan_round_trip_with_items() {
     let plan = Plan {
         version: "1.0".to_string(),
         created_at: "2024-01-01T00:00:00Z".to_string(),
-        media_type: Some(MediaType::TvShows),
-        source_path: PathBuf::from("/source/tvshows"),
-        target_path: PathBuf::from("/target/tvshows"),
+        media_type: Some(MediaType::TvSeries),
+        source_path: PathBuf::from("/source/tv_series"),
+        target_path: PathBuf::from("/target/tv_series"),
         items: vec![],
         samples: vec![],
         unknown: vec![],
     };
 
     let temp_dir = TempDir::new().unwrap();
-    let plan_path = temp_dir.path().join("tvshow_plan.json");
+    let plan_path = temp_dir.path().join("tv_series_plan.json");
 
     save_plan(&plan, &plan_path).unwrap();
     let loaded = load_plan(&plan_path).unwrap();
 
-    assert_eq!(loaded.media_type, Some(MediaType::TvShows));
+    assert_eq!(loaded.media_type, Some(MediaType::TvSeries));
 }
 
 #[test]

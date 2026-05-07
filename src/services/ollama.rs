@@ -201,3 +201,13 @@ impl Default for OllamaClient {
         Self::new()
     }
 }
+
+// Make OllamaClient cloneable for batch processing
+impl Clone for OllamaClient {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            client: self.client.clone(),
+        }
+    }
+}

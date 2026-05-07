@@ -162,22 +162,20 @@ fn channels_to_string(channels: u32) -> String {
 }
 
 /// Detect video format from format name and file extension.
-fn detect_format(format_name: &str, path: &Path) -> String {
-    // Check file extension first
-    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-        let ext_lower = ext.to_lowercase();
-        if ext_lower == "mkv" {
-            return "BluRay".to_string(); // Assume BluRay for MKV
-        }
-    }
-
-    // Guess from format name
+///
+/// Returns "Unknown" when format cannot be reliably determined from the container alone.
+/// The actual format (BluRay, WEB-DL, etc.) should be parsed from the filename
+/// via `parse_format_from_filename` and merged via `merge_metadata`.
+fn detect_format(format_name: &str, _path: &Path) -> String {
+    // MKV is a universal container used by BluRay, WEB-DL, HDTV, Remux, etc.
+    // We cannot assume the source format from the container alone.
+    // Return "Unknown" so that filename-based parsing takes priority.
     if format_name.contains("matroska") {
-        "BluRay".to_string()
+        "Unknown".to_string()
     } else if format_name.contains("mp4") || format_name.contains("mov") {
-        "WEB-DL".to_string()
+        "Unknown".to_string()
     } else if format_name.contains("avi") {
-        "DVDRip".to_string()
+        "Unknown".to_string()
     } else {
         "Unknown".to_string()
     }
@@ -263,7 +261,9 @@ fn parse_format_from_filename(filename: &str) -> String {
         ("hdrip", "HDRip"),
         ("hdcam", "HDCAM"),
         ("cam", "CAM"),
-        ("ts", "TS"),
+        // "ts" is intentionally omitted here because it's too short and matches
+        // common substrings like "results", "outskirts", etc.
+        // TS format is handled separately below with word-boundary matching.
         ("tc", "TC"),
     ];
 
@@ -271,6 +271,21 @@ fn parse_format_from_filename(filename: &str) -> String {
         if filename.contains(pattern) {
             return format.to_string();
         }
+    }
+
+    // Special handling for short patterns that need word-boundary matching
+    // to avoid false positives (e.g., "ts" matching "results")
+    if regex::Regex::new(r"(?i)(?:^|[\.\s_-])ts(?:[\.\s_-]|$)")
+        .map(|re| re.is_match(filename))
+        .unwrap_or(false)
+    {
+        return "TS".to_string();
+    }
+    if regex::Regex::new(r"(?i)(?:^|[\.\s_-])tc(?:[\.\s_-]|$)")
+        .map(|re| re.is_match(filename))
+        .unwrap_or(false)
+    {
+        return "TC".to_string();
     }
 
     "Unknown".to_string()
@@ -399,7 +414,10 @@ pub fn merge_metadata(primary: VideoMetadata, secondary: VideoMetadata) -> Video
         } else {
             secondary.video_codec
         },
-        bit_depth: if primary.bit_depth != 8 || secondary.bit_depth == 8 {
+        // Use primary if it has a meaningful value (non-default 8-bit),
+        // otherwise fall back to secondary. Default 8-bit is considered "unknown"
+        // since ffprobe returns 8 when the field is missing.
+        bit_depth: if primary.bit_depth != 8 {
             primary.bit_depth
         } else {
             secondary.bit_depth

@@ -305,8 +305,8 @@ fn extract_season_number(name: &str) -> Option<u16> {
 fn is_quality_directory(name: &str) -> bool {
     let name_lower = name.to_lowercase();
 
-    // Resolution patterns
-    let quality_patterns = [
+    // Exact match patterns - directory name must exactly match one of these
+    let exact_patterns = [
         "4k",
         "2160p",
         "1080p",
@@ -338,10 +338,20 @@ fn is_quality_directory(name: &str) -> bool {
         "atmos",
     ];
 
-    for pattern in &quality_patterns {
-        if name_lower == *pattern || name_lower.contains(pattern) {
-            // Make sure it's primarily a quality descriptor
-            if name_lower.len() < 20 {
+    // Use exact matching to avoid false positives
+    // e.g., "dts" should not match "results" or "outskirts"
+    for pattern in &exact_patterns {
+        if name_lower == *pattern {
+            return true;
+        }
+    }
+
+    // For compound names (e.g., "1080p.WEB-DL", "4K BluRay"), check if the name
+    // is primarily composed of quality descriptors (name must be short)
+    if name_lower.len() < 15 {
+        // Check if name contains a quality pattern as a word
+        for pattern in &exact_patterns {
+            if name_lower.contains(pattern) {
                 return true;
             }
         }
@@ -405,7 +415,7 @@ fn classify_as_category(name: &str) -> Option<CategoryType> {
         "动画",
         "纪录片",
         "movies",
-        "tvshows",
+        "tv_series",
         "tv shows",
         "anime",
         "documentary",

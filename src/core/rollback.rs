@@ -206,10 +206,29 @@ impl RollbackExecutor {
                     }
                 }
 
-                // Move file back
-                fs::rename(from, to)?;
-                tracing::debug!("Moved back: {:?} -> {:?}", from, to);
-                Ok(true)
+                // Try atomic rename first (same filesystem)
+                match fs::rename(from, to) {
+                    Ok(()) => {
+                        tracing::debug!("Moved back (rename): {:?} -> {:?}", from, to);
+                        Ok(true)
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::CrossesDevices => {
+                        // Cross-filesystem: use copy + delete
+                        tracing::debug!(
+                            "Cross-filesystem rollback, using copy+delete: {:?} -> {:?}",
+                            from,
+                            to
+                        );
+                        fs::copy(from, to)?;
+                        fs::remove_file(from)?;
+                        tracing::debug!("Moved back (copy+delete): {:?} -> {:?}", from, to);
+                        Ok(true)
+                    }
+                    Err(e) => Err(crate::Error::RollbackConflict(format!(
+                        "Failed to move back {:?} -> {:?}: {}",
+                        from, to, e
+                    ))),
+                }
             }
             RollbackActionType::Delete => {
                 let path = &op.rollback.path;

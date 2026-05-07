@@ -1,6 +1,6 @@
 //! Folder name generator.
 
-use crate::models::media::{MovieMetadata, TvShowMetadata};
+use crate::models::media::{MovieMetadata, TvSeriesMetadata};
 
 /// Generate movie folder name.
 ///
@@ -43,7 +43,7 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
 /// Generate TV show folder name.
 ///
 /// Format: `[${showOriginalTitle}][${showTitle}](${year})-${showImdb}-${showTmdb}`
-pub fn generate_tvshow_folder(metadata: &TvShowMetadata) -> String {
+pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     let mut parts = Vec::new();
 
     // Handle title deduplication

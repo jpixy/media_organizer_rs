@@ -22,6 +22,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -68,6 +69,7 @@ impl Executor {
 
     /// Execute a plan with optimized parallel downloads.
     pub async fn execute(&self, plan: &Plan) -> Result<Rollback> {
+        let total_start = Instant::now();
         println!("{}", "[EXEC] Executing plan...".bold().cyan());
         println!();
 
@@ -213,10 +215,13 @@ impl Executor {
         pb.finish_with_message("Done!");
         println!();
 
+        let total_time = total_start.elapsed();
+
         // Print summary
         println!("{}", "[Execution Summary]".bold().green());
         println!("  {} {}", "Successful operations:".bold(), success_count);
         println!("  {} {}", "Failed operations:".bold(), error_count);
+        println!("  {} {:.2}s", "Total time:".bold(), total_time.as_secs_f64());
         println!();
 
         // Extract rollback from Arc<Mutex>
@@ -561,17 +566,17 @@ impl Executor {
                             ));
                         }
                     }
-                    Some(MediaType::TvShows) => {
+                    Some(MediaType::TvSeries) => {
                         // Check if this is tvshow.nfo (show-level) or episode.nfo
-                        let is_tvshow_nfo = path
+                        let is_tv_series_nfo = path
                             .file_name()
                             .map(|n| n.to_string_lossy() == "tvshow.nfo")
                             .unwrap_or(false);
 
-                        if is_tvshow_nfo {
+                        if is_tv_series_nfo {
                             // Generate show-level NFO
-                            if let Some(ref show) = item.tvshow_metadata {
-                                nfo::generate_tvshow_nfo(show)
+                            if let Some(ref show) = item.tv_series_metadata {
+                                nfo::generate_tv_series_nfo(show)
                             } else {
                                 return Err(crate::Error::ExecuteError(
                                     "Missing TV show metadata for NFO generation".to_string(),
@@ -580,11 +585,11 @@ impl Executor {
                         } else {
                             // Generate episode-level NFO
                             if let (Some(ref show), Some(ref episode)) =
-                                (&item.tvshow_metadata, &item.episode_metadata)
+                                (&item.tv_series_metadata, &item.episode_metadata)
                             {
                                 nfo::generate_episode_nfo(show, episode)
-                            } else if let Some(ref show) = item.tvshow_metadata {
-                                nfo::generate_tvshow_nfo(show)
+                            } else if let Some(ref show) = item.tv_series_metadata {
+                                nfo::generate_tv_series_nfo(show)
                             } else {
                                 return Err(crate::Error::ExecuteError(
                                     "Missing TV show metadata for NFO generation".to_string(),

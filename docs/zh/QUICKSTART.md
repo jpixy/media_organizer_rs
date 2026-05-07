@@ -135,10 +135,10 @@ media-organizer rollback /下载/未整理电影_organized/rollback_*.json
 
 ```bash
 # ✅ 最简用法
-media-organizer plan tvshows /下载/未整理剧集
+media-organizer plan tv_series /下载/未整理剧集
 
 # 💡 指定目标目录 (可选)
-media-organizer plan tvshows /下载/未整理剧集 -t /媒体库/电视剧
+media-organizer plan tv_series /下载/未整理剧集 -t /媒体库/电视剧
 
 media-organizer execute /下载/未整理剧集_organized/plan_*.json
 ```
@@ -152,7 +152,7 @@ media-organizer execute /下载/未整理剧集_organized/plan_*.json
 media-organizer index scan /媒体库/电影 --media-type movies --disk-label 主硬盘
 
 # 索引电视剧目录
-media-organizer index scan /媒体库/电视剧 --media-type tvshows --disk-label 主硬盘
+media-organizer index scan /媒体库/电视剧 --media-type tv_series --disk-label 主硬盘
 
 # 查看收藏统计
 media-organizer index stats
@@ -183,7 +183,7 @@ media-organizer search --genre 科幻 --year 2010-2020
 | 命令 | 描述 |
 |------|------|
 | `plan movies <源> -t <目标>` | 生成电影整理计划 |
-| `plan tvshows <源> -t <目标>` | 生成电视剧整理计划 |
+| `plan tv_series <源> -t <目标>` | 生成电视剧整理计划 |
 | `execute <plan.json>` | 执行整理计划 |
 | `rollback <rollback.json>` | 回滚操作 |
 | `index scan <路径>` | 建立媒体索引 |

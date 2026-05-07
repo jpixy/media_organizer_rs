@@ -20,6 +20,10 @@ pub struct Config {
 /// Ollama configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaConfig {
+    /// Whether AI parsing is enabled. Default: false (AI disabled by default).
+    /// When disabled, only local parsing (hunch library + regex) is used.
+    #[serde(default = "default_ai_enabled")]
+    pub enabled: bool,
     /// Ollama host.
     pub host: String,
     /// Ollama port.
@@ -28,6 +32,10 @@ pub struct OllamaConfig {
     pub model: String,
     /// Request timeout in seconds.
     pub timeout: u64,
+}
+
+fn default_ai_enabled() -> bool {
+    false
 }
 
 /// TMDB configuration.
@@ -52,6 +60,7 @@ impl Default for Config {
 impl Default for OllamaConfig {
     fn default() -> Self {
         Self {
+            enabled: false, // AI disabled by default per requirements
             host: "localhost".to_string(),
             port: 11434,
             model: "qwen2.5:7b".to_string(),
@@ -123,6 +132,9 @@ pub(crate) fn load_config_from(base_dir: Option<&std::path::Path>) -> Config {
                     if let Ok(t) = timeout.parse::<u64>() {
                         config.ollama.timeout = t;
                     }
+                }
+                if let Ok(enabled) = std::env::var("OLLAMA_ENABLED") {
+                    config.ollama.enabled = enabled == "true" || enabled == "1";
                 }
                 return config;
             }

@@ -13,6 +13,7 @@ use crate::Result;
 use chrono::Datelike;
 use hunch::hunch;
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 /// Parsed filename information.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -81,6 +82,11 @@ pub struct ParserConfig {
     pub max_concurrent: usize,
     /// Minimum confidence threshold for valid results.
     pub min_confidence: f32,
+    /// Whether AI (Ollama) parsing is enabled.
+    /// When false, only local parsing (hunch + regex) is used.
+    pub ai_enabled: bool,
+    /// Ollama model to use for AI parsing.
+    pub model: String,
 }
 
 impl Default for ParserConfig {
@@ -88,6 +94,8 @@ impl Default for ParserConfig {
         Self {
             max_concurrent: 3,
             min_confidence: 0.5,
+            ai_enabled: false, // AI disabled by default per requirements
+            model: "qwen3.5:4b".to_string(), // Default model
         }
     }
 }
@@ -123,6 +131,11 @@ impl FilenameParser {
         }
     }
 
+    /// Get the model name.
+    pub fn get_model(&self) -> &str {
+        &self.config.model
+    }
+
     /// Generate the prompt for parsing a filename.
     ///
     /// The prompt is in Chinese to better handle Chinese filenames and leverage
@@ -131,7 +144,7 @@ impl FilenameParser {
         // Type hint: "This is a movie file" / "This is a TV show file"
         let type_hint = match media_type {
             MediaType::Movies => "这是一个电影文件",
-            MediaType::TvShows => "这是一个电视剧/剧集文件",
+            MediaType::TvSeries => "这是一个电视剧/剧集文件",
         };
 
         format!(
@@ -170,8 +183,18 @@ impl FilenameParser {
 
     /// Parse a single filename using hunch library as primary parser.
     pub async fn parse(&self, filename: &str, media_type: MediaType) -> Result<ParsedFilename> {
+        // Step 0: Strip website/source prefixes from filename
+        // Common patterns: "阳光电影dygod.org.世界大战.2025..." -> "世界大战.2025..."
+        let cleaned_filename = strip_website_prefix(filename);
+        let parse_input = if cleaned_filename != filename {
+            tracing::debug!("Stripped website prefix: '{}' -> '{}'", filename, cleaned_filename);
+            &cleaned_filename
+        } else {
+            filename
+        };
+
         // Step 1: Primary parser - hunch library
-        let media_info = hunch(filename);
+        let media_info = hunch(parse_input);
         let mut parsed = ParsedFilename::default();
         
         if let Some(title) = media_info.title() {
@@ -189,10 +212,33 @@ impl FilenameParser {
         
         // Check if hunch returned valid result
         if parsed.title.is_some() || parsed.original_title.is_some() {
+            // If AI is enabled, validate the result with AI
+            if self.config.ai_enabled {
+                println!("    [AI] Validating local parse result...");
+                let validation_prompt = self.generate_validation_prompt(&parsed, filename, media_type);
+                let validation = self.client.generate(&validation_prompt).await?;
+                
+                // If AI validation confirms the result, return hunch result
+                if self.is_validation_confirmed(&validation.response) {
+                    println!("    [OK] AI validation passed");
+                    return Ok(parsed);
+                }
+                
+                // AI validation failed, use AI to parse
+                println!("    [AI] AI validation failed, using AI to parse...");
+            } else {
+                return Ok(parsed);
+            }
+        }
+        
+        // If AI is disabled, return the hunch result (even if no title found)
+        // This ensures the tool works without AI when hunch fails
+        if !self.config.ai_enabled {
+            tracing::debug!("AI disabled, returning hunch-only result for: {}", filename);
             return Ok(parsed);
         }
         
-        // Fallback to AI parser if hunch fails
+        // Fallback to AI parser if hunch fails or AI validation failed
         let prompt = self.generate_prompt(filename, media_type);
 
         tracing::debug!("Parsing filename: {}", filename);
@@ -319,12 +365,15 @@ impl FilenameParser {
         let mut handles = Vec::new();
 
         for filename in filenames {
-            let permit = semaphore.clone().acquire_owned().await.unwrap();
             let filename = filename.clone();
             let prompt = self.generate_prompt(&filename, media_type);
             let client = self.client.clone();
+            let semaphore = semaphore.clone();
 
             let handle = tokio::spawn(async move {
+                // Acquire permit inside the spawned task to properly limit concurrency
+                let _permit = semaphore.acquire_owned().await.unwrap();
+
                 let result = async {
                     let response = client.generate_with_format(&prompt, Some("json")).await?;
 
@@ -362,8 +411,63 @@ impl FilenameParser {
                 }
                 .await;
 
-                drop(permit);
-                (filename, result)
+                // Apply validation to batch results (same as single-file parse)
+                let validated = match result {
+                    Ok(parsed) => {
+                        // We need a FilenameParser to call validate_result, but we're in a spawned task.
+                        // Instead, apply the same validation logic inline.
+                        let mut p = parsed;
+                        // Filter out subtitle group names from titles
+                        p.title = p.title.and_then(|t| filter_subtitle_group(&t));
+                        p.original_title = p
+                            .original_title
+                            .and_then(|t| filter_subtitle_group(&t));
+
+                        // Validate year range (1900 - current year + 5)
+                        if let Some(year) = p.year {
+                            let current_year = chrono::Utc::now().year() as u16;
+                            if year < 1900 || year > current_year + 5 {
+                                tracing::warn!("Invalid year {}, ignoring", year);
+                                p.year = None;
+                                p.confidence *= 0.5;
+                            }
+                        }
+
+                        // Validate season/episode numbers
+                        if let Some(season) = p.season {
+                            if season == 0 || season > 100 {
+                                p.season = None;
+                            }
+                        }
+                        if let Some(episode) = p.episode {
+                            if episode == 0 || episode > 1000 {
+                                p.episode = None;
+                            }
+                        }
+
+                        // Validate titles are not empty
+                        if let Some(ref title) = p.original_title {
+                            if title.trim().is_empty() {
+                                p.original_title = None;
+                            }
+                        }
+                        if let Some(ref title) = p.title {
+                            if title.trim().is_empty() {
+                                p.title = None;
+                            }
+                        }
+
+                        // Adjust confidence if missing critical fields
+                        if p.original_title.is_none() && p.title.is_none() {
+                            p.confidence = 0.0;
+                        }
+
+                        Ok(p)
+                    }
+                    Err(e) => Err(e),
+                };
+
+                (filename, validated)
             });
 
             handles.push(handle);
@@ -388,18 +492,81 @@ impl FilenameParser {
         parsed.confidence >= self.config.min_confidence
             && (parsed.original_title.is_some() || parsed.title.is_some())
     }
+
+    /// Generate a validation prompt to verify hunch parsing results with AI.
+    fn generate_validation_prompt(&self, parsed: &ParsedFilename, filename: &str, media_type: MediaType) -> String {
+        // Type hint: "This is a movie file" / "This is a TV show file"
+        let type_hint = match media_type {
+            MediaType::Movies => "这是一个电影文件",
+            MediaType::TvSeries => "这是一个电视剧/剧集文件",
+        };
+
+        // Build the parsed result summary
+        let parsed_summary = format!(
+            "原始解析结果:\n- original_title: {:?}\n- title: {:?}\n- year: {:?}\n- season: {:?}\n- episode: {:?}",
+            parsed.original_title,
+            parsed.title,
+            parsed.year,
+            parsed.season,
+            parsed.episode
+        );
+
+        format!(
+            r#"你是一个视频文件名验证专家。请验证以下AI解析结果是否正确。
+
+文件名: {filename}
+提示: {type_hint}
+
+{parsed_summary}
+
+请判断这个解析结果是否正确：
+1. original_title 和 title 是否正确提取？
+2. year 是否正确？年份必须是文件名中明确出现的4位数字(1900-2030)
+3. season/episode 是否正确？仅电视剧有这些字段
+
+注意事项：
+- 忽略分辨率（如1080p、4K、2160p）、编码格式（如x265、HEVC）、音频格式（如DTS、AAC）等技术信息
+- **重要**: 忽略字幕组/发布组名称！常见字幕组：霸王龙压制组、T-Rex、YYeTs、字幕侠、FIX字幕侠、人人影视、ZhuixinFan、rarbg、DEFLATE 等
+- 字幕组名称通常在文件名末尾，或在方括号/横杠后面，不是真正的标题！
+- 如果文件名中包含中英文混合，请分别提取
+- 如果无法确定某个字段，返回null
+- **重要**: 年份必须是文件名中明确出现的4位数字(1900-2030)，不要猜测！如果文件名中没有年份，返回null
+- **重要**: 续集编号（如2、3、II、III）是标题的一部分！例如"刺杀小说家2"的标题是"刺杀小说家2"而不是"刺杀小说家"
+- **重要**: 版本信息不是标题的一部分！如"导演剪辑版"、"加长版"、"未删减版"、"特效版"、"IMAX版"、"3D版"等都不应包含在标题中
+
+请以JSON格式返回验证结果：
+{{
+    "valid": true/false,
+    "corrected_title": "如果需要修正，返回正确的中文标题；否则返回null",
+    "corrected_original_title": "如果需要修正，返回正确的英文标题；否则返回null",
+    "corrected_year": "如果需要修正，返回正确的年份；否则返回null",
+    "confidence": 0.0-1.0
+}}
+
+只返回JSON对象，不要包含其他文字。"#
+        )
+    }
+
+    /// Check if AI validation confirms the parsing result.
+    fn is_validation_confirmed(&self, response: &str) -> bool {
+        // Try to parse the response as JSON
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(response) {
+            // Check if "valid" field is true
+            if let Some(valid) = json.get("valid") {
+                if valid.as_bool() == Some(true) {
+                    return true;
+                }
+            }
+        }
+
+        // Check if response contains "valid": true (fallback)
+        response.contains("\"valid\":true") || response.contains("\"valid\": true")
+    }
 }
 
 impl Default for FilenameParser {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-// Make OllamaClient cloneable for batch processing
-impl Clone for OllamaClient {
-    fn clone(&self) -> Self {
-        OllamaClient::new()
     }
 }
 
@@ -436,6 +603,13 @@ mod tests {
         let config = ParserConfig::default();
         assert_eq!(config.max_concurrent, 3);
         assert_eq!(config.min_confidence, 0.5);
+        assert!(!config.ai_enabled); // AI disabled by default
+    }
+
+    #[test]
+    fn test_parser_config_ai_disabled_by_default() {
+        let config = ParserConfig::default();
+        assert!(!config.ai_enabled);
     }
 
     #[test]
@@ -448,9 +622,9 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_prompt_tvshow() {
+    fn test_generate_prompt_tv_series() {
         let parser = FilenameParser::new();
-        let prompt = parser.generate_prompt("Breaking.Bad.S01E01.720p.mkv", MediaType::TvShows);
+        let prompt = parser.generate_prompt("Breaking.Bad.S01E01.720p.mkv", MediaType::TvSeries);
 
         assert!(prompt.contains("Breaking.Bad.S01E01.720p.mkv"));
         assert!(prompt.contains("电视剧"));
@@ -507,6 +681,529 @@ mod tests {
             ..Default::default()
         };
         assert!(!parser.is_valid(&parsed));
+    }
+
+    // ========================================================================
+    // extract_episode_from_filename 测试
+    // ========================================================================
+
+    #[test]
+    fn test_extract_episode_sxxexx() {
+        // Standard S01E01 format
+        assert_eq!(extract_episode_from_filename("S01E01.mkv"), (Some(1), Some(1)));
+        assert_eq!(extract_episode_from_filename("s01e05.mkv"), (Some(1), Some(5)));
+        assert_eq!(extract_episode_from_filename("S02E10.mkv"), (Some(2), Some(10)));
+        assert_eq!(extract_episode_from_filename("S12E100.mkv"), (Some(12), Some(100)));
+    }
+
+    #[test]
+    fn test_extract_episode_season_episode_text() {
+        // "Season 01 Episode 05" format
+        assert_eq!(extract_episode_from_filename("Season 01 Episode 05.mkv"), (Some(1), Some(5)));
+        assert_eq!(extract_episode_from_filename("season2 episode10.mkv"), (Some(2), Some(10)));
+    }
+
+    #[test]
+    fn test_extract_episode_exx_only() {
+        // E01, EP01 format (default season 1)
+        assert_eq!(extract_episode_from_filename("E01.mkv"), (Some(1), Some(1)));
+        assert_eq!(extract_episode_from_filename("EP05.mkv"), (Some(1), Some(5)));
+        assert_eq!(extract_episode_from_filename("Show.E03.mkv"), (Some(1), Some(3)));
+    }
+
+    #[test]
+    fn test_extract_episode_chinese() {
+        // 第01集 format
+        assert_eq!(extract_episode_from_filename("第01集.mp4"), (Some(1), Some(1)));
+        assert_eq!(extract_episode_from_filename("第5集.mkv"), (Some(1), Some(5)));
+        assert_eq!(extract_episode_from_filename("流人第12集.mp4"), (Some(1), Some(12)));
+    }
+
+    #[test]
+    fn test_extract_episode_leading_number() {
+        // Just a number at the start
+        assert_eq!(extract_episode_from_filename("01.mp4"), (Some(1), Some(1)));
+        assert_eq!(extract_episode_from_filename("05.mkv"), (Some(1), Some(5)));
+        assert_eq!(extract_episode_from_filename("01 4K.mp4"), (Some(1), Some(1)));
+    }
+
+    #[test]
+    fn test_extract_episode_leading_number_not_year() {
+        // Year-like numbers should NOT be treated as episodes
+        assert_eq!(extract_episode_from_filename("2001.mkv"), (None, None));
+        assert_eq!(extract_episode_from_filename("2024.mp4"), (None, None));
+    }
+
+    #[test]
+    fn test_extract_episode_trailing() {
+        // Title-02, Title_02 format
+        assert_eq!(extract_episode_from_filename("不伦食堂-02.mp4"), (Some(1), Some(2)));
+        assert_eq!(extract_episode_from_filename("今夜我用身体恋爱_03.mp4"), (Some(1), Some(3)));
+        assert_eq!(extract_episode_from_filename("标题.05.mp4"), (Some(1), Some(5)));
+    }
+
+    #[test]
+    fn test_extract_episode_trailing_with_end() {
+        // "Title-04 end" format
+        assert_eq!(extract_episode_from_filename("不伦食堂-04 end.mp4"), (Some(1), Some(4)));
+    }
+
+    #[test]
+    fn test_extract_episode_cjk_direct_number() {
+        // CJK title directly followed by episode number
+        assert_eq!(extract_episode_from_filename("孤芳不自赏02.1024高清.mp4"), (Some(1), Some(2)));
+        assert_eq!(extract_episode_from_filename("那年青春我们正好02.1280高清.mp4"), (Some(1), Some(2)));
+    }
+
+    #[test]
+    fn test_extract_episode_special() {
+        // Special episodes -> Season 0
+        assert_eq!(extract_episode_from_filename("S02.Special.White.Christmas.mkv"), (Some(0), Some(1)));
+        assert_eq!(extract_episode_from_filename("Show.SP.1080p.mkv"), (Some(0), Some(1)));
+        assert_eq!(extract_episode_from_filename("[sp]episode.mkv"), (Some(0), Some(1)));
+    }
+
+    #[test]
+    fn test_extract_episode_no_match() {
+        // No episode info
+        assert_eq!(extract_episode_from_filename("movie.mkv"), (None, None));
+        assert_eq!(extract_episode_from_filename("Avatar.2009.1080p.mkv"), (None, None));
+    }
+
+    // ========================================================================
+    // extract_season_from_dirname 测试
+    // ========================================================================
+
+    #[test]
+    fn test_extract_season_chinese_numeral() {
+        assert_eq!(extract_season_from_dirname("第一季"), Some(1));
+        assert_eq!(extract_season_from_dirname("第二季"), Some(2));
+        assert_eq!(extract_season_from_dirname("第十季"), Some(10));
+        assert_eq!(extract_season_from_dirname("第一部"), Some(1));
+    }
+
+    #[test]
+    fn test_extract_season_chinese_arabic() {
+        assert_eq!(extract_season_from_dirname("第1季"), Some(1));
+        assert_eq!(extract_season_from_dirname("第2季"), Some(2));
+        assert_eq!(extract_season_from_dirname("第10季"), Some(10));
+    }
+
+    #[test]
+    fn test_extract_season_english() {
+        assert_eq!(extract_season_from_dirname("Season 01"), Some(1));
+        assert_eq!(extract_season_from_dirname("Season 2"), Some(2));
+        assert_eq!(extract_season_from_dirname("S01"), Some(1));
+        assert_eq!(extract_season_from_dirname("S1"), Some(1));
+    }
+
+    #[test]
+    fn test_extract_season_no_match() {
+        assert_eq!(extract_season_from_dirname("4K"), None);
+        assert_eq!(extract_season_from_dirname("1080p"), None);
+        assert_eq!(extract_season_from_dirname("Movie Name"), None);
+    }
+
+    // ========================================================================
+    // is_organized_filename 测试
+    // ========================================================================
+
+    #[test]
+    fn test_is_organized_tv_series() {
+        assert!(is_organized_filename("[Breaking Bad]-S01E01-[Pilot]-1080p.mkv"));
+        assert!(is_organized_filename("[流人]-S01E01-[Episode 1]-720p.mkv"));
+    }
+
+    #[test]
+    fn test_is_organized_movie_with_id() {
+        assert!(is_organized_filename("[Avatar][阿凡达](2009)-tt0499549-tmdb19995-1080p.mkv"));
+        assert!(is_organized_filename("[焚城](2024)-tt29495090-tmdb1305642-2160p.mkv"));
+    }
+
+    #[test]
+    fn test_is_organized_movie_with_tech() {
+        assert!(is_organized_filename("[Upgrade][升级](2018)-1080p-WEB-DL-h264-8bit-aac-2.0.mp4"));
+        assert!(is_organized_filename("[焚城](2024)-2160p-WEB-DL-hevc-8bit-aac-2.0.mp4"));
+    }
+
+    #[test]
+    fn test_is_not_organized() {
+        assert!(!is_organized_filename("Avatar.2009.1080p.BluRay.mkv"));
+        assert!(!is_organized_filename("movie.mp4"));
+        assert!(!is_organized_filename("S01E01.mkv"));
+    }
+
+    // ========================================================================
+    // parse_organized_tv_series_filename 测试
+    // ========================================================================
+
+    #[test]
+    fn test_parse_organized_tv_series() {
+        let info = parse_organized_tv_series_filename("[Breaking Bad]-S01E01-[Pilot]-1080p.mkv").unwrap();
+        assert_eq!(info.title, "Breaking Bad");
+        assert_eq!(info.season, 1);
+        assert_eq!(info.episode, 1);
+        assert_eq!(info.episode_name, "Pilot");
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_chinese() {
+        let info = parse_organized_tv_series_filename("[流人]-S02E05-[Episode Name]-720p.mkv").unwrap();
+        assert_eq!(info.title, "流人");
+        assert_eq!(info.season, 2);
+        assert_eq!(info.episode, 5);
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_no_match() {
+        assert!(parse_organized_tv_series_filename("Avatar.2009.1080p.mkv").is_none());
+    }
+
+    // ========================================================================
+    // parse_organized_movie_filename 测试
+    // ========================================================================
+
+    #[test]
+    fn test_parse_organized_movie_dual_title_with_id() {
+        let info = parse_organized_movie_filename("[Avatar][阿凡达](2009)-tt0499549-tmdb19995-1080p.mkv").unwrap();
+        assert_eq!(info.original_title, Some("Avatar".to_string()));
+        assert_eq!(info.title, Some("阿凡达".to_string()));
+        assert_eq!(info.year, 2009);
+        assert_eq!(info.imdb_id, Some("tt0499549".to_string()));
+        assert_eq!(info.tmdb_id, Some(19995));
+    }
+
+    #[test]
+    fn test_parse_organized_movie_single_title_with_id() {
+        let info = parse_organized_movie_filename("[焚城](2024)-tt29495090-tmdb1305642-2160p.mkv").unwrap();
+        assert_eq!(info.original_title, Some("焚城".to_string()));
+        assert_eq!(info.title, None);
+        assert_eq!(info.year, 2024);
+        assert_eq!(info.imdb_id, Some("tt29495090".to_string()));
+        assert_eq!(info.tmdb_id, Some(1305642));
+    }
+
+    #[test]
+    fn test_parse_organized_movie_dual_title_tech_only() {
+        let info = parse_organized_movie_filename("[Upgrade][升级](2018)-1080p-WEB-DL-h264-8bit-aac-2.0.mp4").unwrap();
+        assert_eq!(info.original_title, Some("Upgrade".to_string()));
+        assert_eq!(info.title, Some("升级".to_string()));
+        assert_eq!(info.year, 2018);
+        assert_eq!(info.imdb_id, None);
+        assert_eq!(info.tmdb_id, None);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_single_title_tech_only() {
+        let info = parse_organized_movie_filename("[焚城](2024)-2160p-WEB-DL-hevc-8bit-aac-2.0.mp4").unwrap();
+        assert_eq!(info.original_title, Some("焚城".to_string()));
+        assert_eq!(info.title, None);
+        assert_eq!(info.year, 2024);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_no_match() {
+        assert!(parse_organized_movie_filename("Avatar.2009.1080p.mkv").is_none());
+    }
+
+    // ========================================================================
+    // parse_organized_movie_folder 测试
+    // ========================================================================
+
+    #[test]
+    fn test_parse_organized_movie_folder_dual() {
+        let info = parse_organized_movie_folder("[Upgrade][升级](2018)-tt6499752-tmdb500664").unwrap();
+        assert_eq!(info.original_title, Some("Upgrade".to_string()));
+        assert_eq!(info.title, Some("升级".to_string()));
+        assert_eq!(info.year, 2018);
+        assert_eq!(info.imdb_id, Some("tt6499752".to_string()));
+        assert_eq!(info.tmdb_id, 500664);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_single() {
+        let info = parse_organized_movie_folder("[焚城](2024)-tt29495090-tmdb1305642").unwrap();
+        assert_eq!(info.original_title, Some("焚城".to_string()));
+        assert_eq!(info.year, 2024);
+        assert_eq!(info.tmdb_id, 1305642);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_no_imdb() {
+        let info = parse_organized_movie_folder("[焚城](2024)-tmdb1305642").unwrap();
+        assert_eq!(info.imdb_id, None);
+        assert_eq!(info.tmdb_id, 1305642);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_smart_extraction() {
+        // Non-standard format: year before title
+        let info = parse_organized_movie_folder("2024-[Title]-[标题]-tt12345678-12345").unwrap();
+        assert_eq!(info.tmdb_id, 12345);
+        assert_eq!(info.year, 2024);
+    }
+
+    // ========================================================================
+    // parse_organized_tv_series_folder 测试
+    // ========================================================================
+
+    #[test]
+    fn test_parse_organized_tv_series_folder_dual_with_year() {
+        let info = parse_organized_tv_series_folder("[러브 미][爱我](2025)-tt35451747-tmdb275989").unwrap();
+        assert_eq!(info.title, "爱我");
+        assert_eq!(info.year, Some(2025));
+        assert_eq!(info.imdb_id, Some("tt35451747".to_string()));
+        assert_eq!(info.tmdb_id, 275989);
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_folder_dual_no_year() {
+        let info = parse_organized_tv_series_folder("[러브 미][爱我]-tt35451747-tmdb275989").unwrap();
+        assert_eq!(info.title, "爱我");
+        assert_eq!(info.year, None);
+        assert_eq!(info.tmdb_id, 275989);
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_folder_single() {
+        let info = parse_organized_tv_series_folder("[罚罪2](2025)-tt36771056-tmdb296146").unwrap();
+        assert_eq!(info.title, "罚罪2");
+        assert_eq!(info.year, Some(2025));
+        assert_eq!(info.tmdb_id, 296146);
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_folder_no_imdb() {
+        let info = parse_organized_tv_series_folder("[罚罪2](2025)-tmdb296146").unwrap();
+        assert_eq!(info.imdb_id, None);
+        assert_eq!(info.tmdb_id, 296146);
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_folder_empty_chinese() {
+        let info = parse_organized_tv_series_folder("[러브 미][ ]-tt35451747-tmdb275989").unwrap();
+        // Empty Chinese title falls back to original title
+        assert_eq!(info.title, "러브 미");
+    }
+
+    // ========================================================================
+    // filter_subtitle_group 测试
+    // ========================================================================
+
+    #[test]
+    fn test_filter_subtitle_group_exact() {
+        assert_eq!(filter_subtitle_group("霸王龙压制组"), None);
+        assert_eq!(filter_subtitle_group("T-Rex"), None);
+        assert_eq!(filter_subtitle_group("YYeTs"), None);
+        assert_eq!(filter_subtitle_group("rarbg"), None);
+        assert_eq!(filter_subtitle_group("DEFLATE"), None);
+        assert_eq!(filter_subtitle_group("中英双字"), None);
+    }
+
+    #[test]
+    fn test_filter_subtitle_group_contains() {
+        // Short title containing subtitle group pattern
+        assert_eq!(filter_subtitle_group("FIX字幕侠压制"), None);
+        assert_eq!(filter_subtitle_group("人人影视发布"), None);
+    }
+
+    #[test]
+    fn test_filter_subtitle_group_normal_title() {
+        // Normal titles should pass through
+        assert_eq!(filter_subtitle_group("Avatar"), Some("Avatar".to_string()));
+        assert_eq!(filter_subtitle_group("流人"), Some("流人".to_string()));
+        assert_eq!(filter_subtitle_group("Breaking Bad"), Some("Breaking Bad".to_string()));
+    }
+
+    #[test]
+    fn test_filter_subtitle_group_long_title_with_pattern() {
+        // Long title containing subtitle group pattern should pass
+        let long_title = "这是一个很长的电影标题包含了字幕侠的信息但标题本身足够长";
+        assert_eq!(filter_subtitle_group(long_title), Some(long_title.to_string()));
+    }
+
+    #[test]
+    fn test_filter_subtitle_group_empty() {
+        assert_eq!(filter_subtitle_group(""), None);
+        assert_eq!(filter_subtitle_group("  "), None);
+    }
+
+    // ========================================================================
+    // extract_smart_metadata 测试
+    // ========================================================================
+
+    #[test]
+    fn test_extract_smart_metadata_standard() {
+        let meta = extract_smart_metadata("[Title](2024)-tt12345678-tmdb67890");
+        assert_eq!(meta.imdb_id, Some("tt12345678".to_string()));
+        assert_eq!(meta.tmdb_id, Some(67890));
+        assert_eq!(meta.year, Some(2024));
+        assert_eq!(meta.titles, vec!["Title"]);
+    }
+
+    #[test]
+    fn test_extract_smart_metadata_dual_title() {
+        let meta = extract_smart_metadata("[Original][中文](2024)-tt12345678-tmdb67890");
+        assert_eq!(meta.titles, vec!["Original", "中文"]);
+        assert_eq!(meta.primary_title(), Some("中文".to_string()));
+        assert_eq!(meta.original_title(), Some("Original".to_string()));
+    }
+
+    #[test]
+    fn test_extract_smart_metadata_non_standard_order() {
+        // Year before title, tmdb before imdb
+        let meta = extract_smart_metadata("2024-[Title]-tmdb67890-tt12345678");
+        assert_eq!(meta.tmdb_id, Some(67890));
+        assert_eq!(meta.imdb_id, Some("tt12345678".to_string()));
+        assert_eq!(meta.year, Some(2024));
+    }
+
+    #[test]
+    fn test_extract_smart_metadata_tmdb_after_imdb() {
+        // Legacy format: -ttIMDB-TMDBID (TMDB ID must be 5-8 digits for smart extraction)
+        let meta = extract_smart_metadata("[Title]-tt0372183-500664");
+        assert_eq!(meta.imdb_id, Some("tt0372183".to_string()));
+        assert_eq!(meta.tmdb_id, Some(500664));
+    }
+
+    #[test]
+    fn test_extract_smart_metadata_year_in_parentheses() {
+        let meta = extract_smart_metadata("[Title](2024)-tmdb12345");
+        assert_eq!(meta.year, Some(2024));
+    }
+
+    #[test]
+    fn test_extract_smart_metadata_no_ids() {
+        let meta = extract_smart_metadata("Just a title 2024");
+        assert_eq!(meta.tmdb_id, None);
+        assert_eq!(meta.imdb_id, None);
+        assert_eq!(meta.year, Some(2024));
+    }
+
+    // ========================================================================
+    // regex_match_trailing_episode 边界测试
+    // ========================================================================
+
+    #[test]
+    fn test_trailing_episode_quality_suffix() {
+        // "幽灵 01_超清" -> episode 1
+        assert_eq!(extract_episode_from_filename("幽灵 01_超清.mp4"), (Some(1), Some(1)));
+    }
+
+    #[test]
+    fn test_trailing_episode_cjk_end() {
+        // CJK char + 2-digit number at end
+        assert_eq!(extract_episode_from_filename("孤芳不自赏27.mp4"), (Some(1), Some(27)));
+    }
+
+    #[test]
+    fn test_trailing_episode_not_year() {
+        // Should not match year-like numbers
+        assert_eq!(extract_episode_from_filename("Movie 2024.mp4"), (None, None));
+    }
+
+    // ========================================================================
+    // validate_result 综合测试
+    // ========================================================================
+
+    #[test]
+    fn test_validate_result_filters_subtitle_groups() {
+        let parser = FilenameParser::new();
+        let parsed = ParsedFilename {
+            title: Some("霸王龙压制组".to_string()),
+            original_title: Some("T-Rex".to_string()),
+            confidence: 0.9,
+            ..Default::default()
+        };
+        let result = parser.validate_result(parsed).unwrap();
+        assert!(result.title.is_none());
+        assert!(result.original_title.is_none());
+        assert_eq!(result.confidence, 0.0);
+    }
+
+    #[test]
+    fn test_validate_result_future_year() {
+        let parser = FilenameParser::new();
+        let current_year = chrono::Utc::now().year() as u16;
+        let parsed = ParsedFilename {
+            year: Some(current_year + 10),
+            confidence: 1.0,
+            original_title: Some("Test".to_string()),
+            ..Default::default()
+        };
+        let result = parser.validate_result(parsed).unwrap();
+        assert!(result.year.is_none());
+        assert!(result.confidence < 1.0);
+    }
+
+    #[test]
+    fn test_validate_result_empty_titles() {
+        let parser = FilenameParser::new();
+        let parsed = ParsedFilename {
+            title: Some("  ".to_string()),
+            original_title: Some("".to_string()),
+            confidence: 0.9,
+            ..Default::default()
+        };
+        let result = parser.validate_result(parsed).unwrap();
+        assert!(result.title.is_none());
+        assert!(result.original_title.is_none());
+    }
+
+    #[test]
+    fn test_validate_result_season_episode_bounds() {
+        let parser = FilenameParser::new();
+        let parsed = ParsedFilename {
+            season: Some(0),
+            episode: Some(1001),
+            confidence: 0.9,
+            original_title: Some("Test".to_string()),
+            ..Default::default()
+        };
+        let result = parser.validate_result(parsed).unwrap();
+        assert!(result.season.is_none());
+        assert!(result.episode.is_none());
+    }
+
+    // ========================================================================
+    // strip_website_prefix 测试
+    // ========================================================================
+
+    #[test]
+    fn test_strip_website_prefix_yangguang() {
+        assert_eq!(
+            strip_website_prefix("阳光电影dygod.org.世界大战.2025.BD.1080P.中英双字.mkv"),
+            "世界大战.2025.BD.1080P.中英双字.mkv"
+        );
+        assert_eq!(
+            strip_website_prefix("阳光电影dygod.org.伊甸.2024.BD.1080P.中英双字.mkv"),
+            "伊甸.2024.BD.1080P.中英双字.mkv"
+        );
+        assert_eq!(
+            strip_website_prefix("阳光电影dygod.org.制暴：无限杀机.2025.BD.1080P.中英双字.mkv"),
+            "制暴：无限杀机.2025.BD.1080P.中英双字.mkv"
+        );
+    }
+
+    #[test]
+    fn test_strip_website_prefix_no_match() {
+        // Normal filenames should not be modified
+        assert_eq!(
+            strip_website_prefix("Avatar.2009.1080p.BluRay.mkv"),
+            "Avatar.2009.1080p.BluRay.mkv"
+        );
+        assert_eq!(
+            strip_website_prefix("[七个会议] .mp4"),
+            "[七个会议] .mp4"
+        );
+    }
+
+    #[test]
+    fn test_strip_website_prefix_generic_www() {
+        assert_eq!(
+            strip_website_prefix("www.example.com.世界大战.2025.mkv"),
+            "世界大战.2025.mkv"
+        );
     }
 }
 
@@ -593,21 +1290,40 @@ fn regex_match_special(s: &str) -> Option<(Option<u16>, Option<u16>)> {
     }
 
     // Also match standalone "special" or "special.01"
-    if s.contains("special") && !s.contains("e0") && !s.contains("e1") {
-        let re = regex::Regex::new(r"(?:^|[\.\s_-])special[\.\s_-]?(\d{0,2})").ok()?;
-        if let Some(caps) = re.captures(s) {
-            let episode = caps
-                .get(1)
-                .and_then(|m| {
-                    let ep_str = m.as_str();
-                    if ep_str.is_empty() {
-                        None
-                    } else {
-                        ep_str.parse().ok()
-                    }
-                })
-                .unwrap_or(1);
-            return Some((Some(0), Some(episode)));
+    // Must be a standalone word (preceded/followed by separator or start/end)
+    // to avoid matching titles like "Special Delivery" or "The Special Agent"
+    if !s.contains("e0") && !s.contains("e1") {
+        let re = regex::Regex::new(r"(?:^|[\.\s_-])special(?:[\.\s_-]|$)").ok()?;
+        if !re.is_match(s) {
+            // Also check for "special" followed by a number
+            let re_num = regex::Regex::new(r"(?:^|[\.\s_-])special[\.\s_-]?\d{0,2}(?:[\.\s_-]|$)").ok()?;
+            if !re_num.is_match(s) {
+                // Skip - not a standalone "special" pattern
+            } else {
+                let ep_re = regex::Regex::new(r"special[\.\s_-]?(\d{1,2})").ok();
+                let episode = ep_re
+                    .and_then(|re| re.captures(s))
+                    .and_then(|c| c.get(1))
+                    .and_then(|m| m.as_str().parse().ok())
+                    .unwrap_or(1);
+                return Some((Some(0), Some(episode)));
+            }
+        } else {
+            // Check if "special" is part of a longer word (e.g., "specialist", "specialized")
+            // by looking at what follows after the separator
+            let after_special = regex::Regex::new(r"(?:^|[\.\s_-])special([a-z])").ok()?;
+            if after_special.is_match(s) {
+                // "special" followed by a letter = part of a word, not a special marker
+                // e.g., "specialist", "specialized"
+            } else {
+                let ep_re = regex::Regex::new(r"special[\.\s_-]?(\d{1,2})").ok();
+                let episode = ep_re
+                    .and_then(|re| re.captures(s))
+                    .and_then(|c| c.get(1))
+                    .and_then(|m| m.as_str().parse().ok())
+                    .unwrap_or(1);
+                return Some((Some(0), Some(episode)));
+            }
         }
     }
 
@@ -675,6 +1391,16 @@ fn regex_match_leading_number(s: &str) -> Option<u16> {
     let num: u16 = caps.get(1)?.as_str().parse().ok()?;
     // Sanity check: episode numbers are usually 1-999
     if (1..=999).contains(&num) {
+        // Additional guard: if the number looks like a year (1900-2099), skip it
+        // This prevents movies like "2001.A.Space.Odyssey.mkv" from being treated as episodes
+        if (1900..=2099).contains(&(num as u32)) {
+            return None;
+        }
+        // Additional guard: if the number is > 100, it's unlikely to be an episode number
+        // unless it's part of a clear SxxExx pattern (already checked above)
+        if num > 100 {
+            return None;
+        }
         Some(num)
     } else {
         None
@@ -791,12 +1517,12 @@ pub fn is_organized_filename(filename: &str) -> bool {
 ///
 /// Format: `[Title]-S01E01-[Episode Name]-1080p-WEB-DL-...`
 /// Returns: (title, season, episode, episode_name)
-pub fn parse_organized_tvshow_filename(filename: &str) -> Option<OrganizedTvShowInfo> {
+pub fn parse_organized_tv_series_filename(filename: &str) -> Option<OrganizedTvSeriesInfo> {
     let re = regex::Regex::new(r"^\[([^\]]+)\]-S(\d{2})E(\d{2,3})-\[([^\]]+)\]-").ok()?;
 
     let caps = re.captures(filename)?;
 
-    Some(OrganizedTvShowInfo {
+    Some(OrganizedTvSeriesInfo {
         title: caps.get(1)?.as_str().to_string(),
         season: caps.get(2)?.as_str().parse().ok()?,
         episode: caps.get(3)?.as_str().parse().ok()?,
@@ -871,7 +1597,7 @@ pub fn parse_organized_movie_filename(filename: &str) -> Option<OrganizedMovieIn
 
 /// Information extracted from an organized TV show filename.
 #[derive(Debug, Clone)]
-pub struct OrganizedTvShowInfo {
+pub struct OrganizedTvSeriesInfo {
     pub title: String,
     pub season: u16,
     pub episode: u16,
@@ -891,7 +1617,7 @@ pub struct OrganizedMovieInfo {
 
 /// Information extracted from an organized TV show folder name.
 #[derive(Debug, Clone)]
-pub struct OrganizedTvShowFolderInfo {
+pub struct OrganizedTvSeriesFolderInfo {
     pub title: String,
     pub year: Option<u16>,
     pub imdb_id: Option<String>,
@@ -942,7 +1668,7 @@ impl SmartExtractedMetadata {
     }
 
     /// Check if we have minimum required data for TV shows (at least TMDB ID)
-    pub fn has_tvshow_essentials(&self) -> bool {
+    pub fn has_tv_series_essentials(&self) -> bool {
         self.tmdb_id.is_some()
     }
 
@@ -1181,7 +1907,7 @@ pub fn parse_organized_movie_folder(dirname: &str) -> Option<OrganizedMovieFolde
 ///
 /// Also detected via smart extraction:
 /// - `Year-[Title]-tt...-tmdbID` or similar variations
-pub fn is_organized_tvshow_folder(dirname: &str) -> bool {
+pub fn is_organized_tv_series_folder(dirname: &str) -> bool {
     // Fast path: strict pattern matching
     let re = regex::Regex::new(r"^\[.+\]\(\d{4}\)-(?:tt\d+)?-?tmdb\d+$").ok();
     if let Some(re) = re {
@@ -1192,7 +1918,7 @@ pub fn is_organized_tvshow_folder(dirname: &str) -> bool {
 
     // Slow path: smart extraction can identify it
     let smart = extract_smart_metadata(dirname);
-    smart.has_tvshow_essentials() && !smart.titles.is_empty()
+    smart.has_tv_series_essentials() && !smart.titles.is_empty()
 }
 
 /// Parse an organized TV show folder name to extract metadata.
@@ -1207,7 +1933,7 @@ pub fn is_organized_tvshow_folder(dirname: &str) -> bool {
 /// - `[罚罪2](2025)-tt36771056-tmdb296146`
 /// - `[러브 미][爱我](2025)-tt35451747-tmdb275989`
 /// - `[러브 미][ ]-tt35451747-tmdb275989` (empty Chinese title)
-pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFolderInfo> {
+pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeriesFolderInfo> {
     // Pattern 1: Dual title with year and IMDB: [Original][Chinese](Year)-ttIMDB-tmdbID
     let re_dual_with_year_imdb =
         regex::Regex::new(r"^\[([^\]]+)\]\[([^\]]*)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
@@ -1220,7 +1946,7 @@ pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFol
         } else {
             chinese
         };
-        return Some(OrganizedTvShowFolderInfo {
+        return Some(OrganizedTvSeriesFolderInfo {
             title,
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
@@ -1240,7 +1966,7 @@ pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFol
         } else {
             chinese
         };
-        return Some(OrganizedTvShowFolderInfo {
+        return Some(OrganizedTvSeriesFolderInfo {
             title,
             year: None,
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
@@ -1252,7 +1978,7 @@ pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFol
     let re_with_imdb = regex::Regex::new(r"^\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
 
     if let Some(caps) = re_with_imdb.captures(dirname) {
-        return Some(OrganizedTvShowFolderInfo {
+        return Some(OrganizedTvSeriesFolderInfo {
             title: caps.get(1)?.as_str().to_string(),
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
@@ -1264,7 +1990,7 @@ pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFol
     let re_no_imdb = regex::Regex::new(r"^\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
 
     if let Some(caps) = re_no_imdb.captures(dirname) {
-        return Some(OrganizedTvShowFolderInfo {
+        return Some(OrganizedTvSeriesFolderInfo {
             title: caps.get(1)?.as_str().to_string(),
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: None,
@@ -1299,7 +2025,7 @@ pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFol
             title
         );
 
-        return Some(OrganizedTvShowFolderInfo {
+        return Some(OrganizedTvSeriesFolderInfo {
             title,
             year: smart.year,
             imdb_id: smart.imdb_id,
@@ -1310,9 +2036,9 @@ pub fn parse_organized_tvshow_folder(dirname: &str) -> Option<OrganizedTvShowFol
     None
 }
 
-/// Convert OrganizedTvShowInfo to ParsedFilename for consistent processing.
-impl From<OrganizedTvShowInfo> for ParsedFilename {
-    fn from(info: OrganizedTvShowInfo) -> Self {
+/// Convert OrganizedTvSeriesInfo to ParsedFilename for consistent processing.
+impl From<OrganizedTvSeriesInfo> for ParsedFilename {
+    fn from(info: OrganizedTvSeriesInfo) -> Self {
         ParsedFilename {
             original_title: None,
             title: Some(info.title),
@@ -1402,6 +2128,48 @@ pub fn extract_season_from_dirname(dirname: &str) -> Option<u16> {
     }
 
     None
+}
+
+/// Strip website/source prefixes from filenames.
+///
+/// Common patterns from Chinese download sites:
+/// - "阳光电影dygod.org.世界大战.2025..." -> "世界大战.2025..."
+/// - "阳光电影dygod.org.伊甸.2024..." -> "伊甸.2024..."
+/// - "电影天堂www.dy2018.世界大战.2025..." -> "世界大战.2025..."
+/// - "人人影视.世界大战.2025..." -> "世界大战.2025..."
+fn strip_website_prefix(filename: &str) -> String {
+    // Common website prefix patterns (case-insensitive)
+    // These are download site names that appear at the start of filenames
+    let prefix_patterns = [
+        // Pattern: site name followed by domain or separator
+        r"(?i)^阳光电影(?:dygod\.org)?[\.\s_-]+",
+        r"(?i)^电影天堂(?:www\.dy2018\.com)?[\.\s_-]+",
+        r"(?i)^人人影视[\.\s_-]+",
+        r"(?i)^电影天堂[\.\s_-]+",
+        r"(?i)^BT天堂[\.\s_-]+",
+        r"(?i)^6v电影[\.\s_-]+",
+        r"(?i)^6v\.com[\.\s_-]+",
+        r"(?i)^影视帝国[\.\s_-]+",
+        r"(?i)^破晓电影[\.\s_-]+",
+        r"(?i)^rarbg[\.\s_-]+",
+        r"(?i)^www\.[a-zA-Z0-9]+\.(?:com|org|net|cn)[\.\s_-]+",
+    ];
+
+    for pattern in &prefix_patterns {
+        if let Ok(re) = regex::Regex::new(pattern) {
+            let stripped = re.replace(filename, "").to_string();
+            if stripped != filename && !stripped.is_empty() {
+                tracing::debug!(
+                    "Stripped website prefix: '{}' -> '{}'",
+                    filename,
+                    stripped
+                );
+                return stripped;
+            }
+        }
+    }
+
+    filename.to_string()
 }
 
 /// Filter out subtitle group names from title.

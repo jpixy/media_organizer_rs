@@ -1,6 +1,6 @@
 //! Plan command implementation.
 //!
-//! Implements the `plan movies` and `plan tvshows` subcommands.
+//! Implements the `plan movies` and `plan tv_series` subcommands.
 //! Coordinates scanning, parsing, TMDB lookup, and plan generation.
 
 use crate::core::planner::{self, Planner};
@@ -24,7 +24,7 @@ pub async fn plan_movies(
 }
 
 /// Execute the plan command for TV shows.
-pub async fn plan_tvshows(
+pub async fn plan_tv_series(
     source: &Path,
     target: Option<&Path>,
     output: Option<&Path>,
@@ -36,7 +36,7 @@ pub async fn plan_tvshows(
     );
     println!();
 
-    plan_media(source, target, output, MediaType::TvShows, config).await
+    plan_media(source, target, output, MediaType::TvSeries, config).await
 }
 
 /// Common planning logic for both movies and TV shows.

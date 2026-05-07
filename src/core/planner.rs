@@ -13,7 +13,7 @@ use crate::core::parser::{self, FilenameParser, ParsedFilename};
 use crate::core::scanner::scan_directory;
 use crate::generators::{filename as gen_filename, folder as gen_folder};
 use crate::models::media::{
-    EpisodeMetadata, MediaType, MovieMetadata, TvShowMetadata, VideoFile, VideoMetadata,
+    EpisodeMetadata, MediaType, MovieMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
 use crate::models::plan::{
     Operation, OperationType, ParsedInfo, Plan, PlanItem, PlanItemStatus, SampleItem, TargetInfo,
@@ -29,6 +29,8 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
+use futures::stream::{self, StreamExt};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -147,6 +149,8 @@ pub struct PlannerConfig {
     pub poster_size: String,
     /// Whether to generate NFO files.
     pub generate_nfo: bool,
+    /// Whether AI parsing is enabled.
+    pub ai_enabled: bool,
 }
 
 impl Default for PlannerConfig {
@@ -156,6 +160,7 @@ impl Default for PlannerConfig {
             download_posters: true,
             poster_size: "w500".to_string(),
             generate_nfo: true,
+            ai_enabled: false, // AI disabled by default per requirements
         }
     }
 }
@@ -202,8 +207,14 @@ impl Planner {
             None
         };
 
+        // Get ai_enabled from OllamaConfig
+        let ai_enabled = config.ollama.enabled;
+
         Ok(Self {
-            config: PlannerConfig::default(),
+            config: PlannerConfig {
+                ai_enabled,
+                ..PlannerConfig::default()
+            },
             parser: FilenameParser::new(),
             tmdb_client,
         })
@@ -216,17 +227,30 @@ impl Planner {
         target: &Path,
         media_type: MediaType,
     ) -> Result<Plan> {
+        let total_start = Instant::now();
         tracing::info!("Generating plan for {:?}", source);
         tracing::info!("Target directory: {:?}", target);
         tracing::info!("Media type: {}", media_type);
+        
+        // Print AI status
+        println!();
+        println!("{}", "[AI Status]");
+        if self.config.ai_enabled {
+            println!("  AI Parsing:    Enabled (model: {})", self.parser.get_model());
+        } else {
+            println!("  AI Parsing:    Disabled (using local parsing only)");
+        }
 
         // Step 1: Scan directory
+        let scan_start = Instant::now();
         println!("[INFO] Scanning directory...");
         let scan_result = scan_directory(source)?;
+        let scan_time = scan_start.elapsed();
         println!(
-            "   Found {} videos, {} samples",
+            "   Found {} videos, {} samples (took {:.2}s)",
             scan_result.videos.len(),
-            scan_result.samples.len()
+            scan_result.samples.len(),
+            scan_time.as_secs_f64()
         );
 
         if scan_result.videos.is_empty() {
@@ -234,9 +258,11 @@ impl Planner {
         }
 
         // Step 2: Process videos (pass source for correct cache key calculation)
+        let process_start = Instant::now();
         let (mut items, unknown) = self
             .process_videos(&scan_result.videos, source, target, media_type)
             .await?;
+        let _process_time = process_start.elapsed();
 
         // Step 3: Process samples
         let samples = self.process_samples(&scan_result.samples, &items, target);
@@ -260,6 +286,11 @@ impl Planner {
             samples,
             unknown,
         };
+
+        let total_time = total_start.elapsed();
+        println!();
+        println!("{}", "[Timing]");
+        println!("  Total:         {:>8.2}s", total_time.as_secs_f64());
 
         Ok(plan)
     }
@@ -294,8 +325,9 @@ impl Planner {
             groups.len()
         );
 
-        // Caches
-        let mut tvshow_cache: HashMap<PathBuf, TvShowMetadata> = HashMap::new();
+        // Caches (wrapped for concurrent access across parallel groups)
+        let tv_series_cache: Arc<RwLock<HashMap<PathBuf, TvSeriesMetadata>>> =
+            Arc::new(RwLock::new(HashMap::new()));
         let season_episodes_cache: SeasonEpisodesCache = Arc::new(RwLock::new(HashMap::new()));
 
         // Step 2: Run ffprobe in parallel for all videos (up to 8 concurrent)
@@ -307,145 +339,124 @@ impl Planner {
             .collect();
         tracing::info!("FFprobe completed for {} files", ffprobe_map.len());
 
-        // Create progress bar
+        // Create progress bar with filename display
         let pb = ProgressBar::new(videos.len() as u64);
         pb.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+                .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} [{elapsed}/{eta}] {msg}")
                 .unwrap()
                 .progress_chars("=>-"),
         );
+        pb.set_message("Starting...");
 
-        // Step 3: Process each group
-        for (top_dir, group_videos) in &groups {
-            let cached_show = tvshow_cache.get(top_dir).cloned();
+        // Step 3: Process videos in parallel
+        // - Movies: all videos are independent, process fully in parallel
+        // - TV Series: groups processed in parallel; within each group,
+        //   representative video first (AI + TMDB), then remaining in parallel
+        const PARALLEL_LIMIT: usize = 10;
 
-            // Select the best representative video for AI parsing
-            // Prioritizes standard SxxExx format, avoids Special files
-            let representative_video = Self::select_representative_video(group_videos);
-            pb.set_message(format!(
-                "Processing: {} ({} files)",
-                top_dir.file_name().unwrap_or_default().to_string_lossy(),
-                group_videos.len()
-            ));
-
-            // For the representative video, use AI parsing to get show metadata
-            let first_result = self
-                .process_single_video_optimized(
-                    representative_video,
-                    target,
-                    media_type,
-                    cached_show.as_ref(),
-                    &season_episodes_cache,
-                    ffprobe_map.get(&representative_video.path),
-                )
-                .await;
-
-            match first_result {
-                Ok(Some((item, show_meta))) => {
-                    // Cache the TV show metadata
-                    if media_type == MediaType::TvShows {
-                        if let Some(ref meta) = show_meta {
-                            tvshow_cache.insert(top_dir.clone(), meta.clone());
-                        }
-                    }
-                    items.push(item);
-                    pb.inc(1);
-
-                    // Process remaining files using cached metadata
-                    // Skip the representative video (already processed above)
-                    let cached_show = tvshow_cache.get(top_dir).cloned();
-                    for video in group_videos
-                        .iter()
-                        .filter(|v| v.path != representative_video.path)
-                    {
-                        pb.set_message(format!("Processing: {}", &video.filename));
-
-                        // For movies, process each file independently without using a shared cache
-                        if media_type == MediaType::Movies {
-                            match self
-                                .process_single_video_optimized(
-                                    video,
-                                    target,
-                                    media_type,
-                                    None,
-                                    &season_episodes_cache,
-                                    ffprobe_map.get(&video.path),
-                                )
-                                .await
-                            {
-                                Ok(Some((item, _))) => {
-                                    items.push(item);
-                                }
-                                Ok(None) => {
-                                    unknown.push(UnknownItem {
-                                        source: video.clone(),
-                                        reason: "Failed to find TMDB match".to_string(),
-                                    });
-                                }
-                                Err(e) => {
-                                    tracing::warn!(
-                                        "Failed to process {}: {}",
-                                        video.filename,
-                                        e
-                                    );
-                                    unknown.push(UnknownItem {
-                                        source: video.clone(),
-                                        reason: e.to_string(),
-                                    });
-                                }
-                            }
-                        } else {
-                            // For TV shows, use the existing logic with cached show
-                            match self
-                                .process_single_video_optimized(
-                                    video,
-                                    target,
-                                    media_type,
-                                    cached_show.as_ref(),
-                                    &season_episodes_cache,
-                                    ffprobe_map.get(&video.path),
-                                )
-                                .await
-                            {
-                                Ok(Some((item, _))) => {
-                                    items.push(item);
-                                }
-                                Ok(None) => {
-                                    unknown.push(UnknownItem {
-                                        source: video.clone(),
-                                        reason: "Failed to extract episode info".to_string(),
-                                    });
-                                }
-                                Err(e) => {
-                                    tracing::warn!("Failed to process {}: {}", video.filename, e);
-                                    unknown.push(UnknownItem {
-                                        source: video.clone(),
-                                        reason: e.to_string(),
-                                    });
-                                }
-                            }
-                        }
+        if media_type == MediaType::Movies {
+            let mut tasks = stream::iter(videos.iter())
+                .map(|video| {
+                    let ffprobe_meta = ffprobe_map.get(&video.path);
+                    let season_episodes_cache = Arc::clone(&season_episodes_cache);
+                    let pb = pb.clone();
+                    async move {
+                        pb.set_message(format!("Processing: {}", video.filename));
+                        let result = self
+                            .process_single_video_optimized(
+                                video,
+                                target,
+                                media_type,
+                                None,
+                                &season_episodes_cache,
+                                ffprobe_meta,
+                            )
+                            .await;
                         pb.inc(1);
+                        (video, result)
                     }
-                }
-                Ok(None) => {
-                    for video in group_videos {
+                })
+                .buffer_unordered(PARALLEL_LIMIT);
+
+            while let Some((video, result)) = tasks.next().await {
+                match result {
+                    Ok(Some((item, _))) => items.push(item),
+                    Ok(None) => {
                         unknown.push(UnknownItem {
                             source: video.clone(),
-                            reason: "Failed to parse or find metadata for directory".to_string(),
+                            reason: "Failed to find TMDB match".to_string(),
                         });
-                        pb.inc(1);
                     }
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to process directory {:?}: {}", top_dir, e);
-                    for video in group_videos {
+                    Err(e) => {
+                        tracing::warn!("Failed to process {}: {}", video.filename, e);
                         unknown.push(UnknownItem {
                             source: video.clone(),
                             reason: e.to_string(),
                         });
+                    }
+                }
+            }
+        } else {
+            // TV Series: process all videos in parallel
+            // Each video checks the shared cache for existing show metadata.
+            // If found, it reuses the cached data (fast path, no TMDB query).
+            // If not found, it queries TMDB and caches the result for other
+            // videos in the same directory group.
+            let mut tasks = stream::iter(videos.iter())
+                .map(|video| {
+                    let top_dir = video.parent_dir.clone();
+                    let ffprobe_meta = ffprobe_map.get(&video.path);
+                    let tv_series_cache = Arc::clone(&tv_series_cache);
+                    let season_episodes_cache = Arc::clone(&season_episodes_cache);
+                    let pb = pb.clone();
+                    async move {
+                        pb.set_message(format!("Processing: {}", video.filename));
+                        // Check cache for existing show metadata from this directory
+                        let cached_show =
+                            tv_series_cache.read().await.get(&top_dir).cloned();
+
+                        let result = self
+                            .process_single_video_optimized(
+                                video,
+                                target,
+                                media_type,
+                                cached_show.as_ref(),
+                                &season_episodes_cache,
+                                ffprobe_meta,
+                            )
+                            .await;
+
+                        // If we obtained show metadata, cache it for other videos
+                        // in the same directory group
+                        if let Ok(Some((_, Some(ref show_meta)))) = result {
+                            tv_series_cache
+                                .write()
+                                .await
+                                .insert(top_dir, show_meta.clone());
+                        }
+
                         pb.inc(1);
+                        (video, result)
+                    }
+                })
+                .buffer_unordered(PARALLEL_LIMIT);
+
+            while let Some((video, result)) = tasks.next().await {
+                match result {
+                    Ok(Some((item, _))) => items.push(item),
+                    Ok(None) => {
+                        unknown.push(UnknownItem {
+                            source: video.clone(),
+                            reason: "Failed to find TMDB match".to_string(),
+                        });
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to process {}: {}", video.filename, e);
+                        unknown.push(UnknownItem {
+                            source: video.clone(),
+                            reason: e.to_string(),
+                        });
                     }
                 }
             }
@@ -460,8 +471,6 @@ impl Planner {
         &self,
         videos: &[VideoFile],
     ) -> Vec<(PathBuf, Result<VideoMetadata>)> {
-        use futures::stream::{self, StreamExt};
-
         const CONCURRENT_LIMIT: usize = 8;
 
         let results: Vec<_> = stream::iter(videos)
@@ -497,10 +506,10 @@ impl Planner {
         video: &VideoFile,
         target: &Path,
         media_type: MediaType,
-        cached_show: Option<&TvShowMetadata>,
+        cached_show: Option<&TvSeriesMetadata>,
         season_cache: &SeasonEpisodesCache,
         precomputed_ffprobe: Option<&VideoMetadata>,
-    ) -> Result<Option<(PlanItem, Option<TvShowMetadata>)>> {
+    ) -> Result<Option<(PlanItem, Option<TvSeriesMetadata>)>> {
         // ============================================================
         // HIGHEST PRIORITY: Check for TMDB/IMDB ID in filename OR parent directories
         // If found, use direct lookup - this bypasses all other parsing logic
@@ -579,7 +588,7 @@ impl Planner {
                                 raw_response: parsed.raw_response,
                             },
                             movie_metadata: Some(movie_metadata),
-                            tvshow_metadata: None,
+                            tv_series_metadata: None,
                             episode_metadata: None,
                             video_metadata,
                             target: target_info,
@@ -588,7 +597,7 @@ impl Planner {
                         None,
                     )));
                 }
-            } else if media_type == MediaType::TvShows {
+            } else if media_type == MediaType::TvSeries {
                 // For TV shows, try direct lookup using IMDB ID or TMDB ID from path
                 // Strategy: If the current directory's IMDB ID fails (e.g., season-specific ID),
                 // try looking up parent directories for the show's main ID
@@ -636,7 +645,7 @@ impl Planner {
 
                 if let Some(tmdb_id) = resolved_tmdb_id {
                     // Try to use existing organized folder logic
-                    if let Some(folder_info) = self.find_organized_tvshow_folder(&video.parent_dir)
+                    if let Some(folder_info) = self.find_organized_tv_series_folder(&video.parent_dir)
                     {
                         tracing::info!(
                             "[PATH-ID] TV show file in folder with ID: {} -> tmdb{}",
@@ -656,20 +665,24 @@ impl Planner {
 
                     // If not in organized folder, fetch show details and process
                     if let Some(client) = &self.tmdb_client {
-                        if let Ok(show_details) = client.get_tv_details(tmdb_id).await {
+                        // Extract episode info from filename first (needed for parallel queries)
+                        let (season_num, episode_num) =
+                            parser::extract_episode_from_filename(&video.filename);
+                        let season = season_num.unwrap_or(1);
+                        let episode = episode_num.unwrap_or(1);
+
+                        // Fetch show details and episode details IN PARALLEL
+                        let (show_result, episode_result) = tokio::join!(
+                            client.get_tv_details(tmdb_id),
+                            client.get_episode_details(tmdb_id, season, episode),
+                        );
+
+                        if let Ok(show_details) = show_result {
                             let show_metadata =
-                                self.build_tvshow_metadata_from_details(&show_details);
+                                self.build_tv_series_metadata_from_details(&show_details);
 
-                            // Extract episode info from filename
-                            let (season_num, episode_num) =
-                                parser::extract_episode_from_filename(&video.filename);
-                            let season = season_num.unwrap_or(1);
-                            let episode = episode_num.unwrap_or(1);
-
-                            // Get episode metadata from TMDB
-                            let episode_metadata = if let Ok(ep_details) =
-                                client.get_episode_details(tmdb_id, season, episode).await
-                            {
+                            // Get episode metadata from TMDB (already fetched in parallel)
+                            let episode_metadata = if let Ok(ep_details) = episode_result {
                                 Some(EpisodeMetadata {
                                     name: ep_details.name.clone(),
                                     original_name: None, // Not available in EpisodeDetails
@@ -705,12 +718,12 @@ impl Planner {
                                 }
                             };
 
-                            // Generate target info - tvshow_metadata needs to be a tuple
-                            let tvshow_tuple = (show_metadata.clone(), episode_metadata.clone());
+                            // Generate target info - tv_series_metadata needs to be a tuple
+                            let tv_series_tuple = (show_metadata.clone(), episode_metadata.clone());
                             let (target_info, operations) = match self.generate_target_info(
                                 video,
                                 &None,
-                                &Some(tvshow_tuple),
+                                &Some(tv_series_tuple),
                                 &parsed,
                                 &video_metadata,
                                 target,
@@ -741,7 +754,7 @@ impl Planner {
                                         raw_response: parsed.raw_response,
                                     },
                                     movie_metadata: None,
-                                    tvshow_metadata: Some(show_metadata.clone()),
+                                    tv_series_metadata: Some(show_metadata.clone()),
                                     episode_metadata,
                                     video_metadata,
                                     target: target_info,
@@ -785,7 +798,7 @@ impl Planner {
         if media_type == MediaType::Movies {
             if let Some(movie_metadata) = self.try_direct_id_lookup(&filename_meta).await? {
                 tracing::info!(
-                    "[DIRECT-ID] Found movie via ID: {} ({})",
+                    "FILENAME-ID Found movie via ID: {} ({})",
                     movie_metadata.title,
                     video.filename
                 );
@@ -838,7 +851,7 @@ impl Planner {
                         raw_response: parsed.raw_response.clone(),
                     },
                     movie_metadata: Some(movie_metadata),
-                    tvshow_metadata: None,
+                    tv_series_metadata: None,
                     episode_metadata: None,
                     video_metadata: video_metadata.clone(),
                     target: target_info,
@@ -851,7 +864,8 @@ impl Planner {
         }
 
         // Step 2: Parse filename (AI or regex) - fallback when no ID found
-        let parsed = if media_type == MediaType::TvShows && cached_show.is_some() {
+        // First, try local parsing (hunch) to extract title/year
+        let (parsed, _) = if media_type == MediaType::TvSeries && cached_show.is_some() {
             // FAST PATH: Extract episode from filename using regex
             let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
             if episode.is_none() {
@@ -876,7 +890,7 @@ impl Planner {
                 }
             }
 
-            ParsedFilename {
+            let parsed = ParsedFilename {
                 title: cached_show.map(|s| s.name.clone()),
                 original_title: cached_show.map(|s| s.original_name.clone()),
                 year: cached_show.map(|s| s.year),
@@ -884,20 +898,92 @@ impl Planner {
                 episode,
                 confidence: 1.0,
                 raw_response: Some("regex_extracted".to_string()),
+            };
+
+            // Try TMDB search with local parsed result
+            let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
+            let (show, _) = self
+                .query_tmdb_tv_series_with_folder(&parsed, folder_name.as_deref())
+                .await?;
+
+            if let Some(show_meta) = show {
+                // TMDB search succeeded, no need for AI
+                tracing::info!("TMDB found via local parsing (TV): {}", show_meta.name);
+                (parsed, false)
+            } else if self.config.ai_enabled {
+                // TMDB search failed, try AI parsing
+                tracing::info!("TMDB search failed, using AI parsing for: {}", video.filename);
+                let parse_input = self.build_parse_input(video);
+                let ai_parsed = self.parser.parse(&parse_input, media_type).await?;
+                if !self.parser.is_valid(&ai_parsed) {
+                    tracing::debug!("Low confidence AI parsing for: {}", video.filename);
+                    return Ok(None);
+                }
+
+                // Try TMDB search with AI parsed result
+                let (ai_show, _) = self
+                    .query_tmdb_tv_series_with_folder(&ai_parsed, folder_name.as_deref())
+                    .await?;
+
+                if let Some(ai_show_meta) = ai_show {
+                    // AI TMDB search succeeded
+                    tracing::info!("TMDB found via AI parsing (TV): {}", ai_show_meta.name);
+                    (ai_parsed, true)
+                } else {
+                    // AI TMDB search failed
+                    tracing::debug!("TMDB search failed after AI parsing for: {}", video.filename);
+                    return Ok(None);
+                }
+            } else {
+                // AI disabled, return None
+                tracing::debug!("TMDB search failed and AI disabled for: {}", video.filename);
+                return Ok(None);
             }
         } else {
-            // AI parsing for first video or movies (fallback when no ID found)
+            // For movies or first TV episode, try local parsing first
             let parse_input = self.build_parse_input(video);
             let parsed = self.parser.parse(&parse_input, media_type).await?;
             if !self.parser.is_valid(&parsed) {
                 tracing::debug!("Low confidence parsing for: {}", video.filename);
                 return Ok(None);
             }
-            parsed
+
+            // Try TMDB search with local parsed result
+            let movie = self.query_tmdb_movie(&parsed).await?;
+            if movie.is_some() {
+                // TMDB search succeeded, no need for AI
+                tracing::info!("TMDB found via local parsing (Movie)");
+                (parsed, false)
+            } else if self.config.ai_enabled {
+                // TMDB search failed, try AI parsing
+                tracing::info!("TMDB search failed, using AI parsing for: {}", video.filename);
+                let parse_input = self.build_parse_input(video);
+                let ai_parsed = self.parser.parse(&parse_input, media_type).await?;
+                if !self.parser.is_valid(&ai_parsed) {
+                    tracing::debug!("Low confidence AI parsing for: {}", video.filename);
+                    return Ok(None);
+                }
+
+                // Try TMDB search with AI parsed result
+                let ai_movie = self.query_tmdb_movie(&ai_parsed).await?;
+                if ai_movie.is_some() {
+                    // AI TMDB search succeeded
+                    tracing::info!("TMDB found via AI parsing (Movie)");
+                    (ai_parsed, true)
+                } else {
+                    // AI TMDB search failed
+                    tracing::debug!("TMDB search failed after AI parsing for: {}", video.filename);
+                    return Ok(None);
+                }
+            } else {
+                // AI disabled, return None
+                tracing::debug!("TMDB search failed and AI disabled for: {}", video.filename);
+                return Ok(None);
+            }
         };
 
         // Step 3: Get metadata via title search
-        let (movie_metadata, tvshow_metadata, episode_metadata) = match media_type {
+        let (movie_metadata, tv_series_metadata, episode_metadata) = match media_type {
             MediaType::Movies => {
                 // No direct ID available, use title search
                 let movie = self.query_tmdb_movie(&parsed).await?;
@@ -906,7 +992,7 @@ impl Planner {
                 }
                 (movie, None, None)
             }
-            MediaType::TvShows => {
+            MediaType::TvSeries => {
                 if let Some(show_meta) = cached_show {
                     // Use cached show, get episode from season cache
                     let (season, episode) =
@@ -919,7 +1005,7 @@ impl Planner {
                     // First video: get show info and cache season
                     let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
                     let (show, _) = self
-                        .query_tmdb_tvshow_with_folder(&parsed, folder_name.as_deref())
+                        .query_tmdb_tv_series_with_folder(&parsed, folder_name.as_deref())
                         .await?;
                     if show.is_none() {
                         return Ok(None);
@@ -964,14 +1050,14 @@ impl Planner {
         };
 
         // Step 4: Generate target info and operations
-        let tvshow_with_episode = tvshow_metadata
+        let tv_series_with_episode = tv_series_metadata
             .as_ref()
             .map(|show| (show.clone(), episode_metadata.clone()));
 
         let (target_info, operations) = match self.generate_target_info(
             video,
             &movie_metadata,
-            &tvshow_with_episode,
+            &tv_series_with_episode,
             &parsed,
             &video_metadata,
             target,
@@ -992,7 +1078,7 @@ impl Planner {
                 raw_response: parsed.raw_response.clone(),
             },
             movie_metadata: movie_metadata.clone(),
-            tvshow_metadata: tvshow_metadata.clone(),
+            tv_series_metadata: tv_series_metadata.clone(),
             episode_metadata: episode_metadata.clone(),
             video_metadata: video_metadata.clone(),
             target: target_info,
@@ -1000,7 +1086,7 @@ impl Planner {
             status: PlanItemStatus::Pending,
         };
 
-        Ok(Some((plan_item, tvshow_metadata)))
+        Ok(Some((plan_item, tv_series_metadata)))
     }
 
     /// Process an already-organized file (detected by filename format).
@@ -1012,14 +1098,14 @@ impl Planner {
         video: &VideoFile,
         target: &Path,
         media_type: MediaType,
-        cached_show: Option<&TvShowMetadata>, // Use cached show to avoid redundant TMDB calls
+        cached_show: Option<&TvSeriesMetadata>, // Use cached show to avoid redundant TMDB calls
         season_cache: &SeasonEpisodesCache,
         precomputed_ffprobe: Option<&VideoMetadata>,
-    ) -> Result<Option<(PlanItem, Option<TvShowMetadata>)>> {
-        let (parsed, movie_metadata, tvshow_metadata, episode_metadata) = match media_type {
-            MediaType::TvShows => {
+    ) -> Result<Option<(PlanItem, Option<TvSeriesMetadata>)>> {
+        let (parsed, movie_metadata, tv_series_metadata, episode_metadata) = match media_type {
+            MediaType::TvSeries => {
                 // Parse organized TV show filename
-                let info = match parser::parse_organized_tvshow_filename(&video.filename) {
+                let info = match parser::parse_organized_tv_series_filename(&video.filename) {
                     Some(info) => info,
                     None => {
                         tracing::warn!(
@@ -1031,7 +1117,7 @@ impl Planner {
                 };
 
                 // Try to extract TMDB ID from parent folder names (may be nested like Show/Season 01/)
-                let folder_info = self.find_organized_tvshow_folder(&video.parent_dir);
+                let folder_info = self.find_organized_tv_series_folder(&video.parent_dir);
 
                 // OPTIMIZATION: Use cached show if available and TMDB ID matches
                 let show_meta = if let Some(cached) = cached_show {
@@ -1047,7 +1133,7 @@ impl Planner {
                             cached.clone()
                         } else {
                             // TMDB ID mismatch, fetch fresh data
-                            self.fetch_tvshow_by_id(folder.tmdb_id).await?
+                            self.fetch_tv_series_by_id(folder.tmdb_id).await?
                         }
                     } else {
                         // No folder info, trust the cache
@@ -1059,7 +1145,7 @@ impl Planner {
                         "    [ORGANIZED] Re-indexing TV via ID: {} S{:02}E{:02} (tmdb{})",
                         folder.title, info.season, info.episode, folder.tmdb_id
                     );
-                    self.fetch_tvshow_by_id(folder.tmdb_id).await?
+                    self.fetch_tv_series_by_id(folder.tmdb_id).await?
                 } else {
                     // Fall back to searching by title
                     println!(
@@ -1079,7 +1165,7 @@ impl Planner {
                     };
 
                     let (show, _) = self
-                        .query_tmdb_tvshow_with_folder(&parsed_search, parent_folder.as_deref())
+                        .query_tmdb_tv_series_with_folder(&parsed_search, parent_folder.as_deref())
                         .await?;
                     if show.is_none() {
                         tracing::warn!("[ORGANIZED] TMDB search failed for: {}", info.title);
@@ -1225,14 +1311,14 @@ impl Planner {
         };
 
         // Generate target info
-        let tvshow_with_episode = tvshow_metadata
+        let tv_series_with_episode = tv_series_metadata
             .as_ref()
             .map(|show| (show.clone(), episode_metadata.clone()));
 
         let (target_info, operations) = match self.generate_target_info(
             video,
             &movie_metadata,
-            &tvshow_with_episode,
+            &tv_series_with_episode,
             &parsed,
             &video_metadata,
             target,
@@ -1253,7 +1339,7 @@ impl Planner {
                 raw_response: parsed.raw_response.clone(),
             },
             movie_metadata: movie_metadata.clone(),
-            tvshow_metadata: tvshow_metadata.clone(),
+            tv_series_metadata: tv_series_metadata.clone(),
             episode_metadata: episode_metadata.clone(),
             video_metadata: video_metadata.clone(),
             target: target_info,
@@ -1261,7 +1347,7 @@ impl Planner {
             status: PlanItemStatus::Pending,
         };
 
-        Ok(Some((plan_item, tvshow_metadata)))
+        Ok(Some((plan_item, tv_series_metadata)))
     }
 
     /// Build MovieMetadata from TMDB MovieDetails (used for organized files).
@@ -1407,10 +1493,10 @@ impl Planner {
         &self,
         video: &VideoFile,
         target: &Path,
-        folder_info: &parser::OrganizedTvShowFolderInfo,
+        folder_info: &parser::OrganizedTvSeriesFolderInfo,
         season_cache: &SeasonEpisodesCache,
         precomputed_ffprobe: Option<&VideoMetadata>,
-    ) -> Result<Option<(PlanItem, Option<TvShowMetadata>)>> {
+    ) -> Result<Option<(PlanItem, Option<TvSeriesMetadata>)>> {
         // Extract season and episode from filename
         let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
 
@@ -1453,7 +1539,7 @@ impl Planner {
         };
 
         let show_meta = match tmdb.get_tv_details(folder_info.tmdb_id).await {
-            Ok(details) => self.build_tvshow_metadata_from_details(&details),
+            Ok(details) => self.build_tv_series_metadata_from_details(&details),
             Err(e) => {
                 tracing::warn!(
                     "[ORGANIZED-FOLDER] Failed to fetch TV details for tmdb{}: {}",
@@ -1490,16 +1576,16 @@ impl Planner {
         };
 
         // Generate target info
-        let tvshow_with_episode = Some((show_meta.clone(), ep_meta.clone()));
+        let tv_series_with_episode = Some((show_meta.clone(), ep_meta.clone()));
 
         let (target_info, operations) = match self.generate_target_info(
             video,
             &None,
-            &tvshow_with_episode,
+            &tv_series_with_episode,
             &parsed,
             &video_metadata,
             target,
-            MediaType::TvShows,
+            MediaType::TvSeries,
         )? {
             Some(result) => result,
             None => return Ok(None),
@@ -1516,7 +1602,7 @@ impl Planner {
                 raw_response: parsed.raw_response.clone(),
             },
             movie_metadata: None,
-            tvshow_metadata: Some(show_meta.clone()),
+            tv_series_metadata: Some(show_meta.clone()),
             episode_metadata: ep_meta,
             video_metadata: video_metadata.clone(),
             target: target_info,
@@ -1532,16 +1618,16 @@ impl Planner {
     /// Since organized TV shows may have structure like:
     /// `[Show](Year)-ttIMDB-tmdbID/Season 01/[Show]-S01E01-...mp4`
     /// We need to look at parent directories, not just the immediate parent.
-    fn find_organized_tvshow_folder(
+    fn find_organized_tv_series_folder(
         &self,
         start_dir: &Path,
-    ) -> Option<parser::OrganizedTvShowFolderInfo> {
+    ) -> Option<parser::OrganizedTvSeriesFolderInfo> {
         let mut current = Some(start_dir);
 
         while let Some(dir) = current {
             if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
                 // Try to parse as organized folder
-                if let Some(info) = parser::parse_organized_tvshow_folder(name) {
+                if let Some(info) = parser::parse_organized_tv_series_folder(name) {
                     tracing::debug!("Found organized TV folder: {} (tmdb{})", name, info.tmdb_id);
                     return Some(info);
                 }
@@ -1578,7 +1664,7 @@ impl Planner {
     }
 
     /// Fetch TV show metadata by TMDB ID.
-    async fn fetch_tvshow_by_id(&self, tmdb_id: u64) -> Result<TvShowMetadata> {
+    async fn fetch_tv_series_by_id(&self, tmdb_id: u64) -> Result<TvSeriesMetadata> {
         let tmdb = match self.tmdb_client.as_ref() {
             Some(client) => client,
             None => {
@@ -1589,14 +1675,14 @@ impl Planner {
         };
 
         let details = tmdb.get_tv_details(tmdb_id).await?;
-        Ok(self.build_tvshow_metadata_from_details(&details))
+        Ok(self.build_tv_series_metadata_from_details(&details))
     }
 
-    /// Build TvShowMetadata from TMDB TvDetails (used for organized files with TMDB ID).
-    fn build_tvshow_metadata_from_details(
+    /// Build TvSeriesMetadata from TMDB TvDetails (used for organized files with TMDB ID).
+    fn build_tv_series_metadata_from_details(
         &self,
         details: &crate::services::tmdb::TvDetails,
-    ) -> TvShowMetadata {
+    ) -> TvSeriesMetadata {
         use crate::models::media::Actor;
 
         let genres: Vec<String> = details
@@ -1684,7 +1770,7 @@ impl Planner {
             .as_ref()
             .map(|p| format!("https://image.tmdb.org/t/p/original{}", p));
 
-        TvShowMetadata {
+        TvSeriesMetadata {
             tmdb_id: details.id,
             imdb_id,
             original_name: details.original_name.clone(),
@@ -1788,60 +1874,12 @@ impl Planner {
         })
     }
 
-    /// Select the best representative video from a group for AI parsing.
-    ///
-    /// Priority order:
-    /// 1. Standard episode format (SxxExx, e.g., S02E01) - most reliable for AI parsing
-    /// 2. Any non-Special file
-    /// 3. First file as fallback
-    ///
-    /// This avoids selecting "Special" files first, which often cause AI to produce
-    /// incorrect titles like "Black Mirror Special White Christmas" instead of "Black Mirror".
-    fn select_representative_video(videos: &[VideoFile]) -> &VideoFile {
-        use regex::Regex;
-
-        // Pattern 1: Standard SxxExx format (e.g., S02E01, s01e05)
-        let standard_episode_regex = Regex::new(r"(?i)S\d{1,2}E\d{1,2}").unwrap();
-
-        // Pattern 2: Special indicator patterns to avoid
-        let special_regex =
-            Regex::new(r"(?i)(\.special\.|[_\-\.]sp[_\-\.]|\[sp\]|special)").unwrap();
-
-        // First pass: find a file with standard SxxExx format
-        if let Some(video) = videos
-            .iter()
-            .find(|v| standard_episode_regex.is_match(&v.filename))
-        {
-            tracing::debug!(
-                "Selected representative video (standard format): {}",
-                video.filename
-            );
-            return video;
-        }
-
-        // Second pass: find any file that's not a Special
-        if let Some(video) = videos.iter().find(|v| !special_regex.is_match(&v.filename)) {
-            tracing::debug!(
-                "Selected representative video (non-special): {}",
-                video.filename
-            );
-            return video;
-        }
-
-        // Fallback: first file
-        tracing::debug!(
-            "Selected representative video (fallback): {}",
-            videos[0].filename
-        );
-        &videos[0]
-    }
-
     /// Group videos by their immediate parent directory.
     ///
     /// This is the correct grouping for TV shows:
-    /// - /Videos/TV_Shows/Show1/01.mp4 -> parent_dir: /Videos/TV_Shows/Show1
-    /// - /Videos/TV_Shows/Collection/ShowA/01.mp4 -> parent_dir: /Videos/TV_Shows/Collection/ShowA
-    /// - /Videos/TV_Shows/Collection/ShowB/01.mp4 -> parent_dir: /Videos/TV_Shows/Collection/ShowB
+    /// - /Videos/TV_Series/Show1/01.mp4 -> parent_dir: /Videos/TV_Series/Show1
+    /// - /Videos/TV_Series/Collection/ShowA/01.mp4 -> parent_dir: /Videos/TV_Series/Collection/ShowA
+    /// - /Videos/TV_Series/Collection/ShowB/01.mp4 -> parent_dir: /Videos/TV_Series/Collection/ShowB
     ///
     /// Each parent directory represents a single TV show/season.
     fn group_by_top_level_dir(
@@ -1906,10 +1944,10 @@ impl Planner {
         video: &VideoFile,
         target: &Path,
         media_type: MediaType,
-        cached_show: Option<&(TvShowMetadata, Option<EpisodeMetadata>)>,
-    ) -> Result<Option<(PlanItem, Option<(TvShowMetadata, Option<EpisodeMetadata>)>)>> {
+        cached_show: Option<&(TvSeriesMetadata, Option<EpisodeMetadata>)>,
+    ) -> Result<Option<(PlanItem, Option<(TvSeriesMetadata, Option<EpisodeMetadata>)>)>> {
         // Step 1: Parse filename - use regex for TV shows with cache, AI otherwise
-        let parsed = if media_type == MediaType::TvShows && cached_show.is_some() {
+        let parsed = if media_type == MediaType::TvSeries && cached_show.is_some() {
             // FAST PATH: Extract episode number from filename using regex (no AI call)
             let (season, episode) = parser::extract_episode_from_filename(&video.filename);
             tracing::debug!(
@@ -1950,7 +1988,7 @@ impl Planner {
         // For movies, try to extract IMDB ID from filename for priority lookup
         let filename_imdb_id = metadata::extract_from_filename(&video.filename).imdb_id;
 
-        let (movie_metadata, tvshow_metadata) = match media_type {
+        let (movie_metadata, tv_series_metadata) = match media_type {
             MediaType::Movies => {
                 let movie = self
                     .query_tmdb_movie_with_imdb(&parsed, filename_imdb_id.as_deref())
@@ -1961,7 +1999,7 @@ impl Planner {
                 }
                 (movie, None)
             }
-            MediaType::TvShows => {
+            MediaType::TvSeries => {
                 // Use cached show metadata if available (same directory = same show)
                 if let Some((cached_show_meta, _)) = cached_show {
                     tracing::info!(
@@ -2015,7 +2053,7 @@ impl Planner {
                     // Try to get meaningful folder name (skip quality descriptors)
                     let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
                     let (show, mut episode) = self
-                        .query_tmdb_tvshow_with_folder(&parsed, folder_name.as_deref())
+                        .query_tmdb_tv_series_with_folder(&parsed, folder_name.as_deref())
                         .await?;
                     if show.is_none() {
                         tracing::debug!("No TMDB match for TV show: {}", video.filename);
@@ -2106,7 +2144,7 @@ impl Planner {
         let (target_info, operations) = match self.generate_target_info(
             video,
             &movie_metadata,
-            &tvshow_metadata,
+            &tv_series_metadata,
             &parsed,
             &video_metadata,
             target,
@@ -2129,15 +2167,15 @@ impl Planner {
                 raw_response: parsed.raw_response,
             },
             movie_metadata,
-            tvshow_metadata: tvshow_metadata.as_ref().map(|(show, _)| show.clone()),
-            episode_metadata: tvshow_metadata.as_ref().and_then(|(_, ep)| ep.clone()),
+            tv_series_metadata: tv_series_metadata.as_ref().map(|(show, _)| show.clone()),
+            episode_metadata: tv_series_metadata.as_ref().and_then(|(_, ep)| ep.clone()),
             video_metadata,
             target: target_info,
             operations,
         };
 
         // Return item and tvshow metadata for caching
-        Ok(Some((item, tvshow_metadata)))
+        Ok(Some((item, tv_series_metadata)))
     }
 
     /// Get a meaningful folder name from the path, skipping quality descriptors.
@@ -2248,8 +2286,8 @@ impl Planner {
         let parent_has_title = !clean_parent.is_empty()
             && clean_parent != "Movies"
             && clean_parent != "movies"
-            && clean_parent != "TvShows"
-            && clean_parent != "tvshows"
+            && clean_parent != "TvSeries"
+            && clean_parent != "tv_series"
             && !clean_parent.starts_with(".")
             && clean_parent.len() > 3;
 
@@ -2318,7 +2356,7 @@ impl Planner {
                 };
             }
             // Try to parse as organized TV show
-            if let Some(tv_info) = parser::parse_organized_tvshow_filename(&video.filename) {
+            if let Some(tv_info) = parser::parse_organized_tv_series_filename(&video.filename) {
                 return CandidateMetadata {
                     chinese_title: Some(tv_info.title),
                     season: Some(tv_info.season),
@@ -2468,10 +2506,11 @@ impl Planner {
 
     /// SAFETY CHECK: Validate that no two items have the same target path.
     /// This prevents data loss from files overwriting each other.
+    /// Checks all operation types (Move, Create, Download) for target conflicts.
     pub fn validate_no_duplicate_targets(&self, items: &mut [PlanItem]) -> Result<()> {
         use std::collections::HashMap;
 
-        let mut target_to_sources: HashMap<PathBuf, Vec<(usize, PathBuf)>> = HashMap::new();
+        let mut target_to_sources: HashMap<PathBuf, Vec<(usize, PathBuf, OperationType)>> = HashMap::new();
 
         for (idx, item) in items.iter().enumerate() {
             // 只检查 Pending 状态的项目，跳过已经被标记为 Skip/Error 的项目
@@ -2481,11 +2520,12 @@ impl Planner {
             }
 
             for op in &item.operations {
-                if matches!(op.op, OperationType::Move) {
+                // Check all operation types for target conflicts
+                if matches!(op.op, OperationType::Move | OperationType::Create | OperationType::Download) {
                     target_to_sources
                         .entry(op.to.clone())
                         .or_default()
-                        .push((idx, item.source.path.clone()));
+                        .push((idx, item.source.path.clone(), op.op));
                 }
             }
         }
@@ -2504,7 +2544,7 @@ impl Planner {
             for (target, sources) in duplicates.iter() {
                 warning_msg.push_str(&format!("Target: {:?}\n", target));
                 warning_msg.push_str("  These files would collide:\n");
-                for (idx, src) in sources.iter().skip(1) {
+                for (idx, src, _op_type) in sources.iter().skip(1) {
                     warning_msg.push_str(&format!("    - {:?}\n", src));
                     // Mark duplicate items as failed, remove their operations
                     if let Some(item) = items.get_mut(*idx) {
@@ -2925,65 +2965,91 @@ impl Planner {
             None => return Ok(None),
         };
 
-        // Priority 1: TMDB ID (highest priority - direct lookup)
-        if let Some(tmdb_id) = filename_meta.tmdb_id {
-            tracing::debug!("[DIRECT-ID] Trying TMDB ID: {}", tmdb_id);
-            match self.get_movie_details(client, tmdb_id).await {
-                Ok(Some(movie)) => {
-                    tracing::info!(
-                        "[DIRECT-ID] Found movie via TMDB ID {}: {}",
-                        tmdb_id,
-                        movie.title
-                    );
-                    return Ok(Some(movie));
-                }
-                Ok(None) => {
-                    tracing::warn!("[DIRECT-ID] TMDB ID {} returned no results", tmdb_id);
-                }
-                Err(e) => {
-                    tracing::warn!("[DIRECT-ID] TMDB ID {} lookup failed: {}", tmdb_id, e);
-                }
-            }
-        }
+        // Run TMDB ID and IMDB ID lookups in parallel
+        let tmdb_id = filename_meta.tmdb_id;
+        let imdb_id = filename_meta.imdb_id.clone();
 
-        // Priority 2: IMDB ID (use find API to get TMDB ID)
-        if let Some(ref imdb_id) = filename_meta.imdb_id {
-            tracing::debug!("[DIRECT-ID] Trying IMDB ID: {}", imdb_id);
-            match client.find_movie_by_imdb_id(imdb_id).await {
-                Ok(Some(tmdb_id)) => {
-                    tracing::info!("[DIRECT-ID] IMDB {} -> TMDB {}", imdb_id, tmdb_id);
-                    match self.get_movie_details(client, tmdb_id).await {
-                        Ok(Some(movie)) => {
-                            tracing::info!(
-                                "[DIRECT-ID] Found movie via IMDB ID {}: {}",
-                                imdb_id,
-                                movie.title
-                            );
-                            return Ok(Some(movie));
-                        }
-                        Ok(None) => {
-                            tracing::warn!(
-                                "[DIRECT-ID] TMDB ID {} (from IMDB {}) returned no results",
-                                tmdb_id,
-                                imdb_id
-                            );
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "[DIRECT-ID] TMDB lookup for IMDB {} failed: {}",
-                                imdb_id,
-                                e
-                            );
-                        }
+        let tmdb_lookup = async {
+            if let Some(id) = tmdb_id {
+                tracing::debug!("FILENAME-ID Trying TMDB ID: {}", id);
+                match self.get_movie_details(client, id).await {
+                    Ok(Some(movie)) => {
+                        tracing::info!(
+                            "FILENAME-ID Found movie via TMDB ID {}: {}",
+                            id,
+                            movie.title
+                        );
+                        Some(movie)
+                    }
+                    Ok(None) => {
+                        tracing::warn!("FILENAME-ID TMDB ID {} returned no results", id);
+                        None
+                    }
+                    Err(e) => {
+                        tracing::warn!("FILENAME-ID TMDB ID {} lookup failed: {}", id, e);
+                        None
                     }
                 }
-                Ok(None) => {
-                    tracing::debug!("[DIRECT-ID] No TMDB match for IMDB ID: {}", imdb_id);
-                }
-                Err(e) => {
-                    tracing::warn!("[DIRECT-ID] IMDB ID {} lookup failed: {}", imdb_id, e);
-                }
+            } else {
+                None
             }
+        };
+
+        let imdb_lookup = async {
+            if let Some(ref id) = imdb_id {
+                tracing::debug!("FILENAME-ID Trying IMDB ID: {}", id);
+                match client.find_movie_by_imdb_id(id).await {
+                    Ok(Some(tmdb_id)) => {
+                        tracing::info!("FILENAME-ID IMDB {} -> TMDB {}", id, tmdb_id);
+                        match self.get_movie_details(client, tmdb_id).await {
+                            Ok(Some(movie)) => {
+                                tracing::info!(
+                                    "FILENAME-ID Found movie via IMDB ID {}: {}",
+                                    id,
+                                    movie.title
+                                );
+                                Some(movie)
+                            }
+                            Ok(None) => {
+                                tracing::warn!(
+                                    "FILENAME-ID TMDB ID {} (from IMDB {}) returned no results",
+                                    tmdb_id,
+                                    id
+                                );
+                                None
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "FILENAME-ID TMDB lookup for IMDB {} failed: {}",
+                                    id,
+                                    e
+                                );
+                                None
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        tracing::debug!("FILENAME-ID No TMDB match for IMDB ID: {}", id);
+                        None
+                    }
+                    Err(e) => {
+                        tracing::warn!("FILENAME-ID IMDB ID {} lookup failed: {}", id, e);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        };
+
+        let (tmdb_result, imdb_result) = tokio::join!(tmdb_lookup, imdb_lookup);
+
+        // Priority: TMDB ID result first (highest priority), then IMDB ID result
+        if let Some(movie) = tmdb_result {
+            return Ok(Some(movie));
+        }
+        if let Some(movie) = imdb_result {
+            return Ok(Some(movie));
         }
 
         Ok(None)
@@ -3076,23 +3142,6 @@ impl Planner {
             None => return Ok(None),
         };
 
-        // Priority 0: If IMDB ID is provided, try to find movie directly
-        if let Some(imdb) = imdb_id {
-            tracing::debug!("Trying IMDB ID lookup: {}", imdb);
-            match client.find_movie_by_imdb_id(imdb).await {
-                Ok(Some(tmdb_id)) => {
-                    tracing::info!("TMDB found via IMDB ID {}: tmdb{}", imdb, tmdb_id);
-                    return self.get_movie_details(client, tmdb_id).await;
-                }
-                Ok(None) => {
-                    tracing::debug!("No TMDB match for IMDB ID: {}", imdb);
-                }
-                Err(e) => {
-                    tracing::warn!("IMDB lookup failed for {}: {}", imdb, e);
-                }
-            }
-        }
-
         // Extract Chinese and English titles, filtering out meaningless ones
         let chinese_title = parsed
             .title
@@ -3106,7 +3155,7 @@ impl Planner {
             .filter(|t| self.is_meaningful_title(t));
 
         // If both titles are meaningless, we can't search
-        if chinese_title.is_none() && english_title.is_none() {
+        if chinese_title.is_none() && english_title.is_none() && imdb_id.is_none() {
             tracing::warn!(
                 "Both titles are meaningless, cannot search TMDB: chinese={:?}, english={:?}",
                 parsed.title,
@@ -3116,38 +3165,81 @@ impl Planner {
         }
 
         tracing::debug!(
-            "TMDB movie search: chinese={:?}, english={:?}, year={:?}",
+            "TMDB movie search: chinese={:?}, english={:?}, year={:?}, imdb={:?}",
             chinese_title,
             english_title,
-            parsed.year
+            parsed.year,
+            imdb_id
         );
 
-        // Strategy: Search with both titles and find intersection first
-        // Priority: 1) Common results (both titles match)
-        //           2) English title results
-        //           3) Chinese title results
+        // Run IMDB ID lookup and title searches ALL in parallel
+        let chinese_title_clone = chinese_title.clone();
+        let english_title_clone = english_title.clone();
+        let search_year = parsed.year;
+        let imdb_id_owned = imdb_id.map(|s| s.to_string());
 
-        let mut chinese_results: Vec<crate::services::tmdb::MovieSearchItem> = Vec::new();
-        let mut english_results: Vec<crate::services::tmdb::MovieSearchItem> = Vec::new();
+        let tmdb_search_start = std::time::Instant::now();
+        let (imdb_result, chinese_results, english_results) = tokio::join!(
+            // IMDB ID lookup (runs in parallel with title searches)
+            async {
+                if let Some(ref imdb) = imdb_id_owned {
+                    tracing::debug!("Trying IMDB ID lookup: {}", imdb);
+                    match client.find_movie_by_imdb_id(imdb).await {
+                        Ok(Some(tmdb_id)) => {
+                            tracing::info!("TMDB found via IMDB ID {}: tmdb{}", imdb, tmdb_id);
+                            self.get_movie_details(client, tmdb_id).await.ok().flatten()
+                        }
+                        Ok(None) => {
+                            tracing::debug!("No TMDB match for IMDB ID: {}", imdb);
+                            None
+                        }
+                        Err(e) => {
+                            tracing::warn!("IMDB lookup failed for {}: {}", imdb, e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+            },
+            // Chinese title search
+            async {
+                let mut results: Vec<crate::services::tmdb::MovieSearchItem> = Vec::new();
+                if let Some(ref title) = chinese_title_clone {
+                    let r = if let Some(year) = search_year {
+                        client.search_movie(title, Some(year)).await
+                    } else {
+                        client.search_movie(title, None).await
+                    };
+                    if let Ok(r) = r {
+                        results = r;
+                    }
+                }
+                results
+            },
+            // English title search
+            async {
+                let mut results: Vec<crate::services::tmdb::MovieSearchItem> = Vec::new();
+                if let Some(ref title) = english_title_clone {
+                    let r = if let Some(year) = search_year {
+                        client.search_movie(title, Some(year)).await
+                    } else {
+                        client.search_movie(title, None).await
+                    };
+                    if let Ok(r) = r {
+                        results = r;
+                    }
+                }
+                results
+            },
+        );
 
-        // Search with Chinese title
-        if let Some(ref title) = chinese_title {
-            let results = if let Some(year) = parsed.year {
-                client.search_movie(title, Some(year)).await?
-            } else {
-                client.search_movie(title, None).await?
-            };
-            chinese_results = results;
-        }
+        let tmdb_search_time = tmdb_search_start.elapsed();
+        tracing::debug!("TMDB movie search took {:.2}s", tmdb_search_time.as_secs_f64());
 
-        // Search with English title
-        if let Some(ref title) = english_title {
-            let results = if let Some(year) = parsed.year {
-                client.search_movie(title, Some(year)).await?
-            } else {
-                client.search_movie(title, None).await?
-            };
-            english_results = results;
+        // Priority 0: IMDB ID result (highest priority - direct lookup)
+        if let Some(movie) = imdb_result {
+            return Ok(Some(movie));
         }
 
         // Priority 1: Chinese title results (最高优先级 - 中文结果)
@@ -3427,19 +3519,19 @@ impl Planner {
 
     /// Query TMDB for TV show metadata.
     #[allow(dead_code)]
-    async fn query_tmdb_tvshow(
+    async fn query_tmdb_tv_series(
         &self,
         parsed: &ParsedFilename,
-    ) -> Result<(Option<TvShowMetadata>, Option<EpisodeMetadata>)> {
-        self.query_tmdb_tvshow_with_folder(parsed, None).await
+    ) -> Result<(Option<TvSeriesMetadata>, Option<EpisodeMetadata>)> {
+        self.query_tmdb_tv_series_with_folder(parsed, None).await
     }
 
     /// Query TMDB for TV show metadata with optional folder name as fallback.
-    async fn query_tmdb_tvshow_with_folder(
+    async fn query_tmdb_tv_series_with_folder(
         &self,
         parsed: &ParsedFilename,
         folder_name: Option<&str>,
-    ) -> Result<(Option<TvShowMetadata>, Option<EpisodeMetadata>)> {
+    ) -> Result<(Option<TvSeriesMetadata>, Option<EpisodeMetadata>)> {
         let client = match &self.tmdb_client {
             Some(c) => c,
             None => return Ok((None, None)),
@@ -3546,28 +3638,46 @@ impl Planner {
         //           2) English title results
         //           3) Chinese title results
 
-        let mut chinese_results: Vec<crate::services::tmdb::TvSearchItem> = Vec::new();
-        let mut english_results: Vec<crate::services::tmdb::TvSearchItem> = Vec::new();
+        // Search with Chinese and English titles in parallel
+        let chinese_title_clone = chinese_title.clone();
+        let english_title_clone = english_title.clone();
 
-        // Search with Chinese title
-        if let Some(ref title) = chinese_title {
-            let results = client.search_tv(title, search_year).await?;
-            if results.is_empty() {
-                chinese_results = client.search_tv(title, None).await?;
-            } else {
-                chinese_results = results;
-            }
-        }
+        let tmdb_search_start = std::time::Instant::now();
+        let (chinese_results, english_results) = tokio::join!(
+            async {
+                let mut results: Vec<crate::services::tmdb::TvSearchItem> = Vec::new();
+                if let Some(ref title) = chinese_title_clone {
+                    if let Ok(r) = client.search_tv(title, search_year).await {
+                        if r.is_empty() {
+                            if let Ok(r2) = client.search_tv(title, None).await {
+                                results = r2;
+                            }
+                        } else {
+                            results = r;
+                        }
+                    }
+                }
+                results
+            },
+            async {
+                let mut results: Vec<crate::services::tmdb::TvSearchItem> = Vec::new();
+                if let Some(ref title) = english_title_clone {
+                    if let Ok(r) = client.search_tv(title, search_year).await {
+                        if r.is_empty() {
+                            if let Ok(r2) = client.search_tv(title, None).await {
+                                results = r2;
+                            }
+                        } else {
+                            results = r;
+                        }
+                    }
+                }
+                results
+            },
+        );
 
-        // Search with English title
-        if let Some(ref title) = english_title {
-            let results = client.search_tv(title, search_year).await?;
-            if results.is_empty() {
-                english_results = client.search_tv(title, None).await?;
-            } else {
-                english_results = results;
-            }
-        }
+        let tmdb_search_time = tmdb_search_start.elapsed();
+        tracing::debug!("TMDB TV search took {:.2}s", tmdb_search_time.as_secs_f64());
 
         // Priority 1: Find common results (intersection by TMDB ID)
         if !chinese_results.is_empty() && !english_results.is_empty() {
@@ -3589,7 +3699,7 @@ impl Planner {
                         chinese_title.as_deref().unwrap_or(""),
                         english_title.as_deref().unwrap_or("")
                     );
-                    return self.get_tvshow_details(client, best.id, parsed).await;
+                    return self.get_tv_series_details(client, best.id, parsed).await;
                 }
             }
         }
@@ -3602,7 +3712,7 @@ impl Planner {
             let query = chinese_title.as_deref().unwrap_or("");
             if let Some(best) = self.select_best_tv_match(query, &chinese_results) {
                 tracing::info!("TMDB TV found (Chinese match): {}", best.name);
-                return self.get_tvshow_details(client, best.id, parsed).await;
+                return self.get_tv_series_details(client, best.id, parsed).await;
             }
         }
 
@@ -3611,7 +3721,7 @@ impl Planner {
             let query = english_title.as_deref().unwrap_or("");
             if let Some(best) = self.select_best_tv_match(query, &english_results) {
                 tracing::info!("TMDB TV found (English match): {}", best.name);
-                return self.get_tvshow_details(client, best.id, parsed).await;
+                return self.get_tv_series_details(client, best.id, parsed).await;
             }
         }
 
@@ -3800,12 +3910,12 @@ impl Planner {
     }
 
     /// Get TV show details from TMDB.
-    async fn get_tvshow_details(
+    async fn get_tv_series_details(
         &self,
         client: &TmdbClient,
         tv_id: u64,
         parsed: &ParsedFilename,
-    ) -> Result<(Option<TvShowMetadata>, Option<EpisodeMetadata>)> {
+    ) -> Result<(Option<TvSeriesMetadata>, Option<EpisodeMetadata>)> {
         let details = client.get_tv_details(tv_id).await?;
 
         // Extract year from first_air_date
@@ -3836,28 +3946,42 @@ impl Planner {
             .map(|g| g.iter().map(|x| x.name.clone()).collect())
             .unwrap_or_default();
 
-        // Extract countries - use production_countries first, then origin_country as fallback
-        let (countries, country_codes) = if let Some(ref pc) = details.production_countries {
-            if !pc.is_empty() {
-                (
-                    pc.iter().map(|x| x.name.clone()).collect(),
-                    pc.iter().map(|x| x.iso_3166_1.clone()).collect(),
-                )
-            } else if let Some(ref oc) = details.origin_country {
-                // Use origin_country as fallback (only has codes, map to country names)
-                let codes: Vec<String> = oc.clone();
-                let names: Vec<String> = oc.iter().map(|c| country_code_to_name(c)).collect();
-                (names, codes)
+        // Always prefer origin_country over production_countries
+        // origin_country is more accurate for the content's true origin
+        // production_countries may include co-production countries or have TMDB data errors
+        // Example: "在劫难逃" has origin_country=["CN"] but production_countries=[{MO}]
+        // This matches the logic in build_tv_series_metadata_from_details for consistency
+        let (country_codes, countries): (Vec<String>, Vec<String>) =
+            if let Some(ref origin) = details.origin_country {
+                if !origin.is_empty() {
+                    let codes = origin.clone();
+                    let names = origin
+                        .iter()
+                        .map(|code| country_code_to_name(code))
+                        .collect();
+                    (codes, names)
+                } else {
+                    (Vec::new(), Vec::new())
+                }
             } else {
                 (Vec::new(), Vec::new())
+            };
+
+        // Fallback: use production_countries if origin_country is empty
+        let (country_codes, countries) = if country_codes.is_empty() {
+            if let Some(ref pc) = details.production_countries {
+                if !pc.is_empty() {
+                    let codes = pc.iter().map(|x| x.iso_3166_1.clone()).collect();
+                    let names = pc.iter().map(|c| country_code_to_name(&c.iso_3166_1)).collect();
+                    (codes, names)
+                } else {
+                    (country_codes, countries)
+                }
+            } else {
+                (country_codes, countries)
             }
-        } else if let Some(ref oc) = details.origin_country {
-            // Use origin_country as fallback
-            let codes: Vec<String> = oc.clone();
-            let names: Vec<String> = oc.iter().map(|c| country_code_to_name(c)).collect();
-            (names, codes)
         } else {
-            (Vec::new(), Vec::new())
+            (country_codes, countries)
         };
 
         // Extract networks
@@ -3891,7 +4015,7 @@ impl Planner {
             })
             .unwrap_or_default();
 
-        let show = TvShowMetadata {
+        let show = TvSeriesMetadata {
             tmdb_id: details.id,
             imdb_id: details.external_ids.and_then(|e| e.imdb_id),
             original_name: details.original_name,
@@ -4283,6 +4407,7 @@ impl Planner {
     ///
     /// When multiple video files exist in the same directory (e.g., different resolutions),
     /// this function uses the cached movie metadata from the first matched file.
+    #[allow(dead_code)]
     async fn process_sibling_movie(
         &self,
         video: &VideoFile,
@@ -4339,7 +4464,7 @@ impl Planner {
                 raw_response: parsed.raw_response,
             },
             movie_metadata: Some(cached_movie.clone()),
-            tvshow_metadata: None,
+            tv_series_metadata: None,
             episode_metadata: None,
             video_metadata,
             target: target_info,
@@ -4354,7 +4479,7 @@ impl Planner {
         &self,
         video: &VideoFile,
         movie_metadata: &Option<MovieMetadata>,
-        tvshow_metadata: &Option<(TvShowMetadata, Option<EpisodeMetadata>)>,
+        tv_series_metadata: &Option<(TvSeriesMetadata, Option<EpisodeMetadata>)>,
         parsed: &ParsedFilename,
         video_metadata: &VideoMetadata,
         target: &Path,
@@ -4398,13 +4523,13 @@ impl Planner {
 
                 (folder, filename, nfo, None)
             }
-            MediaType::TvShows => {
-                let (show, episode) = tvshow_metadata
+            MediaType::TvSeries => {
+                let (show, episode) = tv_series_metadata
                     .as_ref()
                     .ok_or_else(|| crate::Error::other("Missing TV show metadata"))?;
 
                 // TV show folder: ShowName (Year)
-                let folder = gen_folder::generate_tvshow_folder(show);
+                let folder = gen_folder::generate_tv_series_folder(show);
 
                 // Season folder: Season XX
                 let season_num = parsed.season.unwrap_or(1);
@@ -4443,8 +4568,8 @@ impl Planner {
                     .as_ref()
                     .map(|m| format_language_folder(&m.original_language))
             }
-            MediaType::TvShows => {
-                tvshow_metadata
+            MediaType::TvSeries => {
+                tv_series_metadata
                     .as_ref()
                     .map(|(show, _)| format_language_folder(&show.original_language))
             }
@@ -4526,7 +4651,7 @@ impl Planner {
                 .as_ref()
                 .and_then(|m| m.poster_urls.first().cloned())
                 .or_else(|| {
-                    tvshow_metadata
+                    tv_series_metadata
                         .as_ref()
                         .and_then(|(s, _)| s.poster_urls.first().cloned())
                 });
@@ -4728,7 +4853,7 @@ impl Planner {
         &self,
         samples: &[VideoFile],
         items: &[PlanItem],
-        target: &Path,
+        _target: &Path,
     ) -> Vec<SampleItem> {
         samples
             .iter()
@@ -4740,7 +4865,14 @@ impl Planner {
                 });
 
                 matching_item.map(|item| {
-                    let target_folder = target.join(&item.target.folder).join("Sample");
+                    // Use the full target path's parent to get the correct directory
+                    // (includes language folder like EN_English/MovieFolder)
+                    let target_folder = item
+                        .target
+                        .full_path
+                        .parent()
+                        .unwrap_or(_target)
+                        .join("Sample");
                     let target_file = target_folder.join(&sample.filename);
 
                     SampleItem {

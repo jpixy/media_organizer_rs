@@ -97,7 +97,7 @@ pub fn export_to_file(output_path: &Path, options: &ExportOptions) -> Result<Exp
 
     let mut stats = ExportStatistics {
         total_movies: 0,
-        total_tvshows: 0,
+        total_tv_series: 0,
         total_disks: 0,
         total_sessions: 0,
         export_size_bytes: 0,
@@ -143,7 +143,7 @@ pub fn export_to_file(output_path: &Path, options: &ExportOptions) -> Result<Exp
             // Parse for statistics
             if let Ok(index) = serde_json::from_str::<CentralIndex>(&central_content) {
                 stats.total_movies = index.movies.len();
-                stats.total_tvshows = index.tvshows.len();
+                stats.total_tv_series = index.tv_series.len();
                 stats.total_disks = index.disks.len();
             }
 
@@ -319,7 +319,7 @@ pub fn preview_import(backup_path: &Path) -> Result<ImportPreview> {
         }
         will_import.push(format!(
             "Central index ({} movies, {} TV shows)",
-            manifest.statistics.total_movies, manifest.statistics.total_tvshows
+            manifest.statistics.total_movies, manifest.statistics.total_tv_series
         ));
     }
 
@@ -465,7 +465,7 @@ pub struct ImportResult {
     pub imported: usize,
     pub skipped: usize,
     pub new_movies: usize,
-    pub new_tvshows: usize,
+    pub new_tv_series: usize,
 }
 
 /// Generate auto filename with timestamp.

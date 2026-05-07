@@ -8,7 +8,7 @@
 //! - Edge cases (empty scans, repeated scans, path updates)
 
 use media_organizer::core::indexer::{merge_disk_into_central, search};
-use media_organizer::models::index::{CentralIndex, DiskIndex, DiskInfo, MovieEntry, TvShowEntry};
+use media_organizer::models::index::{CentralIndex, DiskIndex, DiskInfo, MovieEntry, TvSeriesEntry};
 use std::collections::HashMap;
 
 // ========== TEST FIXTURES ==========
@@ -25,20 +25,20 @@ fn create_movie_disk_index(label: &str, path: &str, movies: Vec<MovieEntry>) -> 
             uuid: Some("test-uuid".to_string()),
             last_indexed: chrono::Utc::now().to_rfc3339(),
             movie_count: movies.len(),
-            tvshow_count: 0,
+            tv_series_count: 0,
             total_size_bytes: movies.iter().map(|m| m.size_bytes).sum(),
             base_path: path.to_string(),
             paths,
         },
         movies,
-        tvshows: Vec::new(),
+        tv_series: Vec::new(),
     }
 }
 
 /// Create a test DiskIndex with TV shows
-fn create_tvshow_disk_index(label: &str, path: &str, tvshows: Vec<TvShowEntry>) -> DiskIndex {
+fn create_tv_series_disk_index(label: &str, path: &str, tv_series: Vec<TvSeriesEntry>) -> DiskIndex {
     let mut paths = HashMap::new();
-    paths.insert("tvshows".to_string(), path.to_string());
+    paths.insert("tv_series".to_string(), path.to_string());
 
     DiskIndex {
         version: "1.0".to_string(),
@@ -47,13 +47,13 @@ fn create_tvshow_disk_index(label: &str, path: &str, tvshows: Vec<TvShowEntry>) 
             uuid: Some("test-uuid".to_string()),
             last_indexed: chrono::Utc::now().to_rfc3339(),
             movie_count: 0,
-            tvshow_count: tvshows.len(),
-            total_size_bytes: tvshows.iter().map(|t| t.size_bytes).sum(),
+            tv_series_count: tv_series.len(),
+            total_size_bytes: tv_series.iter().map(|t| t.size_bytes).sum(),
             base_path: path.to_string(),
             paths,
         },
         movies: Vec::new(),
-        tvshows,
+        tv_series,
     }
 }
 
@@ -85,8 +85,8 @@ fn create_test_movie(id: &str, title: &str, disk: &str, tmdb_id: u64) -> MovieEn
 }
 
 /// Create a test TV show entry
-fn create_test_tvshow(id: &str, title: &str, disk: &str, tmdb_id: u64) -> TvShowEntry {
-    TvShowEntry {
+fn create_test_tv_series(id: &str, title: &str, disk: &str, tmdb_id: u64) -> TvSeriesEntry {
+    TvSeriesEntry {
         id: id.to_string(),
         disk: disk.to_string(),
         disk_uuid: Some("test-uuid".to_string()),
@@ -122,11 +122,11 @@ fn test_merge_disk_into_central_new_disk() {
 
     assert_eq!(central.disks.len(), 1);
     assert_eq!(central.movies.len(), 2);
-    assert_eq!(central.tvshows.len(), 0);
+    assert_eq!(central.tv_series.len(), 0);
 
     let disk_info = central.disks.get("TestDisk").unwrap();
     assert_eq!(disk_info.movie_count, 2);
-    assert_eq!(disk_info.tvshow_count, 0);
+    assert_eq!(disk_info.tv_series_count, 0);
     assert!(disk_info.paths.contains_key("movies"));
 }
 
@@ -140,36 +140,36 @@ fn test_merge_disk_into_central_composite_storage() {
     merge_disk_into_central(&mut central, movie_disk);
 
     assert_eq!(central.movies.len(), 1);
-    assert_eq!(central.tvshows.len(), 0);
+    assert_eq!(central.tv_series.len(), 0);
 
-    // Second: add tvshows (same disk label, different path)
-    let tvshows = vec![create_test_tvshow("t1", "TV Show 1", "TestDisk", 2001)];
-    let tvshow_disk = create_tvshow_disk_index("TestDisk", "/mnt/TestDisk/TVShows", tvshows);
-    merge_disk_into_central(&mut central, tvshow_disk);
+    // Second: add tv_series (same disk label, different path)
+    let tv_series = vec![create_test_tv_series("t1", "TV Show 1", "TestDisk", 2001)];
+    let tv_series_disk = create_tv_series_disk_index("TestDisk", "/mnt/TestDisk/TV_Series", tv_series);
+    merge_disk_into_central(&mut central, tv_series_disk);
 
     // Verify composite storage works
     assert_eq!(central.disks.len(), 1, "Should still be one disk");
     assert_eq!(central.movies.len(), 1, "Movies should be preserved");
-    assert_eq!(central.tvshows.len(), 1, "TV shows should be added");
+    assert_eq!(central.tv_series.len(), 1, "TV shows should be added");
 
     let disk_info = central.disks.get("TestDisk").unwrap();
     assert_eq!(disk_info.movie_count, 1);
-    assert_eq!(disk_info.tvshow_count, 1);
+    assert_eq!(disk_info.tv_series_count, 1);
     assert!(
         disk_info.paths.contains_key("movies"),
         "Movies path should exist"
     );
     assert!(
-        disk_info.paths.contains_key("tvshows"),
-        "TVShows path should exist"
+        disk_info.paths.contains_key("tv_series"),
+        "TV_Series path should exist"
     );
     assert_eq!(
         disk_info.paths.get("movies").unwrap(),
         "/mnt/TestDisk/Movies"
     );
     assert_eq!(
-        disk_info.paths.get("tvshows").unwrap(),
-        "/mnt/TestDisk/TVShows"
+        disk_info.paths.get("tv_series").unwrap(),
+        "/mnt/TestDisk/TV_Series"
     );
 }
 
@@ -177,17 +177,17 @@ fn test_merge_disk_into_central_composite_storage() {
 fn test_merge_disk_into_central_update_movies_only() {
     let mut central = CentralIndex::default();
 
-    // Initial: add movies and tvshows
+    // Initial: add movies and tv_series
     let movies = vec![create_test_movie("m1", "Movie 1", "TestDisk", 1001)];
     let movie_disk = create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", movies);
     merge_disk_into_central(&mut central, movie_disk);
 
-    let tvshows = vec![create_test_tvshow("t1", "TV Show 1", "TestDisk", 2001)];
-    let tvshow_disk = create_tvshow_disk_index("TestDisk", "/mnt/TestDisk/TVShows", tvshows);
-    merge_disk_into_central(&mut central, tvshow_disk);
+    let tv_series = vec![create_test_tv_series("t1", "TV Show 1", "TestDisk", 2001)];
+    let tv_series_disk = create_tv_series_disk_index("TestDisk", "/mnt/TestDisk/TV_Series", tv_series);
+    merge_disk_into_central(&mut central, tv_series_disk);
 
     assert_eq!(central.movies.len(), 1);
-    assert_eq!(central.tvshows.len(), 1);
+    assert_eq!(central.tv_series.len(), 1);
 
     // Update: re-scan movies with new movie
     let new_movies = vec![
@@ -198,13 +198,13 @@ fn test_merge_disk_into_central_update_movies_only() {
         create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", new_movies);
     merge_disk_into_central(&mut central, updated_movie_disk);
 
-    // Verify: movies updated, tvshows preserved
+    // Verify: movies updated, tv_series preserved
     assert_eq!(central.movies.len(), 2, "Movies should be updated to 2");
-    assert_eq!(central.tvshows.len(), 1, "TV shows should be preserved");
+    assert_eq!(central.tv_series.len(), 1, "TV shows should be preserved");
 
     let disk_info = central.disks.get("TestDisk").unwrap();
     assert_eq!(disk_info.movie_count, 2);
-    assert_eq!(disk_info.tvshow_count, 1);
+    assert_eq!(disk_info.tv_series_count, 1);
 }
 
 #[test]
@@ -230,24 +230,24 @@ fn test_merge_disk_into_central_separate_disks() {
 }
 
 /// Test: Composite storage order independence
-/// Verifies that the order of adding movies vs tvshows doesn't affect the result
+/// Verifies that the order of adding movies vs tv_series doesn't affect the result
 #[test]
 fn test_composite_storage_order_independence() {
-    // Order 1: movies first, then tvshows
+    // Order 1: movies first, then tv_series
     let mut central1 = CentralIndex::default();
     let movies = vec![create_test_movie("m1", "Movie 1", "Disk", 1001)];
     let movie_disk = create_movie_disk_index("Disk", "/mnt/Disk/Movies", movies);
     merge_disk_into_central(&mut central1, movie_disk);
 
-    let tvshows = vec![create_test_tvshow("t1", "Show 1", "Disk", 2001)];
-    let tvshow_disk = create_tvshow_disk_index("Disk", "/mnt/Disk/TVShows", tvshows);
-    merge_disk_into_central(&mut central1, tvshow_disk);
+    let tv_series = vec![create_test_tv_series("t1", "Show 1", "Disk", 2001)];
+    let tv_series_disk = create_tv_series_disk_index("Disk", "/mnt/Disk/TV_Series", tv_series);
+    merge_disk_into_central(&mut central1, tv_series_disk);
 
-    // Order 2: tvshows first, then movies
+    // Order 2: tv_series first, then movies
     let mut central2 = CentralIndex::default();
-    let tvshows2 = vec![create_test_tvshow("t1", "Show 1", "Disk", 2001)];
-    let tvshow_disk2 = create_tvshow_disk_index("Disk", "/mnt/Disk/TVShows", tvshows2);
-    merge_disk_into_central(&mut central2, tvshow_disk2);
+    let tv_series2 = vec![create_test_tv_series("t1", "Show 1", "Disk", 2001)];
+    let tv_series_disk2 = create_tv_series_disk_index("Disk", "/mnt/Disk/TV_Series", tv_series2);
+    merge_disk_into_central(&mut central2, tv_series_disk2);
 
     let movies2 = vec![create_test_movie("m1", "Movie 1", "Disk", 1001)];
     let movie_disk2 = create_movie_disk_index("Disk", "/mnt/Disk/Movies", movies2);
@@ -256,14 +256,14 @@ fn test_composite_storage_order_independence() {
     // Both should have identical results
     assert_eq!(central1.disks.len(), central2.disks.len());
     assert_eq!(central1.movies.len(), central2.movies.len());
-    assert_eq!(central1.tvshows.len(), central2.tvshows.len());
+    assert_eq!(central1.tv_series.len(), central2.tv_series.len());
 
     // Both should have both paths
     let disk1 = central1.disks.get("Disk").unwrap();
     let disk2 = central2.disks.get("Disk").unwrap();
     assert_eq!(disk1.paths.len(), disk2.paths.len());
     assert!(disk1.paths.contains_key("movies"));
-    assert!(disk1.paths.contains_key("tvshows"));
+    assert!(disk1.paths.contains_key("tv_series"));
 }
 
 // ========== EDGE CASE TESTS ==========
@@ -314,18 +314,18 @@ fn test_empty_scan_preserves_other_media_type() {
 
     assert_eq!(central.movies.len(), 1);
 
-    // Scan tvshows with empty result (no tvshows found)
-    let empty_tvshow_disk = create_tvshow_disk_index("Disk", "/mnt/Disk/TVShows", vec![]);
-    merge_disk_into_central(&mut central, empty_tvshow_disk);
+    // Scan tv_series with empty result (no tv_series found)
+    let empty_tv_series_disk = create_tv_series_disk_index("Disk", "/mnt/Disk/TV_Series", vec![]);
+    merge_disk_into_central(&mut central, empty_tv_series_disk);
 
     // Movies should still exist
     assert_eq!(central.movies.len(), 1, "Movies should be preserved");
-    assert_eq!(central.tvshows.len(), 0, "TVShows should be empty");
+    assert_eq!(central.tv_series.len(), 0, "TV_Series should be empty");
 
     // Both paths should exist
     let disk = central.disks.get("Disk").unwrap();
     assert!(disk.paths.contains_key("movies"));
-    assert!(disk.paths.contains_key("tvshows"));
+    assert!(disk.paths.contains_key("tv_series"));
 }
 
 /// Test: No duplicate entries after repeated scans
@@ -434,7 +434,7 @@ fn test_search_nonexistent_returns_empty() {
     );
 
     assert_eq!(results.movies.len(), 0);
-    assert_eq!(results.tvshows.len(), 0);
+    assert_eq!(results.tv_series.len(), 0);
 }
 
 /// Test: Search is case-insensitive
@@ -743,19 +743,19 @@ fn test_remove_disk_from_central() {
     let movie_disk = create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", movies);
     merge_disk_into_central(&mut central, movie_disk);
 
-    // Add tvshows to same disk
-    let tvshows = vec![create_test_tvshow("t1", "TV Show 1", "TestDisk", 2001)];
-    let tvshow_disk = create_tvshow_disk_index("TestDisk", "/mnt/TestDisk/TVShows", tvshows);
-    merge_disk_into_central(&mut central, tvshow_disk);
+    // Add tv_series to same disk
+    let tv_series = vec![create_test_tv_series("t1", "TV Show 1", "TestDisk", 2001)];
+    let tv_series_disk = create_tv_series_disk_index("TestDisk", "/mnt/TestDisk/TV_Series", tv_series);
+    merge_disk_into_central(&mut central, tv_series_disk);
 
     assert_eq!(central.disks.len(), 1);
     assert_eq!(central.movies.len(), 1);
-    assert_eq!(central.tvshows.len(), 1);
+    assert_eq!(central.tv_series.len(), 1);
 
     // Simulate remove disk
     let disk_label = "TestDisk";
     central.movies.retain(|m| m.disk != disk_label);
-    central.tvshows.retain(|t| t.disk != disk_label);
+    central.tv_series.retain(|t| t.disk != disk_label);
     central.disks.remove(disk_label);
     central.rebuild_indexes();
     central.update_statistics();
@@ -763,9 +763,9 @@ fn test_remove_disk_from_central() {
     // Verify disk is removed
     assert_eq!(central.disks.len(), 0);
     assert_eq!(central.movies.len(), 0);
-    assert_eq!(central.tvshows.len(), 0);
+    assert_eq!(central.tv_series.len(), 0);
     assert_eq!(central.statistics.total_movies, 0);
-    assert_eq!(central.statistics.total_tvshows, 0);
+    assert_eq!(central.statistics.total_tv_series, 0);
 }
 
 /// Test: Remove one disk doesn't affect other disks
@@ -861,7 +861,7 @@ fn test_backward_compatibility_base_path() {
         "uuid": "old-uuid",
         "last_indexed": "2024-01-01T00:00:00Z",
         "movie_count": 10,
-        "tvshow_count": 0,
+        "tv_series_count": 0,
         "total_size_bytes": 10000000,
         "base_path": "/mnt/OldDisk/Movies"
     }"#;

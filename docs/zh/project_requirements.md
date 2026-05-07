@@ -5,7 +5,7 @@
 开发一个仅命令行（CLI）的媒体整理工具。用户提供一个目录路径，该路径下只包含一种媒体类型：
 
 - 要么全部是电影（movies）
-- 要么全部是电视剧（tvshows）
+- 要么全部是电视剧（tv_series）
 
 工具需要完成：识别文件信息、匹配 TMDB 元数据、生成规范化目录结构、输出 NFO/海报、支持安全执行与回滚，并提供后续索引与搜索能力。
 
@@ -36,7 +36,7 @@
 
 ### 3.1 输入约束
 
-- 输入目录内媒体类型由用户明确指定为 `movies` 或 `tvshows`
+- 输入目录内媒体类型由用户明确指定为 `movies` 或 `tv_series`
 - 程序无需自动判断电影/剧集类型
 
 ### 3.2 目录复杂度支持
@@ -185,7 +185,7 @@
 ### 7.1 基础整理命令
 
 - `plan movies <source> [--target]`
-- `plan tvshows <source> [--target]`
+- `plan tv_series <source> [--target]`
 - `execute <plan.json>`
 - `rollback <rollback.json> [--dry-run]`
 - `verify <path>`
@@ -369,7 +369,7 @@ mode = "post_check"
 
 ## 14. 需求验收清单（最小可交付）
 
-- [ ] 可对 movies/tvshows 分别执行 plan/execute/rollback
+- [ ] 可对 movies/tv_series 分别执行 plan/execute/rollback
 - [ ] 输出命名符合规范并生成 NFO
 - [ ] 支持 sample/subtitle/extras 归档
 - [ ] 支持 verify 子命令

@@ -1,6 +1,6 @@
 //! Filename generator.
 
-use crate::models::media::{EpisodeMetadata, MovieMetadata, TvShowMetadata, VideoMetadata};
+use crate::models::media::{EpisodeMetadata, MovieMetadata, TvSeriesMetadata, VideoMetadata};
 
 /// Format resolution string with actual dimensions.
 ///
@@ -99,13 +99,15 @@ pub fn generate_movie_filename_with_disc(
         parts.push(format!("[{}]", sanitize_filename(&movie.title)));
     }
 
-    // Add edition if present
+    // Add edition if present, then year
+    // When edition exists: [Title](edition)-(year)
+    // When no edition: [Title](year)
     if let Some(ed) = edition {
         parts.push(format!("({})", ed));
+        parts.push(format!("-({})", movie.year));
+    } else {
+        parts.push(format!("({})", movie.year));
     }
-
-    // Add year
-    parts.push(format!("({})", movie.year));
 
     // Add video info with actual resolution
     parts.push(format!("-{}", format_resolution(video)));
@@ -127,7 +129,7 @@ pub fn generate_movie_filename_with_disc(
 ///
 /// Format: `[${showOriginalTitle}]-S${seasonNr2}E${episodeNr2}-[${originalTitle}]-[${title}]-${format}-${codec}-${bitDepth}bit-${audioCodec}-${audioChannels}`
 pub fn generate_episode_filename(
-    show: &TvShowMetadata,
+    show: &TvSeriesMetadata,
     episode: &EpisodeMetadata,
     video: &VideoMetadata,
     extension: &str,

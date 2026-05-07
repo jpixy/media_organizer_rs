@@ -1,7 +1,7 @@
 //! Plan data model.
 
 use super::media::{
-    EpisodeMetadata, MediaType, MovieMetadata, TvShowMetadata, VideoFile, VideoMetadata,
+    EpisodeMetadata, MediaType, MovieMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -13,7 +13,7 @@ pub struct Plan {
     pub version: String,
     /// Creation timestamp.
     pub created_at: String,
-    /// Media type (movies or tvshows).
+    /// Media type (movies or tv_series).
     pub media_type: Option<MediaType>,
     /// Source directory.
     pub source_path: PathBuf,
@@ -43,7 +43,7 @@ pub struct PlanItem {
     pub movie_metadata: Option<MovieMetadata>,
     /// TMDB metadata (for TV shows).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tvshow_metadata: Option<TvShowMetadata>,
+    pub tv_series_metadata: Option<TvSeriesMetadata>,
     /// Episode metadata (for TV shows).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub episode_metadata: Option<EpisodeMetadata>,

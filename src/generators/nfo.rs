@@ -1,6 +1,6 @@
 //! NFO file generator (Kodi compatible).
 
-use crate::models::media::{EpisodeMetadata, MovieMetadata, TvShowMetadata};
+use crate::models::media::{EpisodeMetadata, MovieMetadata, TvSeriesMetadata};
 
 /// Generate movie NFO content (Kodi/Emby/Jellyfin compatible).
 pub fn generate_movie_nfo(movie: &MovieMetadata) -> String {
@@ -159,7 +159,7 @@ pub fn generate_movie_nfo(movie: &MovieMetadata) -> String {
 }
 
 /// Generate TV show NFO content.
-pub fn generate_tvshow_nfo(show: &TvShowMetadata) -> String {
+pub fn generate_tv_series_nfo(show: &TvSeriesMetadata) -> String {
     let mut nfo = String::new();
 
     nfo.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
@@ -272,7 +272,7 @@ pub fn generate_tvshow_nfo(show: &TvShowMetadata) -> String {
 }
 
 /// Generate episode NFO content.
-pub fn generate_episode_nfo(show: &TvShowMetadata, episode: &EpisodeMetadata) -> String {
+pub fn generate_episode_nfo(show: &TvSeriesMetadata, episode: &EpisodeMetadata) -> String {
     let mut nfo = String::new();
 
     nfo.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");

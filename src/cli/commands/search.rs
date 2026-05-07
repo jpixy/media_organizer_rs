@@ -63,7 +63,7 @@ fn print_json(results: &indexer::SearchResults) {
     #[derive(serde::Serialize)]
     struct JsonOutput {
         movies: Vec<MovieJson>,
-        tvshows: Vec<TvShowJson>,
+        tv_series: Vec<TvSeriesJson>,
     }
 
     #[derive(serde::Serialize)]
@@ -78,7 +78,7 @@ fn print_json(results: &indexer::SearchResults) {
     }
 
     #[derive(serde::Serialize)]
-    struct TvShowJson {
+    struct TvSeriesJson {
         title: String,
         original_title: Option<String>,
         year: Option<u16>,
@@ -103,10 +103,10 @@ fn print_json(results: &indexer::SearchResults) {
                 imdb_id: m.imdb_id.clone(),
             })
             .collect(),
-        tvshows: results
-            .tvshows
+        tv_series: results
+            .tv_series
             .iter()
-            .map(|t| TvShowJson {
+            .map(|t| TvSeriesJson {
                 title: t.title.clone(),
                 original_title: t.original_title.clone(),
                 year: t.year,
@@ -124,7 +124,7 @@ fn print_json(results: &indexer::SearchResults) {
 
 /// Print results in simple format.
 fn print_simple(results: &indexer::SearchResults, show_status: bool) {
-    if results.movies.is_empty() && results.tvshows.is_empty() {
+    if results.movies.is_empty() && results.tv_series.is_empty() {
         println!("No results found.");
         return;
     }
@@ -149,7 +149,7 @@ fn print_simple(results: &indexer::SearchResults, show_status: bool) {
         );
     }
 
-    for tvshow in &results.tvshows {
+    for tvshow in &results.tv_series {
         let status = if show_status {
             if indexer::is_disk_online(&tvshow.disk) {
                 " (Online)"
@@ -172,12 +172,12 @@ fn print_simple(results: &indexer::SearchResults, show_status: bool) {
 
 /// Print results as table.
 fn print_table(results: &indexer::SearchResults, show_status: bool) {
-    if results.movies.is_empty() && results.tvshows.is_empty() {
+    if results.movies.is_empty() && results.tv_series.is_empty() {
         println!("{}", "No results found.".yellow());
         return;
     }
 
-    let total = results.movies.len() + results.tvshows.len();
+    let total = results.movies.len() + results.tv_series.len();
     println!("{}", format!("Found {} results:", total).bold().cyan());
     println!();
 
@@ -222,10 +222,10 @@ fn print_table(results: &indexer::SearchResults, show_status: bool) {
         println!();
     }
 
-    if !results.tvshows.is_empty() {
+    if !results.tv_series.is_empty() {
         println!(
             "{}",
-            format!("TV Shows ({}):", results.tvshows.len()).bold()
+            format!("TV Shows ({}):", results.tv_series.len()).bold()
         );
         println!(
             " {:>4} | {:>4} | {:<40} | {:<12} | {}",
@@ -237,7 +237,7 @@ fn print_table(results: &indexer::SearchResults, show_status: bool) {
         );
         println!("{}", "-".repeat(80));
 
-        for (i, tvshow) in results.tvshows.iter().enumerate() {
+        for (i, tvshow) in results.tv_series.iter().enumerate() {
             let title = if tvshow.title.chars().count() > 38 {
                 format!("{}...", tvshow.title.chars().take(35).collect::<String>())
             } else {

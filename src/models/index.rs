@@ -17,7 +17,7 @@ pub struct CentralIndex {
     /// All indexed movies
     pub movies: Vec<MovieEntry>,
     /// All indexed TV shows
-    pub tvshows: Vec<TvShowEntry>,
+    pub tv_series: Vec<TvSeriesEntry>,
     /// Movie collections (series like Pirates of the Caribbean)
     pub collections: HashMap<u64, CollectionInfo>,
     /// Search indexes for fast lookup
@@ -34,7 +34,7 @@ impl Default for CentralIndex {
             updated_at: chrono::Utc::now().to_rfc3339(),
             disks: HashMap::new(),
             movies: Vec::new(),
-            tvshows: Vec::new(),
+            tv_series: Vec::new(),
             collections: HashMap::new(),
             indexes: SearchIndexes::default(),
             statistics: IndexStatistics::default(),
@@ -45,7 +45,7 @@ impl Default for CentralIndex {
 /// Information about an indexed disk.
 ///
 /// Supports composite storage: one disk label can have multiple media types
-/// (movies and tvshows) with different paths.
+/// (movies and tv_series) with different paths.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInfo {
     /// Disk label (user-friendly name)
@@ -57,13 +57,13 @@ pub struct DiskInfo {
     /// Number of movies on this disk
     pub movie_count: usize,
     /// Number of TV shows on this disk
-    pub tvshow_count: usize,
+    pub tv_series_count: usize,
     /// Total size in bytes
     pub total_size_bytes: u64,
     /// Base path when indexed (legacy, for backward compatibility)
     #[serde(default)]
     pub base_path: String,
-    /// Paths by media type: {"movies": "/path/Movies", "tvshows": "/path/TVShows"}
+    /// Paths by media type: {"movies": "/path/Movies", "tv_series": "/path/TV_Series"}
     /// Extensible for future media types (e.g., "music", "audiobooks")
     #[serde(default)]
     pub paths: HashMap<String, String>,
@@ -118,7 +118,7 @@ pub struct MovieEntry {
 
 /// A TV show entry in the index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TvShowEntry {
+pub struct TvSeriesEntry {
     /// Unique identifier
     pub id: String,
     /// Disk label where this TV show is stored
@@ -208,7 +208,7 @@ pub struct IndexStatistics {
     /// Total number of movies
     pub total_movies: usize,
     /// Total number of TV shows
-    pub total_tvshows: usize,
+    pub total_tv_series: usize,
     /// Total number of disks
     pub total_disks: usize,
     /// Total size in bytes
@@ -233,7 +233,7 @@ pub struct DiskIndex {
     /// Movies on this disk
     pub movies: Vec<MovieEntry>,
     /// TV shows on this disk
-    pub tvshows: Vec<TvShowEntry>,
+    pub tv_series: Vec<TvSeriesEntry>,
 }
 
 impl Default for DiskIndex {
@@ -245,13 +245,13 @@ impl Default for DiskIndex {
                 uuid: None,
                 last_indexed: chrono::Utc::now().to_rfc3339(),
                 movie_count: 0,
-                tvshow_count: 0,
+                tv_series_count: 0,
                 total_size_bytes: 0,
                 base_path: String::new(),
                 paths: HashMap::new(),
             },
             movies: Vec::new(),
-            tvshows: Vec::new(),
+            tv_series: Vec::new(),
         }
     }
 }
@@ -296,7 +296,7 @@ pub struct ExportContents {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportStatistics {
     pub total_movies: usize,
-    pub total_tvshows: usize,
+    pub total_tv_series: usize,
     pub total_disks: usize,
     pub total_sessions: usize,
     pub export_size_bytes: u64,
@@ -411,7 +411,7 @@ impl CentralIndex {
         }
 
         // Index TV shows
-        for tvshow in &self.tvshows {
+        for tvshow in &self.tv_series {
             // By actor
             for actor in &tvshow.actors {
                 self.indexes
@@ -453,10 +453,10 @@ impl CentralIndex {
     /// Update statistics from current data.
     pub fn update_statistics(&mut self) {
         self.statistics.total_movies = self.movies.len();
-        self.statistics.total_tvshows = self.tvshows.len();
+        self.statistics.total_tv_series = self.tv_series.len();
         self.statistics.total_disks = self.disks.len();
         self.statistics.total_size_bytes = self.movies.iter().map(|m| m.size_bytes).sum::<u64>()
-            + self.tvshows.iter().map(|t| t.size_bytes).sum::<u64>();
+            + self.tv_series.iter().map(|t| t.size_bytes).sum::<u64>();
 
         // By country
         self.statistics.by_country.clear();
@@ -469,7 +469,7 @@ impl CentralIndex {
                     .or_insert(0) += 1;
             }
         }
-        for tvshow in &self.tvshows {
+        for tvshow in &self.tv_series {
             if let Some(ref country) = tvshow.country {
                 *self
                     .statistics
@@ -479,7 +479,7 @@ impl CentralIndex {
             }
         }
 
-        // By decade (movies + tvshows)
+        // By decade (movies + tv_series)
         self.statistics.by_decade.clear();
         for movie in &self.movies {
             if let Some(year) = movie.year {
@@ -487,7 +487,7 @@ impl CentralIndex {
                 *self.statistics.by_decade.entry(decade).or_insert(0) += 1;
             }
         }
-        for tvshow in &self.tvshows {
+        for tvshow in &self.tv_series {
             if let Some(year) = tvshow.year {
                 let decade = format!("{}0s", year / 10);
                 *self.statistics.by_decade.entry(decade).or_insert(0) += 1;
@@ -546,16 +546,16 @@ impl CentralIndex {
         }
 
         // Merge TV shows
-        let existing_tvshow_ids: std::collections::HashSet<_> =
-            self.tvshows.iter().filter_map(|t| t.tmdb_id).collect();
+        let existing_tv_series_ids: std::collections::HashSet<_> =
+            self.tv_series.iter().filter_map(|t| t.tmdb_id).collect();
 
-        for tvshow in other.tvshows {
+        for tvshow in other.tv_series {
             if let Some(tmdb_id) = tvshow.tmdb_id {
-                if !existing_tvshow_ids.contains(&tmdb_id) {
-                    self.tvshows.push(tvshow);
+                if !existing_tv_series_ids.contains(&tmdb_id) {
+                    self.tv_series.push(tvshow);
                 }
             } else {
-                self.tvshows.push(tvshow);
+                self.tv_series.push(tvshow);
             }
         }
 

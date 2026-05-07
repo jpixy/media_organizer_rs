@@ -76,7 +76,7 @@ pub async fn rollback(rollback_file: &Path, dry_run: bool) -> Result<()> {
             println!("  or:");
             println!(
                 "     {}",
-                "media-organizer plan tvshows <source> -t <target>".bold()
+                "media-organizer plan tv_series <source> -t <target>".bold()
             );
         }
     } else {

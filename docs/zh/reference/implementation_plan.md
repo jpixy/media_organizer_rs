@@ -144,7 +144,7 @@ pub struct ExecutedOperation {
 ```
 media-organizer
   ├── plan movies <source> [--target]
-  ├── plan tvshows <source> [--target]
+  ├── plan tv_series <source> [--target]
   ├── execute <plan.json>
   ├── rollback <rollback.json> [--dry-run]
   ├── verify <path>

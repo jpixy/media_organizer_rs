@@ -127,7 +127,7 @@ Options:
 media-organizer plan movies <源目录> [OPTIONS]
 
 # 电视剧
-media-organizer plan tvshows <源目录> [OPTIONS]
+media-organizer plan tv_series <源目录> [OPTIONS]
 
 Options:
   -t, --target <目标目录>  目标目录 (✅ 可选)。如果不提供，将自动在源目录旁创建 `源目录名_organized` 作为目标
@@ -143,7 +143,7 @@ Options:
 media-organizer plan movies /mnt/downloads/movies -t /mnt/library/movies
 
 # 电视剧整理
-media-organizer plan tvshows /mnt/downloads/tvshows -t /mnt/library/tvshows
+media-organizer plan tv_series /mnt/downloads/tv_series -t /mnt/library/tv_series
 
 # 仅检查，不生成计划
 media-organizer plan movies /path --dry-run
@@ -250,7 +250,7 @@ Subcommands:
 media-organizer index scan <路径> [OPTIONS]
 
 Options:
-  --media-type <类型>    movies / tvshows (默认: movies)
+  --media-type <类型>    movies / tv_series (默认: movies)
   --disk-label <标签>    硬盘标签 (自动检测)
   --force                强制重新扫描
   --deep                 深度扫描 (提取完整元数据)
@@ -262,7 +262,7 @@ Options:
 media-organizer index scan /mnt/library/movies --media-type movies --disk-label 主硬盘
 
 # 索引电视剧 (同一硬盘)
-media-organizer index scan /mnt/library/tvshows --media-type tvshows --disk-label 主硬盘
+media-organizer index scan /mnt/library/tv_series --media-type tv_series --disk-label 主硬盘
 ```
 
 > 💡 同一硬盘可同时包含多种媒体类型，使用相同的 disk-label。
@@ -434,7 +434,7 @@ graph TD
 │           ├── [Inception][盗梦空间](2010)-1920x1080-BluRay-h264.mkv
 │           ├── movie.nfo
 │           └── poster.jpg
-└── tvshows/
+└── tv_series/
     └── GB_UnitedKingdom/
         └── [Black Mirror][黑镜](2011)-tt2085059-tmdb42009/
             ├── tvshow.nfo
@@ -564,7 +564,7 @@ media-organizer index scan /path --force
 ### Q: 搜索只返回电影，没有电视剧？
 A: 确保电视剧目录已单独索引:
 ```bash
-media-organizer index scan /path/to/tvshows --media-type tvshows
+media-organizer index scan /path/to/tv_series --media-type tv_series
 ```
 
 ### Q: 移动硬盘如何管理？

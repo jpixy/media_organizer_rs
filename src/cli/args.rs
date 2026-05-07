@@ -175,7 +175,7 @@ pub enum IndexAction {
         #[arg(value_name = "PATH")]
         path: PathBuf,
 
-        /// Media type: movies or tvshows
+        /// Media type: movies or tv_series
         #[arg(long, default_value = "movies")]
         media_type: String,
 
@@ -197,7 +197,7 @@ pub enum IndexAction {
         #[arg(value_name = "DISK_LABEL")]
         disk_label: String,
 
-        /// Media type filter: movies, tvshows, or all
+        /// Media type filter: movies, tv_series, or all
         #[arg(long, default_value = "all")]
         media_type: String,
     },
@@ -222,7 +222,7 @@ pub enum IndexAction {
 
     /// Find duplicate movies/TV shows by TMDB ID across disks
     Duplicates {
-        /// Media type filter: movies, tvshows, or all
+        /// Media type filter: movies, tv_series, or all
         #[arg(long, default_value = "all")]
         media_type: String,
 
@@ -269,7 +269,7 @@ pub enum PlanType {
     },
 
     /// Plan for TV shows
-    Tvshows {
+    TvSeries {
         /// Source directory containing TV shows
         #[arg(value_name = "SOURCE")]
         source: PathBuf,

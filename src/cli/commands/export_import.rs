@@ -83,7 +83,7 @@ pub async fn execute_export(
     println!(
         "  Contents: {} movies, {} TV shows, {} disks, {} sessions",
         manifest.statistics.total_movies,
-        manifest.statistics.total_tvshows,
+        manifest.statistics.total_tv_series,
         manifest.statistics.total_disks,
         manifest.statistics.total_sessions
     );
@@ -186,8 +186,8 @@ pub async fn execute_import(
     if result.new_movies > 0 {
         println!("  New movies: {}", result.new_movies);
     }
-    if result.new_tvshows > 0 {
-        println!("  New TV shows: {}", result.new_tvshows);
+    if result.new_tv_series > 0 {
+        println!("  New TV shows: {}", result.new_tv_series);
     }
 
     Ok(())

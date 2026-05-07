@@ -49,7 +49,7 @@ pub enum Error {
     MovieNotFound(String),
 
     #[error("TV show not found on TMDB: {0}")]
-    TvShowNotFound(String),
+    TvSeriesNotFound(String),
 
     // Plan/Execute errors
     #[error("Invalid plan file: {0}")]

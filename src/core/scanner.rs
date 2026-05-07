@@ -225,13 +225,21 @@ pub fn scan_directory(path: &Path) -> Result<ScanResult> {
                         .and_then(|n| n.to_str())
                         .unwrap_or("");
 
-                    // Skip sample files - they will be moved as-is with the movie
-                    // (handled separately in add_subtitle_operations)
+                    // Sample files with "sample" in the filename are collected separately
+                    // and will be moved with the movie via add_subtitle_operations
                     if is_sample_filename(filename) {
-                        tracing::debug!(
-                            "Sample file (will be moved with movie): {}",
-                            entry_path.display()
-                        );
+                        match create_video_file(entry_path) {
+                            Ok(video_file) => {
+                                tracing::debug!(
+                                    "Sample file (will be moved with movie): {}",
+                                    entry_path.display()
+                                );
+                                result.samples.push(video_file);
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to read sample file {:?}: {}", entry_path, e);
+                            }
+                        }
                         continue;
                     }
 

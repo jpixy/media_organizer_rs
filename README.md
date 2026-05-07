@@ -87,7 +87,7 @@ cat plan_*.json
 
 ```bash
 media-organizer plan movies <SOURCE> [OPTIONS]
-media-organizer plan tvshows <SOURCE> [OPTIONS]
+media-organizer plan tv_series <SOURCE> [OPTIONS]
 
 Options:
   -t, --target <TARGET>  Target directory
@@ -123,7 +123,7 @@ Build a searchable index from organized media directories:
 media-organizer index scan /path/to/movies --media-type movies
 
 # Scan TV shows
-media-organizer index scan /path/to/tvshows --media-type tvshows
+media-organizer index scan /path/to/tv_series --media-type tv_series
 
 # Custom disk label
 media-organizer index scan /mnt/disk1/movies --disk-label MyDisk1
@@ -147,7 +147,7 @@ media-organizer index duplicates
 media-organizer index duplicates --media-type movies
 
 # Find only duplicate TV shows
-media-organizer index duplicates --media-type tvshows
+media-organizer index duplicates --media-type tv_series
 
 # Output as JSON
 media-organizer index duplicates --format json
