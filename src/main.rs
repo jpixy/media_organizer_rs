@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
         }
 
         Commands::Execute { plan_file, output } => {
-            execute::execute_plan(&plan_file, output.as_deref()).await?;
+            execute::execute_plan(&plan_file, output.as_deref(), &config).await?;
         }
 
         Commands::Rollback {

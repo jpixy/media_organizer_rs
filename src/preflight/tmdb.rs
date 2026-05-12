@@ -13,22 +13,36 @@ pub async fn check(config: &Config) -> CheckResult {
             use_bearer: api_key.starts_with("eyJ"),
         };
         
+        // Debug: print what type of auth we're using (before moving tmdb_config)
+        let use_bearer = tmdb_config.use_bearer;
+        tracing::debug!("TMDB auth type: {}", if use_bearer { "Bearer Token" } else { "API Key" });
+        
         let client = TmdbClient::new(tmdb_config);
         
-        match client.verify_api_key().await {
-            Ok(true) => CheckResult::ok("TMDB API", "connected", CheckSeverity::Required),
-            Ok(false) => CheckResult::fail(
-                "TMDB API",
-                "invalid API key",
-                "Check your TMDB API key in config file",
-                CheckSeverity::Required
-            ),
-            Err(_) => CheckResult::fail(
-                "TMDB API",
-                "connection failed",
-                "Check your network connection",
-                CheckSeverity::Required
-            ),
+        // Use a more reliable validation method: try to search for a well-known show
+        match client.search_tv("House of Cards", None).await {
+            Ok(results) => {
+                tracing::debug!("TMDB search results count: {}", results.len());
+                if !results.is_empty() {
+                    CheckResult::ok("TMDB API", "connected", CheckSeverity::Required)
+                } else {
+                    CheckResult::fail(
+                        "TMDB API",
+                        "search returned empty results",
+                        "Check if your API key has proper permissions",
+                        CheckSeverity::Required
+                    )
+                }
+            }
+            Err(e) => {
+                tracing::error!("TMDB API error: {}", e);
+                CheckResult::fail(
+                    "TMDB API",
+                    &format!("connection failed: {}", e),
+                    "Check your network connection and API key",
+                    CheckSeverity::Required
+                )
+            }
         }
     } else {
         CheckResult::fail(

@@ -3,15 +3,16 @@
 //! Reads a plan.json file and executes all operations,
 //! generating a rollback.json for recovery.
 
-use crate::core::executor::{self, Executor};
+use crate::core::executor::{self, Executor, ExecutorConfig};
 use crate::core::planner;
+use crate::models::config::Config;
 use crate::Result;
 use chrono::Utc;
 use colored::Colorize;
 use std::path::{Path, PathBuf};
 
 /// Execute a plan file.
-pub async fn execute_plan(plan_file: &Path, output: Option<&Path>) -> Result<()> {
+pub async fn execute_plan(plan_file: &Path, output: Option<&Path>, config: &Config) -> Result<()> {
     println!("{}", "[EXEC] Executing plan...".bold().cyan());
     println!();
 
@@ -44,8 +45,11 @@ pub async fn execute_plan(plan_file: &Path, output: Option<&Path>) -> Result<()>
     );
     println!();
 
-    // Execute plan
-    let executor = Executor::new();
+    // Create executor with config (including proxy)
+    let mut executor_config = ExecutorConfig::default();
+    executor_config.proxy_enabled = config.network.proxy_enabled;
+    executor_config.proxy = config.network.proxy.clone();
+    let executor = Executor::with_config(executor_config);
     let rollback = executor.execute(&plan).await?;
 
     // Determine rollback output path

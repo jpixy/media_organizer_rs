@@ -2,6 +2,14 @@
 
 use crate::models::media::{EpisodeMetadata, MovieMetadata, TvSeriesMetadata, VideoMetadata};
 
+/// Add a part to the filename only if it's not "Unknown" or empty.
+/// Returns the part with the separator if valid, or empty string if skipped.
+fn add_part_if_valid(parts: &mut Vec<String>, value: &str, separator: &str) {
+    if !value.is_empty() && value != "Unknown" {
+        parts.push(format!("{}{}", separator, value));
+    }
+}
+
 /// Format resolution string with actual dimensions.
 ///
 /// If width and height are available, returns format like "1920x1080(1080p)".
@@ -109,13 +117,15 @@ pub fn generate_movie_filename_with_disc(
         parts.push(format!("({})", movie.year));
     }
 
-    // Add video info with actual resolution
+    // Add video info with actual resolution (skip if Unknown)
     parts.push(format!("-{}", format_resolution(video)));
-    parts.push(format!("-{}", video.format));
-    parts.push(format!("-{}", video.video_codec));
-    parts.push(format!("-{}bit", video.bit_depth));
-    parts.push(format!("-{}", video.audio_codec));
-    parts.push(format!("-{}", video.audio_channels));
+    add_part_if_valid(&mut parts, &video.format, "-");
+    add_part_if_valid(&mut parts, &video.video_codec, "-");
+    if video.bit_depth > 0 {
+        parts.push(format!("-{}bit", video.bit_depth));
+    }
+    add_part_if_valid(&mut parts, &video.audio_codec, "-");
+    add_part_if_valid(&mut parts, &video.audio_channels, "-");
 
     // Add disc identifier if present (for multi-disc movies)
     if let Some(disc) = disc_id {
@@ -160,13 +170,15 @@ pub fn generate_episode_filename(
     }
     parts.push(format!("-[{}]", sanitize_filename(&episode.name)));
 
-    // Video info with actual resolution
+    // Video info with actual resolution (skip if Unknown)
     parts.push(format!("-{}", format_resolution(video)));
-    parts.push(format!("-{}", video.format));
-    parts.push(format!("-{}", video.video_codec));
-    parts.push(format!("-{}bit", video.bit_depth));
-    parts.push(format!("-{}", video.audio_codec));
-    parts.push(format!("-{}", video.audio_channels));
+    add_part_if_valid(&mut parts, &video.format, "-");
+    add_part_if_valid(&mut parts, &video.video_codec, "-");
+    if video.bit_depth > 0 {
+        parts.push(format!("-{}bit", video.bit_depth));
+    }
+    add_part_if_valid(&mut parts, &video.audio_codec, "-");
+    add_part_if_valid(&mut parts, &video.audio_channels, "-");
 
     format!("{}.{}", parts.join(""), extension)
 }

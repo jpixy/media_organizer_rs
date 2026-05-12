@@ -62,7 +62,27 @@ pub async fn run_preflight_checks(config: &Config) -> Result<Vec<CheckResult>> {
     // Check TMDB
     results.push(tmdb::check(config).await);
 
+    // Check AI enabled status
+    results.push(ai_status_check(config));
+
     Ok(results)
+}
+
+/// Check AI enabled status.
+fn ai_status_check(config: &Config) -> CheckResult {
+    if config.ollama.enabled {
+        CheckResult::ok(
+            "AI Enhanced Parsing",
+            "enabled",
+            CheckSeverity::Optional
+        )
+    } else {
+        CheckResult::ok(
+            "AI Enhanced Parsing",
+            "disabled (using local parsing only)",
+            CheckSeverity::Optional
+        )
+    }
 }
 
 /// Print preflight check results.

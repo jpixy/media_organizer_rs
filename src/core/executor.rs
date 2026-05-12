@@ -33,6 +33,10 @@ pub struct ExecutorConfig {
     pub verify_checksum: bool,
     /// Whether to create backup before overwriting.
     pub backup_on_overwrite: bool,
+    /// Whether to enable proxy.
+    pub proxy_enabled: bool,
+    /// Proxy URL.
+    pub proxy: Option<String>,
 }
 
 impl Default for ExecutorConfig {
@@ -40,6 +44,8 @@ impl Default for ExecutorConfig {
         Self {
             verify_checksum: true,
             backup_on_overwrite: true,
+            proxy_enabled: false,
+            proxy: None,
         }
     }
 }
@@ -61,9 +67,23 @@ impl Executor {
 
     /// Create a new executor with custom configuration.
     pub fn with_config(config: ExecutorConfig) -> Self {
+        let mut client_builder = reqwest::Client::builder();
+        
+        if config.proxy_enabled {
+            if let Some(proxy_url) = &config.proxy {
+                if let Ok(proxy) = reqwest::Proxy::all(proxy_url) {
+                    client_builder = client_builder.proxy(proxy);
+                }
+            }
+        }
+        
+        let http_client = client_builder
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+        
         Self {
             config,
-            http_client: reqwest::Client::new(),
+            http_client,
         }
     }
 

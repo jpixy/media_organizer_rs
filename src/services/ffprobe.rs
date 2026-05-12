@@ -103,11 +103,11 @@ pub fn extract_metadata(path: &Path) -> Result<VideoMetadata> {
         .and_then(|s| s.codec_name.clone())
         .unwrap_or_else(|| "unknown".to_string());
 
-    // Extract bit depth
+    // Extract bit depth (0 means unknown)
     let bit_depth = video_stream
         .and_then(|s| s.bits_per_raw_sample.as_ref())
         .and_then(|b| b.parse().ok())
-        .unwrap_or(8);
+        .unwrap_or(0);
 
     // Extract audio codec
     let audio_codec = audio_stream
@@ -331,7 +331,7 @@ fn parse_bit_depth_from_filename(filename: &str) -> u8 {
     {
         10 // HDR content is typically 10-bit
     } else {
-        8 // Default to 8-bit
+        0 // Unknown
     }
 }
 
@@ -414,10 +414,10 @@ pub fn merge_metadata(primary: VideoMetadata, secondary: VideoMetadata) -> Video
         } else {
             secondary.video_codec
         },
-        // Use primary if it has a meaningful value (non-default 8-bit),
-        // otherwise fall back to secondary. Default 8-bit is considered "unknown"
-        // since ffprobe returns 8 when the field is missing.
-        bit_depth: if primary.bit_depth != 8 {
+        // Use primary if it has a meaningful value (non-zero),
+        // otherwise fall back to secondary. Zero means unknown
+        // since ffprobe returns 0 when the field is missing.
+        bit_depth: if primary.bit_depth != 0 {
             primary.bit_depth
         } else {
             secondary.bit_depth

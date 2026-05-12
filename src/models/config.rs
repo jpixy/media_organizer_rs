@@ -12,6 +12,9 @@ pub struct Config {
     /// TMDB configuration.
     #[serde(default)]
     pub tmdb: TmdbConfig,
+    /// Network configuration.
+    #[serde(default)]
+    pub network: NetworkConfig,
     /// Sessions directory.
     #[serde(skip)]
     pub sessions_dir: PathBuf,
@@ -47,11 +50,24 @@ pub struct TmdbConfig {
     pub language: String,
 }
 
+/// Network configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
+    /// Whether to enable proxy. Default: false.
+    #[serde(default)]
+    pub proxy_enabled: bool,
+    /// HTTP/HTTPS proxy URL (e.g., "http://127.0.0.1:7890").
+    /// Used only when proxy_enabled is true.
+    #[serde(default)]
+    pub proxy: Option<String>,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
             ollama: OllamaConfig::default(),
             tmdb: TmdbConfig::default(),
+            network: NetworkConfig::default(),
             sessions_dir: dirs_config_path().join("sessions"),
         }
     }
@@ -74,6 +90,15 @@ impl Default for TmdbConfig {
         Self {
             api_key: None,
             language: "zh-CN".to_string(),
+        }
+    }
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            proxy_enabled: false,
+            proxy: None,
         }
     }
 }
@@ -218,6 +243,10 @@ timeout = 120
 [tmdb]
 api_key = "test_api_key_123"
 language = "en-US"
+
+[network]
+proxy_enabled = true
+proxy = "http://127.0.0.1:7890"
 "#;
 
     // Create config.toml directly in temp dir (no subdirectory) for direct testing
@@ -233,6 +262,8 @@ language = "en-US"
     assert_eq!(config.ollama.timeout, 120);
     assert_eq!(config.tmdb.api_key, Some("test_api_key_123".to_string()));
     assert_eq!(config.tmdb.language, "en-US");
+    assert_eq!(config.network.proxy_enabled, true);
+    assert_eq!(config.network.proxy, Some("http://127.0.0.1:7890".to_string()));
 
     // Restore original variables
     if let Some(v) = old_tmdb_key { std::env::set_var("TMDB_API_KEY", v); }

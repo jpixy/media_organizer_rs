@@ -231,15 +231,6 @@ impl Planner {
         tracing::info!("Generating plan for {:?}", source);
         tracing::info!("Target directory: {:?}", target);
         tracing::info!("Media type: {}", media_type);
-        
-        // Print AI status
-        println!();
-        println!("{}", "[AI Status]");
-        if self.config.ai_enabled {
-            println!("  AI Parsing:    Enabled (model: {})", self.parser.get_model());
-        } else {
-            println!("  AI Parsing:    Disabled (using local parsing only)");
-        }
 
         // Step 1: Scan directory
         let scan_start = Instant::now();
@@ -935,12 +926,33 @@ impl Planner {
                     return Ok(None);
                 }
             } else {
-                // AI disabled, return None
-                tracing::debug!("TMDB search failed and AI disabled for: {}", video.filename);
-                return Ok(None);
+                // AI disabled, try folder-based search as fallback
+                tracing::debug!("TMDB search failed and AI disabled, trying folder-based search");
+                if let Some(folder_title) = self.get_meaningful_folder_name(&video.parent_dir) {
+                    let folder_parsed = ParsedFilename {
+                        title: Some(folder_title.clone()),
+                        original_title: None,
+                        year: None,
+                        season: parsed.season,
+                        episode: parsed.episode,
+                        confidence: 0.6,
+                        raw_response: Some("folder_fallback".to_string()),
+                    };
+                    let (show, _) = self
+                        .query_tmdb_tv_series_with_folder(&folder_parsed, Some(&folder_title))
+                        .await?;
+                    if show.is_some() {
+                        tracing::info!("TMDB found via folder search (TV): {}", folder_title);
+                        (folder_parsed, false)
+                    } else {
+                        return Ok(None);
+                    }
+                } else {
+                    return Ok(None);
+                }
             }
         } else {
-            // For movies or first TV episode, try local parsing first
+            // For movies or first TV episode without cached show, try local parsing first
             let parse_input = self.build_parse_input(video);
             let parsed = self.parser.parse(&parse_input, media_type).await?;
             if !self.parser.is_valid(&parsed) {
@@ -949,36 +961,124 @@ impl Planner {
             }
 
             // Try TMDB search with local parsed result
-            let movie = self.query_tmdb_movie(&parsed).await?;
-            if movie.is_some() {
-                // TMDB search succeeded, no need for AI
-                tracing::info!("TMDB found via local parsing (Movie)");
-                (parsed, false)
-            } else if self.config.ai_enabled {
-                // TMDB search failed, try AI parsing
-                tracing::info!("TMDB search failed, using AI parsing for: {}", video.filename);
-                let parse_input = self.build_parse_input(video);
-                let ai_parsed = self.parser.parse(&parse_input, media_type).await?;
-                if !self.parser.is_valid(&ai_parsed) {
-                    tracing::debug!("Low confidence AI parsing for: {}", video.filename);
-                    return Ok(None);
-                }
+            if media_type == MediaType::Movies {
+                let movie = self.query_tmdb_movie(&parsed).await?;
+                if movie.is_some() {
+                    // TMDB search succeeded, no need for AI
+                    tracing::info!("TMDB found via local parsing (Movie)");
+                    (parsed, false)
+                } else if self.config.ai_enabled {
+                    // TMDB search failed, try AI parsing
+                    tracing::info!("TMDB search failed, using AI parsing for: {}", video.filename);
+                    let parse_input = self.build_parse_input(video);
+                    let ai_parsed = self.parser.parse(&parse_input, media_type).await?;
+                    if !self.parser.is_valid(&ai_parsed) {
+                        tracing::debug!("Low confidence AI parsing for: {}", video.filename);
+                        return Ok(None);
+                    }
 
-                // Try TMDB search with AI parsed result
-                let ai_movie = self.query_tmdb_movie(&ai_parsed).await?;
-                if ai_movie.is_some() {
-                    // AI TMDB search succeeded
-                    tracing::info!("TMDB found via AI parsing (Movie)");
-                    (ai_parsed, true)
+                    // Try TMDB search with AI parsed result
+                    let ai_movie = self.query_tmdb_movie(&ai_parsed).await?;
+                    if ai_movie.is_some() {
+                        // AI TMDB search succeeded
+                        tracing::info!("TMDB found via AI parsing (Movie)");
+                        (ai_parsed, true)
+                    } else {
+                        // AI TMDB search failed
+                        tracing::debug!("TMDB search failed after AI parsing for: {}", video.filename);
+                        return Ok(None);
+                    }
                 } else {
-                    // AI TMDB search failed
-                    tracing::debug!("TMDB search failed after AI parsing for: {}", video.filename);
-                    return Ok(None);
+                    // AI disabled, try folder-based search as fallback
+                    tracing::debug!("TMDB search failed and AI disabled, trying folder-based search");
+                    if let Some(folder_title) = self.get_meaningful_folder_name(&video.parent_dir) {
+                        let folder_parsed = ParsedFilename {
+                            title: Some(folder_title.clone()),
+                            original_title: None,
+                            year: None,
+                            season: None,
+                            episode: None,
+                            confidence: 0.6,
+                            raw_response: Some("folder_fallback".to_string()),
+                        };
+                        let movie = self.query_tmdb_movie(&folder_parsed).await?;
+                        if movie.is_some() {
+                            tracing::info!("TMDB found via folder search (Movie): {}", folder_title);
+                            (folder_parsed, false)
+                        } else {
+                            return Ok(None);
+                        }
+                    } else {
+                        return Ok(None);
+                    }
                 }
             } else {
-                // AI disabled, return None
-                tracing::debug!("TMDB search failed and AI disabled for: {}", video.filename);
-                return Ok(None);
+                // TV Series without cached show - use title from filename_meta if available
+                let mut tv_parsed = parsed.clone();
+                if tv_parsed.title.is_none() {
+                    // Fallback to filename metadata if parser didn't extract title
+                    let filename_meta = metadata::extract_from_filename(&video.filename);
+                    tv_parsed.title = filename_meta.chinese_title.or(filename_meta.english_title);
+                }
+                
+                let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
+                let (show, _) = self
+                    .query_tmdb_tv_series_with_folder(&tv_parsed, folder_name.as_deref())
+                    .await?;
+                
+                if show.is_some() {
+                    // TMDB search succeeded
+                    tracing::info!("TMDB found via local parsing (TV): {}", show.as_ref().unwrap().name);
+                    (tv_parsed, false)
+                } else if self.config.ai_enabled {
+                    // TMDB search failed, try AI parsing
+                    tracing::info!("TMDB search failed, using AI parsing for: {}", video.filename);
+                    let parse_input = self.build_parse_input(video);
+                    let ai_parsed = self.parser.parse(&parse_input, media_type).await?;
+                    if !self.parser.is_valid(&ai_parsed) {
+                        tracing::debug!("Low confidence AI parsing for: {}", video.filename);
+                        return Ok(None);
+                    }
+
+                    // Try TMDB search with AI parsed result
+                    let (ai_show, _) = self
+                        .query_tmdb_tv_series_with_folder(&ai_parsed, folder_name.as_deref())
+                        .await?;
+                    if ai_show.is_some() {
+                        // AI TMDB search succeeded
+                        tracing::info!("TMDB found via AI parsing (TV): {}", ai_show.as_ref().unwrap().name);
+                        (ai_parsed, true)
+                    } else {
+                        // AI TMDB search failed
+                        tracing::debug!("TMDB search failed after AI parsing for: {}", video.filename);
+                        return Ok(None);
+                    }
+                } else {
+                    // AI disabled, try folder-based search as fallback
+                    tracing::debug!("TMDB search failed and AI disabled, trying folder-based search");
+                    if let Some(folder_title) = folder_name {
+                        let folder_parsed = ParsedFilename {
+                            title: Some(folder_title.clone()),
+                            original_title: None,
+                            year: None,
+                            season: tv_parsed.season,
+                            episode: tv_parsed.episode,
+                            confidence: 0.6,
+                            raw_response: Some("folder_fallback".to_string()),
+                        };
+                        let (show, _) = self
+                            .query_tmdb_tv_series_with_folder(&folder_parsed, Some(&folder_title))
+                            .await?;
+                        if show.is_some() {
+                            tracing::info!("TMDB found via folder search (TV): {}", folder_title);
+                            (folder_parsed, false)
+                        } else {
+                            return Ok(None);
+                        }
+                    } else {
+                        return Ok(None);
+                    }
+                }
             }
         };
 
@@ -2181,9 +2281,37 @@ impl Planner {
     /// Get a meaningful folder name from the path, skipping quality descriptors.
     /// Returns the first ancestor directory that looks like a show name.
     fn get_meaningful_folder_name(&self, path: &Path) -> Option<String> {
+        // Generic folder names to skip (not actual show titles)
+        let is_generic_folder = |name: &str| -> bool {
+            let lower = name.to_lowercase();
+            matches!(
+                lower.as_str(),
+                "tv series"
+                    | "tv shows"
+                    | "tv show"
+                    | "series"
+                    | "show"
+                    | "movies"
+                    | "movie"
+                    | "films"
+                    | "film"
+                    | "anime"
+                    | "documentary"
+                    | "documentaries"
+                    | "music"
+                    | "music videos"
+                    | "concert"
+                    | "concerts"
+            )
+        };
+
         // Quality descriptor patterns to skip
         let is_quality_desc = |name: &str| -> bool {
             let lower = name.to_lowercase();
+            // Skip generic folder names
+            if is_generic_folder(&lower) {
+                return true;
+            }
             // Skip quality descriptors
             if lower.contains("1080")
                 || lower.contains("720")
@@ -2195,8 +2323,8 @@ impl Planner {
             {
                 return true;
             }
-            // Skip season directories: S1, S01, Season 1, Season.2, 第1季
-            if regex::Regex::new(r"^s\d{1,2}$")
+            // Skip season directories: S1, S01, Season 1, Season.2, 第1季, ShowName.S01, ShowNameS01
+            if regex::Regex::new(r"(?i)(^s\d{1,2}$|[^\w]s\d{1,2}[^\w]|[^\w]s\d{1,2}$|s\d{1,2}$)")
                 .map(|re| re.is_match(&lower))
                 .unwrap_or(false)
             {
@@ -2735,6 +2863,29 @@ impl Planner {
     fn is_meaningless_dirname(name: &str) -> bool {
         let lower = name.to_lowercase();
 
+        // Generic folder names that are not actual show titles
+        if matches!(
+            lower.as_str(),
+            "tv series"
+                | "tv shows"
+                | "tv show"
+                | "series"
+                | "show"
+                | "movies"
+                | "movie"
+                | "films"
+                | "film"
+                | "anime"
+                | "documentary"
+                | "documentaries"
+                | "music"
+                | "music videos"
+                | "concert"
+                | "concerts"
+        ) {
+            return true;
+        }
+
         // Resolution patterns
         if regex::Regex::new(r"^(4k|1080p|2160p|720p|480p|uhd|hd|sd)$")
             .map(|re| re.is_match(&lower))
@@ -2743,8 +2894,8 @@ impl Planner {
             return true;
         }
 
-        // Season patterns: S01, S02, Season 1, Season.2, 第1季
-        if regex::Regex::new(r"^s\d{1,2}$")
+        // Season patterns: S01, S02, Season 1, Season.2, 第1季, ShowNameS01, ShowName.S01
+        if regex::Regex::new(r"(?i)(^s\d{1,2}$|[\._-]s\d{1,2}[\._-]|[\._-]s\d{1,2}$|s\d{1,2}$)")
             .map(|re| re.is_match(&lower))
             .unwrap_or(false)
         {
@@ -3637,6 +3788,9 @@ impl Planner {
         // Priority: 1) Common results (both titles match) - most reliable
         //           2) English title results
         //           3) Chinese title results
+
+        // Debug: print what we're searching for
+        tracing::debug!("TMDB TV search - chinese_title: {:?}, english_title: {:?}, year: {:?}", chinese_title, english_title, search_year);
 
         // Search with Chinese and English titles in parallel
         let chinese_title_clone = chinese_title.clone();

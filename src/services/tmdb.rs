@@ -356,7 +356,10 @@ pub struct CrewMember {
 impl TmdbClient {
     /// Create a new TMDB client.
     pub fn new(config: TmdbConfig) -> Self {
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
         Self { config, client }
     }
 
@@ -489,7 +492,16 @@ impl TmdbClient {
             &format!("&query={}{}", urlencoding::encode(query), year_param),
         );
 
-        let resp: TvSearchResult = self.build_request(&url).send().await?.json().await?;
+        tracing::debug!("TMDB search_tv URL: {}", url);
+        
+        let resp = self.build_request(&url).send().await?;
+        
+        tracing::debug!("TMDB search_tv status: {}", resp.status());
+        
+        let resp: TvSearchResult = resp.json().await?;
+        
+        tracing::debug!("TMDB search_tv results count: {}", resp.results.len());
+        
         Ok(resp.results)
     }
 

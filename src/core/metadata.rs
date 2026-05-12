@@ -617,9 +617,9 @@ pub fn extract_from_filename(filename: &str) -> CandidateMetadata {
         }
     }
 
-    // Try to extract title (before year or technical info)
-    // Pattern: "Title.Year" or "Title (Year)" or "Title 1080p"
-    if let Ok(re) = regex::Regex::new(r"^([^\.]+?)[\.\s]*(?:\d{4}|1080p|720p|4k|2160p)") {
+    // Try to extract title (before year, episode or technical info)
+    // Pattern: "Title.Year" or "Title (Year)" or "Title 1080p" or "Title.E01" or "Title.S01E01"
+    if let Ok(re) = regex::Regex::new(r"^([^\.]+?)[\.\s]*(?:(?:S\d{1,2})?E\d{1,3}|\d{4}|1080p|720p|4k|2160p)") {
         if let Some(caps) = re.captures(&name) {
             if let Some(title_match) = caps.get(1) {
                 let title_part = title_match.as_str().trim();

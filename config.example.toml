@@ -1,6 +1,15 @@
 # Media Organizer 配置文件示例
 # 将此文件复制到 ~/.config/media_organizer/config.toml
 
+[network]
+# 是否启用代理。默认: false
+# 设置为 true 后，下面的 proxy 配置才会生效
+proxy_enabled = false
+# HTTP/HTTPS 代理地址
+# 例如: "http://127.0.0.1:7890" 或 "socks5://127.0.0.1:1080"
+# 仅在 proxy_enabled = true 时生效
+# proxy = "http://127.0.0.1:7890"
+
 [ollama]
 # AI 解析开关。默认关闭 (false)，仅使用本地解析（hunch + regex）
 # 开启后，当本地解析失败时会调用 Ollama AI 作为后备
