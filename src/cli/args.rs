@@ -241,9 +241,9 @@ pub enum IndexAction {
         #[arg(long, default_value = "table")]
         format: String,
 
-        /// Show movie paths
+        /// Hide movie paths (show minimal info)
         #[arg(long)]
-        paths: bool,
+        hide_paths: bool,
 
         /// Update collection totals from TMDB and write back to NFO files
         #[arg(long)]
@@ -260,9 +260,9 @@ pub enum IndexAction {
         #[arg(long, default_value = "table")]
         format: String,
 
-        /// Show TV show paths
+        /// Hide TV show paths (show minimal info)
         #[arg(long)]
-        paths: bool,
+        hide_paths: bool,
     },
 }
 

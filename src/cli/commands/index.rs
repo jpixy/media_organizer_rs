@@ -33,19 +33,19 @@ pub async fn execute_index(action: IndexAction) -> Result<()> {
         IndexAction::Collections {
             filter,
             format,
-            paths,
+            hide_paths,
             update,
         } => {
             if update {
                 update_collections().await?;
             }
-            list_collections(&filter, &format, paths).await
+            list_collections(&filter, &format, hide_paths).await
         }
         IndexAction::Tv {
             filter,
             format,
-            paths,
-        } => list_tv(&filter, &format, paths).await,
+            hide_paths,
+        } => list_tv(&filter, &format, hide_paths).await,
     }
 }
 
@@ -1133,7 +1133,7 @@ struct CollectionMovieOutput {
 }
 
 /// List movie collections.
-async fn list_collections(filter: &str, format: &str, _show_paths: bool) -> Result<()> {
+async fn list_collections(filter: &str, format: &str, hide_paths: bool) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     // Build collection output list
@@ -1184,11 +1184,14 @@ async fn list_collections(filter: &str, format: &str, _show_paths: bool) -> Resu
                         }
                     });
 
+                    // Hide paths if requested
+                    let display_path = if hide_paths { None } else { full_path };
+
                     CollectionMovieOutput {
                         title: cm.title.clone(),
                         year: cm.year,
                         disk,
-                        path: full_path,
+                        path: display_path,
                     }
                 })
                 .collect();
@@ -1370,7 +1373,7 @@ struct TvSeriesOutput {
 }
 
 /// List TV shows with season/episode statistics.
-async fn list_tv(filter: &str, format: &str, _show_paths: bool) -> Result<()> {
+async fn list_tv(filter: &str, format: &str, hide_paths: bool) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     // Build TV series output list
@@ -1406,6 +1409,9 @@ async fn list_tv(filter: &str, format: &str, _show_paths: bool) -> Result<()> {
                 }
             };
 
+            // Hide paths if requested
+            let display_path = if hide_paths { None } else { Some(full_path) };
+
             TvSeriesOutput {
                 id: t.id.clone(),
                 title: t.title.clone(),
@@ -1417,7 +1423,7 @@ async fn list_tv(filter: &str, format: &str, _show_paths: bool) -> Result<()> {
                 owned_episodes: t.owned_episodes,
                 total_episodes: t.episodes,
                 disk: t.disk.clone(),
-                path: Some(full_path),
+                path: display_path,
             }
         })
         .collect();
