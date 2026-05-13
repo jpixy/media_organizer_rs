@@ -67,6 +67,9 @@ pub struct DiskInfo {
     /// Extensible for future media types (e.g., "music", "audiobooks")
     #[serde(default)]
     pub paths: HashMap<String, String>,
+    /// Content hash for idempotency checks
+    #[serde(default)]
+    pub content_hash: String,
 }
 
 /// A movie entry in the index.
@@ -213,10 +216,6 @@ pub struct IndexStatistics {
     pub total_disks: usize,
     /// Total size in bytes
     pub total_size_bytes: u64,
-    /// Movies by country
-    pub by_country: HashMap<String, usize>,
-    /// Movies by decade
-    pub by_decade: HashMap<String, usize>,
     /// Complete collections count
     pub complete_collections: usize,
     /// Incomplete collections count
@@ -249,6 +248,7 @@ impl Default for DiskIndex {
                 total_size_bytes: 0,
                 base_path: String::new(),
                 paths: HashMap::new(),
+                content_hash: String::new(),
             },
             movies: Vec::new(),
             tv_series: Vec::new(),
@@ -457,42 +457,6 @@ impl CentralIndex {
         self.statistics.total_disks = self.disks.len();
         self.statistics.total_size_bytes = self.movies.iter().map(|m| m.size_bytes).sum::<u64>()
             + self.tv_series.iter().map(|t| t.size_bytes).sum::<u64>();
-
-        // By country
-        self.statistics.by_country.clear();
-        for movie in &self.movies {
-            if let Some(ref country) = movie.country {
-                *self
-                    .statistics
-                    .by_country
-                    .entry(country.clone())
-                    .or_insert(0) += 1;
-            }
-        }
-        for tvshow in &self.tv_series {
-            if let Some(ref country) = tvshow.country {
-                *self
-                    .statistics
-                    .by_country
-                    .entry(country.clone())
-                    .or_insert(0) += 1;
-            }
-        }
-
-        // By decade (movies + tv_series)
-        self.statistics.by_decade.clear();
-        for movie in &self.movies {
-            if let Some(year) = movie.year {
-                let decade = format!("{}0s", year / 10);
-                *self.statistics.by_decade.entry(decade).or_insert(0) += 1;
-            }
-        }
-        for tvshow in &self.tv_series {
-            if let Some(year) = tvshow.year {
-                let decade = format!("{}0s", year / 10);
-                *self.statistics.by_decade.entry(decade).or_insert(0) += 1;
-            }
-        }
 
         // Collections
         // Use total_in_collection from TMDB if available, otherwise use heuristics.

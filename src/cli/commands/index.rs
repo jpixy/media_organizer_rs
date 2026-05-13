@@ -2,6 +2,7 @@
 
 use crate::cli::args::IndexAction;
 use crate::core::indexer;
+use crate::models::index::{MovieEntry, TvSeriesEntry};
 use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -93,34 +94,41 @@ async fn scan_directory(
     pb.set_message("Scanning for NFO files...");
     pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
-    let disk_index = indexer::scan_directory(path, &label, uuid, media_type)?;
+    let (disk_index, was_updated) = indexer::scan_directory(path, &label, uuid, media_type)?;
 
-    pb.finish_with_message("Scan complete");
+    pb.finish_with_message(if was_updated { "Scan complete" } else { "Content unchanged - using cached index" });
 
-    // Save disk index
-    indexer::save_disk_index(&disk_index)?;
+    if was_updated {
+        // Save disk index only if content changed
+        indexer::save_disk_index(&disk_index)?;
 
-    // Update central index
-    let mut central = indexer::load_central_index()?;
-    indexer::merge_disk_into_central(&mut central, disk_index.clone());
-    indexer::save_central_index(&central)?;
+        // Update central index
+        let mut central = indexer::load_central_index()?;
+        indexer::merge_disk_into_central(&mut central, disk_index.clone());
+        indexer::save_central_index(&central)?;
 
-    // Print summary
-    println!();
-    println!("{}", "[INDEX] Complete!".bold().green());
-    println!("  Movies indexed: {}", disk_index.disk.movie_count);
-    println!("  TV shows indexed: {}", disk_index.disk.tv_series_count);
-    println!(
-        "  Total size: {:.2} GB",
-        disk_index.disk.total_size_bytes as f64 / 1_073_741_824.0
-    );
-    println!();
-    println!(
-        "  Central index: {} movies, {} TV shows across {} disks",
-        central.statistics.total_movies,
-        central.statistics.total_tv_series,
-        central.statistics.total_disks
-    );
+        // Print summary
+        println!();
+        println!("{}", "[INDEX] Complete!".bold().green());
+        println!("  Movies indexed: {}", disk_index.disk.movie_count);
+        println!("  TV shows indexed: {}", disk_index.disk.tv_series_count);
+        println!(
+            "  Total size: {:.2} GB",
+            disk_index.disk.total_size_bytes as f64 / 1_073_741_824.0
+        );
+        println!();
+        println!(
+            "  Central index: {} movies, {} TV shows across {} disks",
+            central.statistics.total_movies,
+            central.statistics.total_tv_series,
+            central.statistics.total_disks
+        );
+    } else {
+        // Content unchanged, just show the cached results
+        println!();
+        println!("{}", "[INDEX] Content unchanged.".bold().blue());
+        println!("  Using cached index ({} movies, {} TV shows)", disk_index.disk.movie_count, disk_index.disk.tv_series_count);
+    }
 
     Ok(())
 }
@@ -135,8 +143,8 @@ async fn show_stats() -> Result<()> {
     println!("{}", "=".repeat(50));
     println!();
 
-    // Disks
-    println!("{}", "Disks:".bold());
+    // Volume Groups (formerly Disks)
+    println!("{}", "Volume Groups:".bold());
     for (label, disk) in &index.disks {
         let status = if indexer::is_disk_online(label) {
             "Online".green()
@@ -151,19 +159,14 @@ async fn show_stats() -> Result<()> {
             disk.total_size_bytes as f64 / 1_073_741_824.0,
             status
         );
-        // Show paths if multiple media types are stored
-        if disk.paths.len() > 1 {
-            for (media_type, path) in &disk.paths {
-                println!("      {} -> {}", media_type, path.dimmed());
-            }
+        // Show primary path (the path where media was indexed from)
+        if !disk.base_path.is_empty() {
+            println!("      Path: {}", disk.base_path.dimmed());
         } else if !disk.paths.is_empty() {
-            // Single path: show inline
-            if let Some((media_type, path)) = disk.paths.iter().next() {
-                println!("      {} -> {}", media_type, path.dimmed());
+            // Show first path as primary location
+            if let Some((_, path)) = disk.paths.iter().next() {
+                println!("      Path: {}", path.dimmed());
             }
-        } else if !disk.base_path.is_empty() {
-            // Legacy fallback
-            println!("      path: {}", disk.base_path.dimmed());
         }
     }
     println!("{}", "-".repeat(50));
@@ -175,36 +178,6 @@ async fn show_stats() -> Result<()> {
         index.statistics.total_size_bytes as f64 / 1_073_741_824.0
     );
     println!();
-
-    // By country
-    if !index.statistics.by_country.is_empty() {
-        println!("{}", "By Country:".bold());
-        let mut countries: Vec<_> = index.statistics.by_country.iter().collect();
-        countries.sort_by(|a, b| b.1.cmp(a.1));
-        let total = index.statistics.total_movies + index.statistics.total_tv_series;
-        for (country, count) in countries.iter().take(10) {
-            let pct = **count as f64 / total as f64 * 100.0;
-            let bar_len = (pct / 2.0) as usize;
-            let bar = "█".repeat(bar_len);
-            println!("  {} {:>15} {} ({:.0}%)", country, bar, count, pct);
-        }
-        println!();
-    }
-
-    // By decade
-    if !index.statistics.by_decade.is_empty() {
-        println!("{}", "By Decade:".bold());
-        let mut decades: Vec<_> = index.statistics.by_decade.iter().collect();
-        decades.sort_by(|a, b| b.0.cmp(a.0));
-        let total = index.statistics.total_movies;
-        for (decade, count) in decades.iter().take(5) {
-            let pct = **count as f64 / total as f64 * 100.0;
-            let bar_len = (pct / 2.0) as usize;
-            let bar = "█".repeat(bar_len);
-            println!("  {} {:>15} {} ({:.0}%)", decade, bar, count, pct);
-        }
-        println!();
-    }
 
     // Collections
     println!("{}", "Collections:".bold());
@@ -383,6 +356,7 @@ async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
 #[derive(Debug, Clone, serde::Serialize)]
 struct DuplicateEntry {
     disk: String,
+    disk_path: String,
     path: String,
     size_bytes: u64,
     size_human: String,
@@ -396,6 +370,7 @@ struct DuplicateGroup {
     title: String,
     year: Option<u16>,
     media_type: String,
+    confidence: String,
     entries: Vec<DuplicateEntry>,
     total_size_bytes: u64,
     total_size_human: String,
@@ -418,7 +393,53 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
-/// Find duplicates by TMDB ID across disks.
+/// Calculate title similarity using Levenshtein distance.
+pub fn title_similarity(a: &str, b: &str) -> f64 {
+    let a_lower = a.to_lowercase();
+    let b_lower = b.to_lowercase();
+    
+    if a_lower == b_lower {
+        return 1.0;
+    }
+    
+    let max_len = std::cmp::max(a_lower.len(), b_lower.len()) as f64;
+    if max_len == 0.0 {
+        return 0.0;
+    }
+    
+    // Simple Levenshtein distance approximation
+    let distance = levenshtein_distance(&a_lower, &b_lower);
+    1.0 - (distance as f64 / max_len)
+}
+
+/// Simple Levenshtein distance implementation.
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+    
+    let mut dp = vec![vec![0; b_chars.len() + 1]; a_chars.len() + 1];
+    
+    for i in 0..=a_chars.len() {
+        dp[i][0] = i;
+    }
+    for j in 0..=b_chars.len() {
+        dp[0][j] = j;
+    }
+    
+    for i in 1..=a_chars.len() {
+        for j in 1..=b_chars.len() {
+            let cost = if a_chars[i-1] == b_chars[j-1] { 0 } else { 1 };
+            dp[i][j] = std::cmp::min(
+                dp[i-1][j] + 1,
+                std::cmp::min(dp[i][j-1] + 1, dp[i-1][j-1] + cost)
+            );
+        }
+    }
+    
+    dp[a_chars.len()][b_chars.len()]
+}
+
+/// Find duplicates with enhanced matching logic.
 async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
     let index = indexer::load_central_index()?;
 
@@ -427,18 +448,17 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
 
     let mut duplicates: Vec<DuplicateGroup> = Vec::new();
 
-    // Find duplicate movies
+    // Find duplicate movies using multiple criteria
     if show_movies {
-        let mut tmdb_to_movies: std::collections::HashMap<u64, Vec<_>> =
-            std::collections::HashMap::new();
-
+        // First pass: Group by TMDB ID (most reliable)
+        let mut tmdb_groups: std::collections::HashMap<u64, Vec<&MovieEntry>> = std::collections::HashMap::new();
         for movie in &index.movies {
             if let Some(tmdb_id) = movie.tmdb_id {
-                tmdb_to_movies.entry(tmdb_id).or_default().push(movie);
+                tmdb_groups.entry(tmdb_id).or_default().push(movie);
             }
         }
 
-        for (tmdb_id, movies) in tmdb_to_movies {
+        for (tmdb_id, movies) in tmdb_groups {
             if movies.len() > 1 {
                 let total_size: u64 = movies.iter().map(|m| m.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
@@ -446,14 +466,24 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                     title: movies[0].title.clone(),
                     year: movies[0].year,
                     media_type: "movie".to_string(),
+                    confidence: "high".to_string(),
                     entries: movies
                         .iter()
-                        .map(|m| DuplicateEntry {
-                            disk: m.disk.clone(),
-                            path: m.relative_path.clone(),
-                            size_bytes: m.size_bytes,
-                            size_human: format_size(m.size_bytes),
-                            online: indexer::is_disk_online(&m.disk),
+                        .map(|m| {
+                            let disk_path = index.disks.get(&m.disk)
+                                .and_then(|d| {
+                                    d.paths.values().next().cloned()
+                                        .or_else(|| Some(d.base_path.clone()))
+                                })
+                                .unwrap_or_default();
+                            DuplicateEntry {
+                                disk: m.disk.clone(),
+                                disk_path,
+                                path: m.relative_path.clone(),
+                                size_bytes: m.size_bytes,
+                                size_human: format_size(m.size_bytes),
+                                online: indexer::is_disk_online(&m.disk),
+                            }
                         })
                         .collect(),
                     total_size_bytes: total_size,
@@ -461,20 +491,142 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                 });
             }
         }
-    }
 
-    // Find duplicate TV shows
-    if show_tv_series {
-        let mut tmdb_to_tv_series: std::collections::HashMap<u64, Vec<_>> =
-            std::collections::HashMap::new();
-
-        for tvshow in &index.tv_series {
-            if let Some(tmdb_id) = tvshow.tmdb_id {
-                tmdb_to_tv_series.entry(tmdb_id).or_default().push(tvshow);
+        // Second pass: Group by IMDB ID (for entries without TMDB ID)
+        let movies_without_tmdb: Vec<_> = index.movies.iter().filter(|m| m.tmdb_id.is_none()).collect();
+        let mut imdb_groups: std::collections::HashMap<String, Vec<&MovieEntry>> = std::collections::HashMap::new();
+        for movie in &movies_without_tmdb {
+            if let Some(ref imdb_id) = movie.imdb_id {
+                imdb_groups.entry(imdb_id.clone()).or_default().push(movie);
             }
         }
 
-        for (tmdb_id, tv_series) in tmdb_to_tv_series {
+        for (_, movies) in imdb_groups {
+            if movies.len() > 1 {
+                let total_size: u64 = movies.iter().map(|m| m.size_bytes).sum();
+                duplicates.push(DuplicateGroup {
+                    tmdb_id: 0,
+                    title: movies[0].title.clone(),
+                    year: movies[0].year,
+                    media_type: "movie".to_string(),
+                    confidence: "medium".to_string(),
+                    entries: movies
+                        .iter()
+                        .map(|m| {
+                            let disk_path = index.disks.get(&m.disk)
+                                .and_then(|d| {
+                                    d.paths.values().next().cloned()
+                                        .or_else(|| Some(d.base_path.clone()))
+                                })
+                                .unwrap_or_default();
+                            DuplicateEntry {
+                                disk: m.disk.clone(),
+                                disk_path,
+                                path: m.relative_path.clone(),
+                                size_bytes: m.size_bytes,
+                                size_human: format_size(m.size_bytes),
+                                online: indexer::is_disk_online(&m.disk),
+                            }
+                        })
+                        .collect(),
+                    total_size_bytes: total_size,
+                    total_size_human: format_size(total_size),
+                });
+            }
+        }
+
+        // Third pass: Title-based matching with high similarity threshold
+        // Only for movies without TMDB or IMDB ID
+        let movies_without_ids: Vec<_> = movies_without_tmdb
+            .into_iter()
+            .filter(|m| m.imdb_id.is_none())
+            .collect();
+        
+        for i in 0..movies_without_ids.len() {
+            for j in (i + 1)..movies_without_ids.len() {
+                let m1 = movies_without_ids[i];
+                let m2 = movies_without_ids[j];
+                
+                // Check if they're on different disks (same disk duplicates are less interesting)
+                if m1.disk == m2.disk {
+                    continue;
+                }
+                
+                // Check title similarity (must be very high)
+                let similarity = title_similarity(&m1.title, &m2.title);
+                if similarity < 0.9 {
+                    continue;
+                }
+                
+                // Check year match if both have years
+                if m1.year.is_some() && m2.year.is_some() && m1.year != m2.year {
+                    continue;
+                }
+                
+                // Found a potential duplicate pair
+                let exists = duplicates.iter_mut().any(|d| {
+                    d.title == m1.title && d.media_type == "movie"
+                });
+                
+                if !exists {
+                    let total_size = m1.size_bytes + m2.size_bytes;
+                    
+                    let disk_path1 = index.disks.get(&m1.disk)
+                        .and_then(|d| {
+                            d.paths.values().next().cloned()
+                                .or_else(|| Some(d.base_path.clone()))
+                        })
+                        .unwrap_or_default();
+                    let disk_path2 = index.disks.get(&m2.disk)
+                        .and_then(|d| {
+                            d.paths.values().next().cloned()
+                                .or_else(|| Some(d.base_path.clone()))
+                        })
+                        .unwrap_or_default();
+                    
+                    duplicates.push(DuplicateGroup {
+                        tmdb_id: 0,
+                        title: m1.title.clone(),
+                        year: m1.year.or(m2.year),
+                        media_type: "movie".to_string(),
+                        confidence: "low".to_string(),
+                        entries: vec![
+                            DuplicateEntry {
+                                disk: m1.disk.clone(),
+                                disk_path: disk_path1,
+                                path: m1.relative_path.clone(),
+                                size_bytes: m1.size_bytes,
+                                size_human: format_size(m1.size_bytes),
+                                online: indexer::is_disk_online(&m1.disk),
+                            },
+                            DuplicateEntry {
+                                disk: m2.disk.clone(),
+                                disk_path: disk_path2,
+                                path: m2.relative_path.clone(),
+                                size_bytes: m2.size_bytes,
+                                size_human: format_size(m2.size_bytes),
+                                online: indexer::is_disk_online(&m2.disk),
+                            },
+                        ],
+                        total_size_bytes: total_size,
+                        total_size_human: format_size(total_size),
+                    });
+                }
+            }
+        }
+    }
+
+    // Find duplicate TV shows using similar logic
+    if show_tv_series {
+        // First pass: Group by TMDB ID
+        let mut tmdb_groups: std::collections::HashMap<u64, Vec<&TvSeriesEntry>> = std::collections::HashMap::new();
+        for tvshow in &index.tv_series {
+            if let Some(tmdb_id) = tvshow.tmdb_id {
+                tmdb_groups.entry(tmdb_id).or_default().push(tvshow);
+            }
+        }
+
+        for (tmdb_id, tv_series) in tmdb_groups {
             if tv_series.len() > 1 {
                 let total_size: u64 = tv_series.iter().map(|t| t.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
@@ -482,14 +634,24 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                     title: tv_series[0].title.clone(),
                     year: tv_series[0].year,
                     media_type: "tv_series".to_string(),
+                    confidence: "high".to_string(),
                     entries: tv_series
                         .iter()
-                        .map(|t| DuplicateEntry {
-                            disk: t.disk.clone(),
-                            path: t.relative_path.clone(),
-                            size_bytes: t.size_bytes,
-                            size_human: format_size(t.size_bytes),
-                            online: indexer::is_disk_online(&t.disk),
+                        .map(|t| {
+                            let disk_path = index.disks.get(&t.disk)
+                                .and_then(|d| {
+                                    d.paths.values().next().cloned()
+                                        .or_else(|| Some(d.base_path.clone()))
+                                })
+                                .unwrap_or_default();
+                            DuplicateEntry {
+                                disk: t.disk.clone(),
+                                disk_path,
+                                path: t.relative_path.clone(),
+                                size_bytes: t.size_bytes,
+                                size_human: format_size(t.size_bytes),
+                                online: indexer::is_disk_online(&t.disk),
+                            }
                         })
                         .collect(),
                     total_size_bytes: total_size,
@@ -497,10 +659,139 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                 });
             }
         }
+
+        // Second pass: Group by IMDB ID
+        let tv_without_tmdb: Vec<_> = index.tv_series.iter().filter(|t| t.tmdb_id.is_none()).collect();
+        let mut imdb_groups: std::collections::HashMap<String, Vec<&TvSeriesEntry>> = std::collections::HashMap::new();
+        for tvshow in &tv_without_tmdb {
+            if let Some(ref imdb_id) = tvshow.imdb_id {
+                imdb_groups.entry(imdb_id.clone()).or_default().push(tvshow);
+            }
+        }
+
+        for (_, tv_series) in imdb_groups {
+            if tv_series.len() > 1 {
+                let total_size: u64 = tv_series.iter().map(|t| t.size_bytes).sum();
+                duplicates.push(DuplicateGroup {
+                    tmdb_id: 0,
+                    title: tv_series[0].title.clone(),
+                    year: tv_series[0].year,
+                    media_type: "tv_series".to_string(),
+                    confidence: "medium".to_string(),
+                    entries: tv_series
+                        .iter()
+                        .map(|t| {
+                            let disk_path = index.disks.get(&t.disk)
+                                .and_then(|d| {
+                                    d.paths.values().next().cloned()
+                                        .or_else(|| Some(d.base_path.clone()))
+                                })
+                                .unwrap_or_default();
+                            DuplicateEntry {
+                                disk: t.disk.clone(),
+                                disk_path,
+                                path: t.relative_path.clone(),
+                                size_bytes: t.size_bytes,
+                                size_human: format_size(t.size_bytes),
+                                online: indexer::is_disk_online(&t.disk),
+                            }
+                        })
+                        .collect(),
+                    total_size_bytes: total_size,
+                    total_size_human: format_size(total_size),
+                });
+            }
+        }
+
+        // Third pass: Title-based matching for TV shows without IDs
+        let tv_without_ids: Vec<_> = tv_without_tmdb
+            .into_iter()
+            .filter(|t| t.imdb_id.is_none())
+            .collect();
+        
+        for i in 0..tv_without_ids.len() {
+            for j in (i + 1)..tv_without_ids.len() {
+                let t1 = tv_without_ids[i];
+                let t2 = tv_without_ids[j];
+                
+                if t1.disk == t2.disk {
+                    continue;
+                }
+                
+                let similarity = title_similarity(&t1.title, &t2.title);
+                if similarity < 0.9 {
+                    continue;
+                }
+                
+                if t1.year.is_some() && t2.year.is_some() && t1.year != t2.year {
+                    continue;
+                }
+                
+                let exists = duplicates.iter_mut().any(|d| {
+                    d.title == t1.title && d.media_type == "tv_series"
+                });
+                
+                if !exists {
+                    let total_size = t1.size_bytes + t2.size_bytes;
+                    
+                    let disk_path1 = index.disks.get(&t1.disk)
+                        .and_then(|d| {
+                            d.paths.values().next().cloned()
+                                .or_else(|| Some(d.base_path.clone()))
+                        })
+                        .unwrap_or_default();
+                    let disk_path2 = index.disks.get(&t2.disk)
+                        .and_then(|d| {
+                            d.paths.values().next().cloned()
+                                .or_else(|| Some(d.base_path.clone()))
+                        })
+                        .unwrap_or_default();
+                    
+                    duplicates.push(DuplicateGroup {
+                        tmdb_id: 0,
+                        title: t1.title.clone(),
+                        year: t1.year.or(t2.year),
+                        media_type: "tv_series".to_string(),
+                        confidence: "low".to_string(),
+                        entries: vec![
+                            DuplicateEntry {
+                                disk: t1.disk.clone(),
+                                disk_path: disk_path1,
+                                path: t1.relative_path.clone(),
+                                size_bytes: t1.size_bytes,
+                                size_human: format_size(t1.size_bytes),
+                                online: indexer::is_disk_online(&t1.disk),
+                            },
+                            DuplicateEntry {
+                                disk: t2.disk.clone(),
+                                disk_path: disk_path2,
+                                path: t2.relative_path.clone(),
+                                size_bytes: t2.size_bytes,
+                                size_human: format_size(t2.size_bytes),
+                                online: indexer::is_disk_online(&t2.disk),
+                            },
+                        ],
+                        total_size_bytes: total_size,
+                        total_size_human: format_size(total_size),
+                    });
+                }
+            }
+        }
     }
 
-    // Sort by total size (largest first)
-    duplicates.sort_by(|a, b| b.total_size_bytes.cmp(&a.total_size_bytes));
+    // Sort by confidence (high first), then by total size (largest first)
+    duplicates.sort_by(|a, b| {
+        let confidence_order = match (a.confidence.as_str(), b.confidence.as_str()) {
+            ("high", "high") => std::cmp::Ordering::Equal,
+            ("high", _) => std::cmp::Ordering::Less,
+            (_, "high") => std::cmp::Ordering::Greater,
+            ("medium", "medium") => std::cmp::Ordering::Equal,
+            ("medium", _) => std::cmp::Ordering::Less,
+            (_, "medium") => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal,
+        };
+        confidence_order.then_with(|| b.total_size_bytes.cmp(&a.total_size_bytes))
+    });
 
     // Output
     match format {
@@ -515,9 +806,16 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                 println!("Found {} duplicate groups:\n", duplicates.len());
                 for group in &duplicates {
                     let year_str = group.year.map(|y| y.to_string()).unwrap_or_default();
+                    let confidence_str = match group.confidence.as_str() {
+                        "high" => "[HIGH]".green(),
+                        "medium" => "[MED]".yellow(),
+                        "low" => "[LOW]".cyan(),
+                        _ => "[?]".white(),
+                    };
                     println!(
-                        "[{}] {} ({}) - tmdb{} - {} copies - {}",
+                        "[{}] {} {} ({}) - tmdb{} - {} copies - {}",
                         group.media_type.to_uppercase(),
+                        confidence_str,
                         group.title,
                         year_str,
                         group.tmdb_id,
@@ -525,10 +823,9 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                         group.total_size_human
                     );
                     for entry in &group.entries {
-                        let status = if entry.online { "online" } else { "offline" };
                         println!(
-                            "  - {} ({}) [{}]: {}",
-                            entry.disk, status, entry.size_human, entry.path
+                            "  - {} [{}]: {}",
+                            entry.disk, entry.size_human, entry.path
                         );
                     }
                     println!();
@@ -540,6 +837,16 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
             if duplicates.is_empty() {
                 println!("{}", "No duplicates found.".green());
             } else {
+                // Collect unique disk paths for display at the beginning
+                let mut disk_paths: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                for group in &duplicates {
+                    for entry in &group.entries {
+                        if !disk_paths.contains_key(&entry.disk) {
+                            disk_paths.insert(entry.disk.clone(), entry.disk_path.clone());
+                        }
+                    }
+                }
+                
                 println!(
                     "{}",
                     format!("Found {} duplicate groups:", duplicates.len())
@@ -547,6 +854,17 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                         .yellow()
                 );
                 println!();
+                
+                // Show disk locations at the beginning
+                if !disk_paths.is_empty() {
+                    println!("{}", "Volume Groups:".bold());
+                    let mut sorted_disks: Vec<(&String, &String)> = disk_paths.iter().collect();
+                    sorted_disks.sort_by(|a, b| a.0.cmp(b.0));
+                    for (disk, path) in sorted_disks {
+                        println!("  {} -> {}", disk.bold(), path.dimmed());
+                    }
+                    println!();
+                }
 
                 for group in &duplicates {
                     let year_str = group.year.map(|y| format!("({})", y)).unwrap_or_default();
@@ -555,10 +873,17 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                         "tv_series" => "[TV_SERIES]".magenta(),
                         _ => "[?]".white(),
                     };
+                    let confidence_badge = match group.confidence.as_str() {
+                        "high" => "[HIGH]".green(),
+                        "medium" => "[MED]".yellow(),
+                        "low" => "[LOW]".cyan(),
+                        _ => "[?]".white(),
+                    };
 
                     println!(
-                        "{} {} {} - tmdb{} - {} copies",
+                        "{} {} {} {} - tmdb{} - {} copies",
                         type_badge,
+                        confidence_badge,
                         group.title.bold(),
                         year_str,
                         group.tmdb_id,
@@ -568,16 +893,10 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                     println!("  {}", "-".repeat(60));
 
                     for entry in &group.entries {
-                        let status = if entry.online {
-                            "Online".green()
-                        } else {
-                            "Offline".red()
-                        };
                         println!(
-                            "  {:>12} | {:>10} | {} | {}",
+                            "  {:>12} | {:>10} | {}",
                             entry.disk.bold(),
                             entry.size_human,
-                            status,
                             entry.path
                         );
                     }

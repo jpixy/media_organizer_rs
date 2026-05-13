@@ -5,6 +5,45 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+use sha2::{Sha256, Digest};
+
+/// Calculate a content hash for a directory based on NFO files.
+/// This is used to detect if the directory content has changed.
+pub fn calculate_directory_hash(path: &Path) -> Result<String> {
+    let mut hasher = Sha256::new();
+    
+    let mut nfo_files: Vec<PathBuf> = WalkDir::new(path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext.to_lowercase() == "nfo")
+                .unwrap_or(false)
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect();
+    
+    // Sort files by path to ensure consistent hash
+    nfo_files.sort();
+    
+    for nfo_path in nfo_files {
+        if let Ok(metadata) = nfo_path.metadata() {
+            // Include filename, modification time, and size in hash
+            hasher.update(nfo_path.to_string_lossy().as_bytes());
+            if let Ok(mtime) = metadata.modified() {
+                hasher.update(mtime.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs().to_string().as_bytes());
+            }
+            hasher.update(metadata.len().to_string().as_bytes());
+        }
+    }
+    
+    let hash = hasher.finalize();
+    Ok(hex::encode(hash))
+}
 
 /// Configuration directory path.
 fn config_dir() -> Result<PathBuf> {
@@ -171,34 +210,41 @@ pub fn is_disk_online(disk_label: &str) -> bool {
 }
 
 /// Scan a directory for NFO files and build index entries.
+/// 
+/// Supports idempotency: if the content hash hasn't changed since last scan,
+/// returns the existing index without re-scanning.
 pub fn scan_directory(
     path: &Path,
     disk_label: &str,
     disk_uuid: Option<String>,
     media_type: &str,
-) -> Result<DiskIndex> {
+) -> Result<(DiskIndex, bool)> {
     tracing::info!("Scanning directory: {}", path.display());
+
+    // Calculate content hash for idempotency check
+    let content_hash = calculate_directory_hash(path)?;
+    tracing::debug!("Directory content hash: {}", content_hash);
+
+    // Check if we have an existing index with the same hash
+    if let Ok(Some(existing)) = load_disk_index(disk_label) {
+        if existing.disk.content_hash == content_hash {
+            tracing::info!("Content unchanged (hash match), returning cached index");
+            return Ok((existing, false));
+        }
+        tracing::info!("Content changed (hash mismatch), re-scanning...");
+    }
 
     let mut index = DiskIndex::default();
     index.disk.label = disk_label.to_string();
     index.disk.uuid = disk_uuid.clone();
     index.disk.base_path = path.to_string_lossy().to_string();
     index.disk.last_indexed = chrono::Utc::now().to_rfc3339();
-
-    // Store path by media type for composite storage support
-    index
-        .disk
-        .paths
-        .insert(media_type.to_string(), path.to_string_lossy().to_string());
-
-    let nfo_pattern = if media_type == "movies" {
-        "movie.nfo"
-    } else {
-        "tvshow.nfo"
-    };
+    index.disk.content_hash = content_hash;
 
     let mut total_size: u64 = 0;
 
+    // Always scan for both movie.nfo and tvshow.nfo regardless of media_type
+    // The media_type only affects which paths get stored, not what gets scanned
     for entry in WalkDir::new(path)
         .follow_links(true)
         .into_iter()
@@ -208,24 +254,42 @@ pub fn scan_directory(
 
         if entry_path.is_file() {
             if let Some(filename) = entry_path.file_name() {
-                if filename == nfo_pattern {
-                    match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
-                        Ok(ParsedNfo::Movie(movie)) => {
-                            total_size += movie.size_bytes;
-                            index.movies.push(movie);
-                        }
-                        Ok(ParsedNfo::TvSeries(tvshow)) => {
-                            total_size += tvshow.size_bytes;
-                            index.tv_series.push(tvshow);
-                        }
-                        Err(e) => {
-                            tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
+                match filename.to_str() {
+                    Some("movie.nfo") => {
+                        match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
+                            Ok(ParsedNfo::Movie(movie)) => {
+                                total_size += movie.size_bytes;
+                                index.movies.push(movie);
+                            }
+                            Ok(ParsedNfo::TvSeries(_)) => {} // Shouldn't happen
+                            Err(e) => {
+                                tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
+                            }
                         }
                     }
+                    Some("tvshow.nfo") => {
+                        match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
+                            Ok(ParsedNfo::TvSeries(tvshow)) => {
+                                total_size += tvshow.size_bytes;
+                                index.tv_series.push(tvshow);
+                            }
+                            Ok(ParsedNfo::Movie(_)) => {} // Shouldn't happen
+                            Err(e) => {
+                                tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
     }
+
+    // Store path by media type for composite storage support
+    index
+        .disk
+        .paths
+        .insert(media_type.to_string(), path.to_string_lossy().to_string());
 
     index.disk.movie_count = index.movies.len();
     index.disk.tv_series_count = index.tv_series.len();
@@ -237,7 +301,7 @@ pub fn scan_directory(
         index.tv_series.len()
     );
 
-    Ok(index)
+    Ok((index, true))
 }
 
 /// Parsed NFO result.

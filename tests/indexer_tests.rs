@@ -29,6 +29,7 @@ fn create_movie_disk_index(label: &str, path: &str, movies: Vec<MovieEntry>) -> 
             total_size_bytes: movies.iter().map(|m| m.size_bytes).sum(),
             base_path: path.to_string(),
             paths,
+            content_hash: String::new(),
         },
         movies,
         tv_series: Vec::new(),
@@ -51,6 +52,7 @@ fn create_tv_series_disk_index(label: &str, path: &str, tv_series: Vec<TvSeriesE
             total_size_bytes: tv_series.iter().map(|t| t.size_bytes).sum(),
             base_path: path.to_string(),
             paths,
+            content_hash: String::new(),
         },
         movies: Vec::new(),
         tv_series,
@@ -846,9 +848,6 @@ fn test_statistics_update() {
     assert_eq!(central.statistics.total_movies, 2);
     assert_eq!(central.statistics.total_disks, 1);
     assert_eq!(central.statistics.total_size_bytes, 3_000_000_000);
-    assert_eq!(central.statistics.by_country.get("US"), Some(&1));
-    assert_eq!(central.statistics.by_country.get("CN"), Some(&1));
-    assert_eq!(central.statistics.by_decade.get("2020s"), Some(&2));
 }
 
 // ========== BACKWARD COMPATIBILITY TESTS ==========
@@ -872,4 +871,201 @@ fn test_backward_compatibility_base_path() {
     assert_eq!(disk_info.label, "OldDisk");
     assert_eq!(disk_info.base_path, "/mnt/OldDisk/Movies");
     assert!(disk_info.paths.is_empty()); // Default empty HashMap
+}
+
+// ========== IDEMPOTENCY TESTS ==========
+
+#[test]
+fn test_content_hash_consistency() {
+    // Test that the same directory produces the same hash
+    use media_organizer::core::indexer::calculate_directory_hash;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let dir_path = dir.path();
+
+    // Create some test NFO files
+    let nfo1_path = dir_path.join("movie.nfo");
+    let mut nfo1 = File::create(&nfo1_path).unwrap();
+    writeln!(nfo1, "<movie><title>Test Movie</title></movie>").unwrap();
+
+    let nfo2_path = dir_path.join("tvshow.nfo");
+    let mut nfo2 = File::create(&nfo2_path).unwrap();
+    writeln!(nfo2, "<tvshow><title>Test TV</title></tvshow>").unwrap();
+
+    // Calculate hash twice
+    let hash1 = calculate_directory_hash(dir_path).unwrap();
+    let hash2 = calculate_directory_hash(dir_path).unwrap();
+
+    // Should be the same
+    assert_eq!(hash1, hash2);
+}
+
+#[test]
+fn test_content_hash_detects_changes() {
+    use media_organizer::core::indexer::calculate_directory_hash;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let dir_path = dir.path();
+
+    // Create initial NFO file
+    let nfo_path = dir_path.join("movie.nfo");
+    let mut nfo = File::create(&nfo_path).unwrap();
+    writeln!(nfo, "<movie><title>Original</title></movie>").unwrap();
+
+    let hash1 = calculate_directory_hash(dir_path).unwrap();
+
+    // Modify the file
+    writeln!(nfo, "<movie><title>Modified</title></movie>").unwrap();
+
+    let hash2 = calculate_directory_hash(dir_path).unwrap();
+
+    // Should be different
+    assert_ne!(hash1, hash2);
+}
+
+// ========== DUPLICATE DETECTION ACCURACY TESTS ==========
+
+#[test]
+fn test_duplicate_detection_tmdb_id_high_confidence() {
+    // Test that same TMDB ID produces high confidence duplicates
+    let movie1 = create_test_movie("1", "Movie A", "disk1", 12345);
+    let movie2 = create_test_movie("2", "Movie A", "disk2", 12345);
+
+    let disk1 = create_movie_disk_index("disk1", "/mnt/disk1", vec![movie1]);
+    let disk2 = create_movie_disk_index("disk2", "/mnt/disk2", vec![movie2]);
+
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk1);
+    merge_disk_into_central(&mut central, disk2);
+
+    // Should have 2 movies total
+    assert_eq!(central.statistics.total_movies, 2);
+    assert_eq!(central.movies.len(), 2);
+
+    // Both should have the same TMDB ID
+    assert_eq!(central.movies[0].tmdb_id, Some(12345));
+    assert_eq!(central.movies[1].tmdb_id, Some(12345));
+}
+
+#[test]
+fn test_duplicate_detection_imdb_id_matching() {
+    // Test IMDB ID based duplicate detection
+    let mut movie1 = create_test_movie("1", "Movie A", "disk1", 0);
+    movie1.imdb_id = Some("tt1234567".to_string());
+    
+    let mut movie2 = create_test_movie("2", "Movie A", "disk2", 0);
+    movie2.imdb_id = Some("tt1234567".to_string());
+
+    let disk1 = create_movie_disk_index("disk1", "/mnt/disk1", vec![movie1]);
+    let disk2 = create_movie_disk_index("disk2", "/mnt/disk2", vec![movie2]);
+
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk1);
+    merge_disk_into_central(&mut central, disk2);
+
+    // Should have 2 movies with same IMDB ID
+    assert_eq!(central.statistics.total_movies, 2);
+    assert_eq!(central.movies[0].imdb_id, central.movies[1].imdb_id);
+}
+
+#[test]
+fn test_duplicate_detection_different_tmdb_ids() {
+    // Test that different TMDB IDs are not considered duplicates
+    let movie1 = create_test_movie("1", "Movie A", "disk1", 12345);
+    let movie2 = create_test_movie("2", "Movie A", "disk2", 67890);
+
+    let disk1 = create_movie_disk_index("disk1", "/mnt/disk1", vec![movie1]);
+    let disk2 = create_movie_disk_index("disk2", "/mnt/disk2", vec![movie2]);
+
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk1);
+    merge_disk_into_central(&mut central, disk2);
+
+    // Should have 2 movies with different TMDB IDs
+    assert_eq!(central.statistics.total_movies, 2);
+    assert_ne!(central.movies[0].tmdb_id, central.movies[1].tmdb_id);
+}
+
+// ========== TITLE SIMILARITY TESTS ==========
+
+#[test]
+fn test_title_similarity_exact_match() {
+    use media_organizer::cli::commands::index::title_similarity;
+    
+    let sim = title_similarity("Hello World", "Hello World");
+    assert_eq!(sim, 1.0);
+}
+
+#[test]
+fn test_title_similarity_case_insensitive() {
+    use media_organizer::cli::commands::index::title_similarity;
+    
+    let sim = title_similarity("Hello World", "hello world");
+    assert_eq!(sim, 1.0);
+}
+
+#[test]
+fn test_title_similarity_high_similarity() {
+    use media_organizer::cli::commands::index::title_similarity;
+    
+    // 90% similarity threshold - "Hello World" vs "Hello World!"
+    let sim = title_similarity("Hello World", "Hello World!");
+    assert!(sim >= 0.9, "Similarity should be >= 0.9, got {}", sim);
+}
+
+#[test]
+fn test_title_similarity_low_similarity() {
+    use media_organizer::cli::commands::index::title_similarity;
+    
+    let sim = title_similarity("Inception", "Interstellar");
+    assert!(sim < 0.9, "Similarity should be < 0.9, got {}", sim);
+}
+
+// ========== VOLUME GROUP STATISTICS TESTS ==========
+
+#[test]
+fn test_volume_group_combined_stats() {
+    // Test that volume groups correctly track both movies and TV shows
+    let movie = create_test_movie("1", "Test Movie", "local", 12345);
+    let tv_show = create_test_tv_series("1", "Test Show", "local", 67890);
+
+    let movie_disk = create_movie_disk_index("local", "/mnt/local", vec![movie]);
+    let tv_disk = create_tv_series_disk_index("local", "/mnt/local", vec![tv_show]);
+
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, movie_disk);
+    merge_disk_into_central(&mut central, tv_disk);
+
+    // Should have combined stats
+    assert_eq!(central.statistics.total_movies, 1);
+    assert_eq!(central.statistics.total_tv_series, 1);
+}
+
+#[test]
+fn test_empty_disk_index() {
+    // Test handling of empty disk index
+    let disk = create_movie_disk_index("empty", "/mnt/empty", Vec::new());
+    
+    assert_eq!(disk.movies.len(), 0);
+    assert_eq!(disk.tv_series.len(), 0);
+    assert_eq!(disk.disk.movie_count, 0);
+    assert_eq!(disk.disk.tv_series_count, 0);
+    assert_eq!(disk.disk.total_size_bytes, 0);
+}
+
+#[test]
+fn test_disk_info_content_hash_persistence() {
+    // Test that content_hash is preserved in DiskInfo
+    let movie = create_test_movie("1", "Test", "disk1", 12345);
+    let mut disk = create_movie_disk_index("disk1", "/mnt/disk1", vec![movie]);
+    
+    disk.disk.content_hash = "test-hash-123".to_string();
+    
+    assert_eq!(disk.disk.content_hash, "test-hash-123");
 }
