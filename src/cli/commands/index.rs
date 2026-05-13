@@ -14,19 +14,19 @@ pub async fn execute_index(action: IndexAction) -> Result<()> {
         IndexAction::Scan {
             path,
             media_type,
-            disk_label,
+            volume_label,
             force,
-        } => scan_directory(&path, &media_type, disk_label, force).await,
+        } => scan_directory(&path, &media_type, volume_label, force).await,
         IndexAction::Stats => show_stats().await,
         IndexAction::List {
-            disk_label,
+            volume_label,
             media_type,
-        } => list_disk(&disk_label, &media_type).await,
+        } => list_volume(&volume_label, &media_type).await,
         IndexAction::Verify { path } => verify_index(&path).await,
         IndexAction::Remove {
-            disk_label,
+            volume_label,
             confirm,
-        } => remove_disk(&disk_label, confirm).await,
+        } => remove_volume(&volume_label, confirm).await,
         IndexAction::Duplicates { media_type, format } => {
             find_duplicates(&media_type, &format).await
         }
@@ -41,6 +41,11 @@ pub async fn execute_index(action: IndexAction) -> Result<()> {
             }
             list_collections(&filter, &format, paths).await
         }
+        IndexAction::Tv {
+            filter,
+            format,
+            paths,
+        } => list_tv(&filter, &format, paths).await,
     }
 }
 
@@ -48,18 +53,18 @@ pub async fn execute_index(action: IndexAction) -> Result<()> {
 async fn scan_directory(
     path: &Path,
     media_type: &str,
-    disk_label: Option<String>,
+    volume_label: Option<String>,
     force: bool,
 ) -> Result<()> {
     println!("{}", "[INDEX] Scanning directory...".bold().cyan());
     println!("  Path: {}", path.display());
     println!("  Media type: {}", media_type);
 
-    // Detect or use provided disk label
-    let label = disk_label.unwrap_or_else(|| {
+    // Detect or use provided volume label
+    let label = volume_label.unwrap_or_else(|| {
         indexer::detect_disk_label(path).unwrap_or_else(|| "unknown".to_string())
     });
-    println!("  Disk label: {}", label);
+    println!("  Volume: {}", label);
 
     // Get disk UUID
     let uuid = indexer::get_disk_uuid(path);
@@ -73,7 +78,7 @@ async fn scan_directory(
             println!(
                 "{}",
                 format!(
-                    "[WARN] Disk '{}' already indexed ({} movies, {} TV shows)",
+                    "[WARN] Volume '{}' already indexed ({} movies, {} TV shows)",
                     label, existing.disk.movie_count, existing.disk.tv_series_count
                 )
                 .yellow()
@@ -94,7 +99,7 @@ async fn scan_directory(
     pb.set_message("Scanning for NFO files...");
     pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
-    let (disk_index, was_updated) = indexer::scan_directory(path, &label, uuid, media_type)?;
+    let (disk_index, was_updated) = indexer::scan_directory(path, &label, uuid, media_type, force)?;
 
     pb.finish_with_message(if was_updated { "Scan complete" } else { "Content unchanged - using cached index" });
 
@@ -146,18 +151,12 @@ async fn show_stats() -> Result<()> {
     // Volume Groups (formerly Disks)
     println!("{}", "Volume Groups:".bold());
     for (label, disk) in &index.disks {
-        let status = if indexer::is_disk_online(label) {
-            "Online".green()
-        } else {
-            "Offline".red()
-        };
         println!(
-            "  {} | {} movies | {} TV shows | {:.1} GB | {}",
+            "  {} | {} movies | {} TV shows | {:.1} GB",
             label.bold(),
             disk.movie_count,
             disk.tv_series_count,
             disk.total_size_bytes as f64 / 1_073_741_824.0,
-            status
         );
         // Show primary path (the path where media was indexed from)
         if !disk.base_path.is_empty() {
@@ -189,12 +188,24 @@ async fn show_stats() -> Result<()> {
         "  Incomplete: {} collections",
         index.statistics.incomplete_collections
     );
+    println!();
+
+    // TV Shows
+    println!("{}", "TV Shows:".bold());
+    println!(
+        "  Complete: {} series",
+        index.statistics.complete_tv_series
+    );
+    println!(
+        "  Incomplete: {} series",
+        index.statistics.incomplete_tv_series
+    );
 
     Ok(())
 }
 
 /// List contents of a specific disk.
-async fn list_disk(disk_label: &str, media_type: &str) -> Result<()> {
+async fn list_volume(volume_label: &str, media_type: &str) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     let show_movies = media_type == "all" || media_type == "movies";
@@ -204,13 +215,13 @@ async fn list_disk(disk_label: &str, media_type: &str) -> Result<()> {
         let movies: Vec<_> = index
             .movies
             .iter()
-            .filter(|m| m.disk == disk_label)
+            .filter(|m| m.disk == volume_label)
             .collect();
 
         if !movies.is_empty() {
             println!(
                 "{}",
-                format!("Movies on {} ({}):", disk_label, movies.len()).bold()
+                format!("Movies on {} ({}):", volume_label, movies.len()).bold()
             );
             for movie in movies {
                 println!(
@@ -228,13 +239,13 @@ async fn list_disk(disk_label: &str, media_type: &str) -> Result<()> {
         let tv_series: Vec<_> = index
             .tv_series
             .iter()
-            .filter(|t| t.disk == disk_label)
+            .filter(|t| t.disk == volume_label)
             .collect();
 
         if !tv_series.is_empty() {
             println!(
                 "{}",
-                format!("TV Shows on {} ({}):", disk_label, tv_series.len()).bold()
+                format!("TV Shows on {} ({}):", volume_label, tv_series.len()).bold()
             );
             for tvshow in tv_series {
                 println!(
@@ -302,14 +313,14 @@ async fn verify_index(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Remove a disk from the index.
-async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
+/// Remove a volume group from the index.
+async fn remove_volume(volume_label: &str, confirm: bool) -> Result<()> {
     if !confirm {
         println!(
             "{}",
             format!(
-                "[WARN] This will remove all entries for disk '{}' from the index.",
-                disk_label
+                "[WARN] This will remove all entries for volume '{}' from the index.",
+                volume_label
             )
             .yellow()
         );
@@ -322,9 +333,9 @@ async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
     let movies_before = index.movies.len();
     let tv_series_before = index.tv_series.len();
 
-    index.movies.retain(|m| m.disk != disk_label);
-    index.tv_series.retain(|t| t.disk != disk_label);
-    index.disks.remove(disk_label);
+    index.movies.retain(|m| m.disk != volume_label);
+    index.tv_series.retain(|t| t.disk != volume_label);
+    index.disks.remove(volume_label);
 
     let movies_removed = movies_before - index.movies.len();
     let tv_series_removed = tv_series_before - index.tv_series.len();
@@ -334,7 +345,7 @@ async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
     indexer::save_central_index(&index)?;
 
     // Remove disk index file
-    let disk_index_path = indexer::disk_indexes_dir()?.join(format!("{}.json", disk_label));
+    let disk_index_path = indexer::disk_indexes_dir()?.join(format!("{}.json", volume_label));
     if disk_index_path.exists() {
         std::fs::remove_file(&disk_index_path)?;
     }
@@ -342,8 +353,8 @@ async fn remove_disk(disk_label: &str, confirm: bool) -> Result<()> {
     println!(
         "{}",
         format!(
-            "[OK] Removed disk '{}': {} movies, {} TV shows",
-            disk_label, movies_removed, tv_series_removed
+            "[OK] Removed volume '{}': {} movies, {} TV shows",
+            volume_label, movies_removed, tv_series_removed
         )
         .bold()
         .green()
@@ -1327,6 +1338,192 @@ async fn list_collections(filter: &str, format: &str, show_paths: bool) -> Resul
                                 disk_status
                             );
                         }
+                    }
+                    println!();
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct TvSeriesOutput {
+    id: String,
+    title: String,
+    year: Option<u16>,
+    tmdb_id: Option<u64>,
+    status: String,
+    owned_seasons: u16,
+    total_seasons: u16,
+    owned_episodes: u32,
+    total_episodes: u32,
+    disk: String,
+    path: Option<String>,
+}
+
+/// List TV shows with season/episode statistics.
+async fn list_tv(filter: &str, format: &str, show_paths: bool) -> Result<()> {
+    let index = indexer::load_central_index()?;
+
+    // Build TV series output list
+    let tv_series: Vec<TvSeriesOutput> = index
+        .tv_series
+        .iter()
+        .filter(|t| t.seasons > 0 || t.owned_seasons > 0)
+        .map(|t| {
+            let status = if t.seasons > 0 && t.owned_seasons > 0 && t.owned_seasons >= t.seasons {
+                "Complete".to_string()
+            } else if t.seasons > 0 && t.owned_seasons > 0 && t.owned_seasons < t.seasons {
+                "Incomplete".to_string()
+            } else {
+                "Unknown".to_string()
+            };
+
+            let path = if show_paths {
+                Some(t.relative_path.clone())
+            } else {
+                None
+            };
+
+            TvSeriesOutput {
+                id: t.id.clone(),
+                title: t.title.clone(),
+                year: t.year,
+                tmdb_id: t.tmdb_id,
+                status,
+                owned_seasons: t.owned_seasons,
+                total_seasons: t.seasons,
+                owned_episodes: t.owned_episodes,
+                total_episodes: t.episodes,
+                disk: t.disk.clone(),
+                path,
+            }
+        })
+        .collect();
+
+    // Apply filter
+    let tv_series: Vec<_> = match filter {
+        "complete" => tv_series
+            .into_iter()
+            .filter(|t| t.status == "Complete")
+            .collect(),
+        "incomplete" => tv_series
+            .into_iter()
+            .filter(|t| t.status == "Incomplete")
+            .collect(),
+        _ => tv_series,
+    };
+
+    // Sort by name
+    let mut tv_series = tv_series;
+    tv_series.sort_by(|a, b| a.title.cmp(&b.title));
+
+    // Output
+    match format {
+        "json" => {
+            let json = serde_json::to_string_pretty(&tv_series)?;
+            println!("{}", json);
+        }
+        "simple" => {
+            if tv_series.is_empty() {
+                println!("No TV shows found.");
+            } else {
+                println!("Found {} TV shows:\n", tv_series.len());
+                for t in &tv_series {
+                    let status_str = match t.status.as_str() {
+                        "Complete" => "[COMPLETE]",
+                        "Incomplete" => "[INCOMPLETE]",
+                        _ => "[UNKNOWN]",
+                    };
+                    let year_str = t.year.map(|y| format!("({})", y)).unwrap_or_default();
+                    println!(
+                        "{} {} {} - {} seasons ({}/{}), {} episodes ({}/{})",
+                        status_str,
+                        t.title,
+                        year_str,
+                        t.total_seasons,
+                        t.owned_seasons,
+                        t.total_seasons,
+                        t.total_episodes,
+                        t.owned_episodes,
+                        t.total_episodes
+                    );
+                    if let Some(ref path) = t.path {
+                        println!("  {}: {}", t.disk, path);
+                    }
+                    println!();
+                }
+            }
+        }
+        _ => {
+            // Table format (default)
+            if tv_series.is_empty() {
+                println!("{}", "No TV shows found.".yellow());
+            } else {
+                let complete_count = tv_series
+                    .iter()
+                    .filter(|t| t.status == "Complete")
+                    .count();
+                let incomplete_count = tv_series
+                    .iter()
+                    .filter(|t| t.status == "Incomplete")
+                    .count();
+                let unknown_count = tv_series.iter().filter(|t| t.status == "Unknown").count();
+
+                println!("{}", "TV Shows".bold().cyan());
+                println!("{}", "=".repeat(60));
+                println!(
+                    "Total: {} | Complete: {} | Incomplete: {} | Unknown: {}",
+                    tv_series.len().to_string().bold(),
+                    complete_count.to_string().green(),
+                    incomplete_count.to_string().yellow(),
+                    unknown_count.to_string().white()
+                );
+                println!();
+
+                for t in &tv_series {
+                    let status_badge = match t.status.as_str() {
+                        "Complete" => "[COMPLETE]".green(),
+                        "Incomplete" => "[INCOMPLETE]".yellow(),
+                        _ => "[UNKNOWN]".white(),
+                    };
+
+                    let season_progress = if t.total_seasons > 0 {
+                        format!("{}/{}", t.owned_seasons, t.total_seasons)
+                    } else {
+                        format!("{}", t.owned_seasons)
+                    };
+
+                    let episode_progress = if t.total_episodes > 0 {
+                        format!("{}/{}", t.owned_episodes, t.total_episodes)
+                    } else {
+                        format!("{}", t.owned_episodes)
+                    };
+
+                    let year_str = t.year.map(|y| format!("({})", y)).unwrap_or_default();
+
+                    println!(
+                        "{} {} {} - {} seasons, {} episodes",
+                        status_badge,
+                        t.title.bold(),
+                        year_str,
+                        season_progress,
+                        episode_progress
+                    );
+
+                    if let Some(ref path) = t.path {
+                        println!(
+                            "    {} | {}",
+                            t.disk.bold(),
+                            path
+                        );
+                    } else {
+                        println!(
+                            "    {}",
+                            t.disk.bold()
+                        );
                     }
                     println!();
                 }

@@ -176,12 +176,12 @@ pub enum IndexAction {
         path: PathBuf,
 
         /// Media type: movies or tv_series
-        #[arg(long, default_value = "movies")]
+        #[arg(value_name = "TYPE")]
         media_type: String,
 
-        /// Custom disk label (auto-detected if not provided)
+        /// Volume group label (auto-detected if not provided)
         #[arg(long)]
-        disk_label: Option<String>,
+        volume_label: Option<String>,
 
         /// Force re-index (replace existing entries)
         #[arg(long)]
@@ -191,11 +191,11 @@ pub enum IndexAction {
     /// Show collection statistics
     Stats,
 
-    /// List contents of a specific disk
+    /// List contents of a specific volume group
     List {
-        /// Disk label to list
-        #[arg(value_name = "DISK_LABEL")]
-        disk_label: String,
+        /// Volume group label to list
+        #[arg(value_name = "VOLUME")]
+        volume_label: String,
 
         /// Media type filter: movies, tv_series, or all
         #[arg(long, default_value = "all")]
@@ -209,11 +209,11 @@ pub enum IndexAction {
         path: PathBuf,
     },
 
-    /// Remove a disk from the index
+    /// Remove a volume group from the index
     Remove {
-        /// Disk label to remove
-        #[arg(value_name = "DISK_LABEL")]
-        disk_label: String,
+        /// Volume group label to remove
+        #[arg(value_name = "VOLUME")]
+        volume_label: String,
 
         /// Confirm removal
         #[arg(long)]
@@ -248,6 +248,21 @@ pub enum IndexAction {
         /// Update collection totals from TMDB and write back to NFO files
         #[arg(long)]
         update: bool,
+    },
+
+    /// List TV shows with season/episode statistics
+    Tv {
+        /// Filter: complete, incomplete, or all
+        #[arg(long, default_value = "all")]
+        filter: String,
+
+        /// Output format: table, simple, json
+        #[arg(long, default_value = "table")]
+        format: String,
+
+        /// Show TV show paths
+        #[arg(long)]
+        paths: bool,
     },
 }
 

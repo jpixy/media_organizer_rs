@@ -218,6 +218,7 @@ pub fn scan_directory(
     disk_label: &str,
     disk_uuid: Option<String>,
     media_type: &str,
+    force: bool,
 ) -> Result<(DiskIndex, bool)> {
     tracing::info!("Scanning directory: {}", path.display());
 
@@ -225,13 +226,17 @@ pub fn scan_directory(
     let content_hash = calculate_directory_hash(path)?;
     tracing::debug!("Directory content hash: {}", content_hash);
 
-    // Check if we have an existing index with the same hash
-    if let Ok(Some(existing)) = load_disk_index(disk_label) {
-        if existing.disk.content_hash == content_hash {
-            tracing::info!("Content unchanged (hash match), returning cached index");
-            return Ok((existing, false));
+    // Check if we have an existing index with the same hash (skip if force=true)
+    if !force {
+        if let Ok(Some(existing)) = load_disk_index(disk_label) {
+            if existing.disk.content_hash == content_hash {
+                tracing::info!("Content unchanged (hash match), returning cached index");
+                return Ok((existing, false));
+            }
+            tracing::info!("Content changed (hash mismatch), re-scanning...");
         }
-        tracing::info!("Content changed (hash mismatch), re-scanning...");
+    } else {
+        tracing::info!("Force re-index requested, skipping hash check");
     }
 
     let mut index = DiskIndex::default();
@@ -335,7 +340,7 @@ fn parse_nfo_file(
         let movie = parse_movie_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes)?;
         Ok(ParsedNfo::Movie(movie))
     } else if content.contains("<tvshow>") {
-        let tvshow = parse_tv_series_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes)?;
+        let tvshow = parse_tv_series_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes, nfo_dir)?;
         Ok(ParsedNfo::TvSeries(tvshow))
     } else {
         anyhow::bail!("Unknown NFO format");
@@ -487,6 +492,7 @@ fn parse_tv_series_nfo(
     disk_uuid: &Option<String>,
     relative_path: &str,
     size_bytes: u64,
+    tvshow_dir: &Path,
 ) -> Result<TvSeriesEntry> {
     let get_tag = |tag: &str| -> Option<String> {
         let pattern = format!(r"<{}>(.*?)</{}>", tag, tag);
@@ -555,6 +561,15 @@ fn parse_tv_series_nfo(
     let seasons = get_tag("season").and_then(|s| s.parse().ok()).unwrap_or(1);
     let episodes = get_tag("episode").and_then(|e| e.parse().ok()).unwrap_or(0);
 
+    // Calculate owned seasons: count season directories like "Season 01", "Season 1", etc.
+    let owned_seasons = count_owned_seasons(tvshow_dir);
+    let owned_episodes = count_owned_episodes(tvshow_dir);
+
+    tracing::debug!(
+        "Parsed TV show '{}': seasons={}, episodes={}, owned_seasons={}, owned_episodes={}, tvshow_dir={}",
+        title, seasons, episodes, owned_seasons, owned_episodes, tvshow_dir.display()
+    );
+
     Ok(TvSeriesEntry {
         id: uuid::Uuid::new_v4().to_string(),
         disk: disk_label.to_string(),
@@ -570,6 +585,8 @@ fn parse_tv_series_nfo(
         actors,
         seasons,
         episodes,
+        owned_seasons,
+        owned_episodes,
         size_bytes,
         indexed_at: chrono::Utc::now().to_rfc3339(),
     })
@@ -595,6 +612,61 @@ fn calculate_directory_video_size(dir: &Path) -> u64 {
         .filter_map(|e| e.metadata().ok())
         .map(|m| m.len())
         .sum()
+}
+
+/// Count number of owned seasons by counting season directories like "Season 01", "Season 1", etc.
+fn count_owned_seasons(tvshow_dir: &Path) -> u16 {
+    let season_patterns = [
+        regex::Regex::new(r"^Season\s+(\d+)$").ok(),
+        regex::Regex::new(r"^Season\s*(\d+)$").ok(),
+        regex::Regex::new(r"^S(\d+)$").ok(),
+        regex::Regex::new(r"^s(\d+)$").ok(),
+    ];
+
+    let mut season_numbers = std::collections::HashSet::new();
+
+    if let Ok(entries) = std::fs::read_dir(tvshow_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    for pattern in &season_patterns {
+                        if let Some(p) = pattern {
+                            if let Some(captures) = p.captures(name) {
+                                if let Some(num_str) = captures.get(1) {
+                                    if let Ok(num) = num_str.as_str().parse::<u16>() {
+                                        season_numbers.insert(num);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    season_numbers.len() as u16
+}
+
+/// Count total number of owned episodes by counting video files.
+fn count_owned_episodes(tvshow_dir: &Path) -> u32 {
+    let video_extensions = [
+        "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts",
+    ];
+
+    WalkDir::new(tvshow_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| video_extensions.contains(&ext.to_lowercase().as_str()))
+                .unwrap_or(false)
+        })
+        .count() as u32
 }
 
 /// Convert country name to ISO 3166-1 alpha-2 code.

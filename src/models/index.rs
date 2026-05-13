@@ -146,10 +146,16 @@ pub struct TvSeriesEntry {
     pub genres: Vec<String>,
     /// Actors
     pub actors: Vec<String>,
-    /// Number of seasons
+    /// Total number of seasons (from TMDB)
     pub seasons: u16,
-    /// Number of episodes
+    /// Total number of episodes (from TMDB)
     pub episodes: u32,
+    /// Number of seasons owned
+    #[serde(default)]
+    pub owned_seasons: u16,
+    /// Number of episodes owned
+    #[serde(default)]
+    pub owned_episodes: u32,
     /// Total size in bytes
     pub size_bytes: u64,
     /// When this entry was indexed
@@ -217,9 +223,17 @@ pub struct IndexStatistics {
     /// Total size in bytes
     pub total_size_bytes: u64,
     /// Complete collections count
+    #[serde(default)]
     pub complete_collections: usize,
     /// Incomplete collections count
+    #[serde(default)]
     pub incomplete_collections: usize,
+    /// TV shows with all seasons/episodes owned
+    #[serde(default)]
+    pub complete_tv_series: usize,
+    /// TV shows with partial seasons/episodes owned
+    #[serde(default)]
+    pub incomplete_tv_series: usize,
 }
 
 /// Individual disk index (stored separately for each disk).
@@ -484,6 +498,23 @@ impl CentralIndex {
                     // Fallback: single movie = likely incomplete
                     c.owned_count == 1
                 }
+            })
+            .count();
+
+        // TV Series completeness
+        // Check if owned seasons/episodes match total seasons/episodes
+        self.statistics.complete_tv_series = self
+            .tv_series
+            .iter()
+            .filter(|t| {
+                t.seasons > 0 && t.owned_seasons > 0 && t.owned_seasons >= t.seasons
+            })
+            .count();
+        self.statistics.incomplete_tv_series = self
+            .tv_series
+            .iter()
+            .filter(|t| {
+                t.seasons > 0 && t.owned_seasons > 0 && t.owned_seasons < t.seasons
             })
             .count();
     }

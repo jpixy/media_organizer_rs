@@ -103,6 +103,8 @@ fn create_test_tv_series(id: &str, title: &str, disk: &str, tmdb_id: u64) -> TvS
         actors: vec!["Actor1".to_string()],
         seasons: 3,
         episodes: 24,
+        owned_seasons: 3,
+        owned_episodes: 24,
         size_bytes: 5_000_000_000,
         indexed_at: chrono::Utc::now().to_rfc3339(),
     }
@@ -1068,4 +1070,88 @@ fn test_disk_info_content_hash_persistence() {
     disk.disk.content_hash = "test-hash-123".to_string();
     
     assert_eq!(disk.disk.content_hash, "test-hash-123");
+}
+
+// ========== TV SERIES COMPLETENESS TESTS ==========
+
+#[test]
+fn test_tv_series_complete_statistics() {
+    // Test complete TV series (all seasons owned)
+    let mut tv_complete = create_test_tv_series("tv1", "Complete Show", "local", 11111);
+    tv_complete.seasons = 5;
+    tv_complete.episodes = 60;
+    tv_complete.owned_seasons = 5;
+    tv_complete.owned_episodes = 60;
+
+    let mut tv_incomplete = create_test_tv_series("tv2", "Incomplete Show", "local", 22222);
+    tv_incomplete.seasons = 5;
+    tv_incomplete.episodes = 60;
+    tv_incomplete.owned_seasons = 3;
+    tv_incomplete.owned_episodes = 36;
+
+    let disk = create_tv_series_disk_index("local", "/mnt/local", vec![tv_complete, tv_incomplete]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk);
+    central.update_statistics();
+
+    assert_eq!(central.statistics.complete_tv_series, 1);
+    assert_eq!(central.statistics.incomplete_tv_series, 1);
+}
+
+#[test]
+fn test_tv_series_incomplete_detection() {
+    // Test incomplete TV series detection
+    let mut tv = create_test_tv_series("tv1", "Test Show", "local", 11111);
+    tv.seasons = 5;
+    tv.episodes = 60;
+    tv.owned_seasons = 2;  // Only 2 seasons owned out of 5
+    tv.owned_episodes = 24;
+
+    let disk = create_tv_series_disk_index("local", "/mnt/local", vec![tv]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk);
+    central.update_statistics();
+
+    assert_eq!(central.statistics.complete_tv_series, 0);
+    assert_eq!(central.statistics.incomplete_tv_series, 1);
+}
+
+#[test]
+fn test_tv_series_unknown_status() {
+    // Test TV series with unknown completeness (no total seasons info)
+    let mut tv_unknown = create_test_tv_series("tv1", "Unknown Show", "local", 11111);
+    tv_unknown.seasons = 0;  // No total seasons info
+    tv_unknown.episodes = 0;
+    tv_unknown.owned_seasons = 2;
+    tv_unknown.owned_episodes = 24;
+
+    let disk = create_tv_series_disk_index("local", "/mnt/local", vec![tv_unknown]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk);
+    central.update_statistics();
+
+    assert_eq!(central.statistics.complete_tv_series, 0);
+    assert_eq!(central.statistics.incomplete_tv_series, 0);
+}
+
+#[test]
+fn test_tv_series_no_owned_content() {
+    // Test TV series with no owned seasons
+    let mut tv = create_test_tv_series("tv1", "No Owned", "local", 11111);
+    tv.seasons = 5;
+    tv.episodes = 60;
+    tv.owned_seasons = 0;
+    tv.owned_episodes = 0;
+
+    let disk = create_tv_series_disk_index("local", "/mnt/local", vec![tv]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk);
+    central.update_statistics();
+
+    assert_eq!(central.statistics.complete_tv_series, 0);
+    assert_eq!(central.statistics.incomplete_tv_series, 0);
 }
