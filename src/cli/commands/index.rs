@@ -2,7 +2,7 @@
 
 use crate::cli::args::IndexAction;
 use crate::core::indexer;
-use crate::models::index::{MovieEntry, TvSeriesEntry};
+use crate::models::index::{DiskInfo, MovieEntry, TvSeriesEntry};
 use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -371,7 +371,6 @@ struct DuplicateEntry {
     path: String,
     size_bytes: u64,
     size_human: String,
-    online: bool,
 }
 
 /// Data structure for duplicate group.
@@ -493,7 +492,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: m.relative_path.clone(),
                                 size_bytes: m.size_bytes,
                                 size_human: format_size(m.size_bytes),
-                                online: indexer::is_disk_online(&m.disk),
                             }
                         })
                         .collect(),
@@ -536,7 +534,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: m.relative_path.clone(),
                                 size_bytes: m.size_bytes,
                                 size_human: format_size(m.size_bytes),
-                                online: indexer::is_disk_online(&m.disk),
                             }
                         })
                         .collect(),
@@ -608,7 +605,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: m1.relative_path.clone(),
                                 size_bytes: m1.size_bytes,
                                 size_human: format_size(m1.size_bytes),
-                                online: indexer::is_disk_online(&m1.disk),
                             },
                             DuplicateEntry {
                                 disk: m2.disk.clone(),
@@ -616,7 +612,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: m2.relative_path.clone(),
                                 size_bytes: m2.size_bytes,
                                 size_human: format_size(m2.size_bytes),
-                                online: indexer::is_disk_online(&m2.disk),
                             },
                         ],
                         total_size_bytes: total_size,
@@ -661,7 +656,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: t.relative_path.clone(),
                                 size_bytes: t.size_bytes,
                                 size_human: format_size(t.size_bytes),
-                                online: indexer::is_disk_online(&t.disk),
                             }
                         })
                         .collect(),
@@ -704,7 +698,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: t.relative_path.clone(),
                                 size_bytes: t.size_bytes,
                                 size_human: format_size(t.size_bytes),
-                                online: indexer::is_disk_online(&t.disk),
                             }
                         })
                         .collect(),
@@ -771,7 +764,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: t1.relative_path.clone(),
                                 size_bytes: t1.size_bytes,
                                 size_human: format_size(t1.size_bytes),
-                                online: indexer::is_disk_online(&t1.disk),
                             },
                             DuplicateEntry {
                                 disk: t2.disk.clone(),
@@ -779,7 +771,6 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                                 path: t2.relative_path.clone(),
                                 size_bytes: t2.size_bytes,
                                 size_human: format_size(t2.size_bytes),
-                                online: indexer::is_disk_online(&t2.disk),
                             },
                         ],
                         total_size_bytes: total_size,
@@ -1139,11 +1130,10 @@ struct CollectionMovieOutput {
     year: Option<u16>,
     disk: String,
     path: Option<String>,
-    online: bool,
 }
 
 /// List movie collections.
-async fn list_collections(filter: &str, format: &str, show_paths: bool) -> Result<()> {
+async fn list_collections(filter: &str, format: &str, _show_paths: bool) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     // Build collection output list
@@ -1175,24 +1165,30 @@ async fn list_collections(filter: &str, format: &str, show_paths: bool) -> Resul
                         .iter()
                         .find(|m| m.tmdb_id == Some(cm.tmdb_id) && m.disk == disk);
 
-                    let path = if show_paths {
-                        movie_entry.map(|m| m.relative_path.clone())
-                    } else {
-                        None
-                    };
-
-                    let online = if !disk.is_empty() {
-                        indexer::is_disk_online(&disk)
-                    } else {
-                        false
-                    };
+                    // Always get path (combine disk path + relative path)
+                    let full_path = movie_entry.map(|m| {
+                        let disk_info = index.disks.get(&m.disk);
+                        let disk_base = disk_info.as_ref()
+                            .and_then(|d| {
+                                if !d.base_path.is_empty() {
+                                    Some(d.base_path.clone())
+                                } else {
+                                    d.paths.values().next().cloned()
+                                }
+                            })
+                            .unwrap_or_default();
+                        if disk_base.is_empty() {
+                            m.relative_path.clone()
+                        } else {
+                            format!("{}/{}", disk_base, m.relative_path)
+                        }
+                    });
 
                     CollectionMovieOutput {
                         title: cm.title.clone(),
                         year: cm.year,
                         disk,
-                        path,
-                        online,
+                        path: full_path,
                     }
                 })
                 .collect();
@@ -1248,16 +1244,15 @@ async fn list_collections(filter: &str, format: &str, show_paths: bool) -> Resul
                     );
                     for movie in &c.movies {
                         let year_str = movie.year.map(|y| format!("({})", y)).unwrap_or_default();
-                        let disk_status = if movie.online { "online" } else { "offline" };
                         if let Some(ref path) = movie.path {
                             println!(
-                                "  - {} {} [{}:{}] {}",
-                                movie.title, year_str, movie.disk, disk_status, path
+                                "  - {} {} [{}] {}",
+                                movie.title, year_str, movie.disk, path
                             );
                         } else {
                             println!(
-                                "  - {} {} [{}:{}]",
-                                movie.title, year_str, movie.disk, disk_status
+                                "  - {} {} [{}]",
+                                movie.title, year_str, movie.disk
                             );
                         }
                     }
@@ -1279,6 +1274,24 @@ async fn list_collections(filter: &str, format: &str, show_paths: bool) -> Resul
                     .filter(|c| c.status == "Incomplete")
                     .count();
                 let unknown_count = collections.iter().filter(|c| c.status == "Unknown").count();
+
+                // Show Volume Groups with paths
+                if !index.disks.is_empty() {
+                    println!("{}", "Volume Groups:".bold());
+                    let mut sorted_disks: Vec<(&String, &DiskInfo)> = index.disks.iter().collect();
+                    sorted_disks.sort_by(|a, b| a.0.cmp(b.0));
+                    for (label, disk) in &sorted_disks {
+                        let disk_path = if !disk.base_path.is_empty() {
+                            disk.base_path.clone()
+                        } else if let Some((_, path)) = disk.paths.iter().next() {
+                            path.clone()
+                        } else {
+                            String::new()
+                        };
+                        println!("  {} -> {}", label.bold(), disk_path.dimmed());
+                    }
+                    println!();
+                }
 
                 println!("{}", "Movie Collections".bold().cyan());
                 println!("{}", "=".repeat(60));
@@ -1314,28 +1327,21 @@ async fn list_collections(filter: &str, format: &str, show_paths: bool) -> Resul
 
                     for movie in &c.movies {
                         let year_str = movie.year.map(|y| format!("({})", y)).unwrap_or_default();
-                        let disk_status = if movie.online {
-                            "Online".green()
-                        } else {
-                            "Offline".red()
-                        };
 
                         if let Some(ref path) = movie.path {
                             println!(
-                                "    {} {} | {} {} | {}",
+                                "    {} {} | {} | {}",
                                 movie.title,
                                 year_str,
                                 movie.disk.bold(),
-                                disk_status,
                                 path
                             );
                         } else {
                             println!(
-                                "    {} {} | {} {}",
+                                "    {} {} | {}",
                                 movie.title,
                                 year_str,
-                                movie.disk.bold(),
-                                disk_status
+                                movie.disk.bold()
                             );
                         }
                     }
@@ -1364,7 +1370,7 @@ struct TvSeriesOutput {
 }
 
 /// List TV shows with season/episode statistics.
-async fn list_tv(filter: &str, format: &str, show_paths: bool) -> Result<()> {
+async fn list_tv(filter: &str, format: &str, _show_paths: bool) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     // Build TV series output list
@@ -1381,10 +1387,23 @@ async fn list_tv(filter: &str, format: &str, show_paths: bool) -> Result<()> {
                 "Unknown".to_string()
             };
 
-            let path = if show_paths {
-                Some(t.relative_path.clone())
-            } else {
-                None
+            // Always get full path (combine disk path + relative path)
+            let full_path = {
+                let disk_info = index.disks.get(&t.disk);
+                let disk_base = disk_info.as_ref()
+                    .and_then(|d| {
+                        if !d.base_path.is_empty() {
+                            Some(d.base_path.clone())
+                        } else {
+                            d.paths.values().next().cloned()
+                        }
+                    })
+                    .unwrap_or_default();
+                if disk_base.is_empty() {
+                    t.relative_path.clone()
+                } else {
+                    format!("{}/{}", disk_base, t.relative_path)
+                }
             };
 
             TvSeriesOutput {
@@ -1398,7 +1417,7 @@ async fn list_tv(filter: &str, format: &str, show_paths: bool) -> Result<()> {
                 owned_episodes: t.owned_episodes,
                 total_episodes: t.episodes,
                 disk: t.disk.clone(),
-                path,
+                path: Some(full_path),
             }
         })
         .collect();
@@ -1471,6 +1490,24 @@ async fn list_tv(filter: &str, format: &str, show_paths: bool) -> Result<()> {
                     .filter(|t| t.status == "Incomplete")
                     .count();
                 let unknown_count = tv_series.iter().filter(|t| t.status == "Unknown").count();
+
+                // Show Volume Groups with paths
+                if !index.disks.is_empty() {
+                    println!("{}", "Volume Groups:".bold());
+                    let mut sorted_disks: Vec<(&String, &DiskInfo)> = index.disks.iter().collect();
+                    sorted_disks.sort_by(|a, b| a.0.cmp(b.0));
+                    for (label, disk) in &sorted_disks {
+                        let disk_path = if !disk.base_path.is_empty() {
+                            disk.base_path.clone()
+                        } else if let Some((_, path)) = disk.paths.iter().next() {
+                            path.clone()
+                        } else {
+                            String::new()
+                        };
+                        println!("  {} -> {}", label.bold(), disk_path.dimmed());
+                    }
+                    println!();
+                }
 
                 println!("{}", "TV Shows".bold().cyan());
                 println!("{}", "=".repeat(60));
