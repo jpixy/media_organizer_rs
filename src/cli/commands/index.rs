@@ -988,7 +988,7 @@ async fn update_collections(config: &Config) -> Result<()> {
 
     // Initialize TMDB client from config
     let tmdb_config = TmdbConfig::from_config(&config.tmdb)?;
-    let tmdb_client = TmdbClient::new(tmdb_config);
+    let tmdb_client = std::sync::Arc::new(TmdbClient::new(tmdb_config));
 
     // Step 1: Find movies without collection_id but with tmdb_id
     // and fetch their collection info from TMDB
@@ -1013,20 +1013,45 @@ async fn update_collections(config: &Config) -> Result<()> {
                 .progress_chars("=> "),
         );
 
-        // Store updates to apply later
+        // Use concurrent requests with controlled concurrency using JoinSet
+        let concurrency_limit = 20; // TMDB allows ~40 req/sec, so 20 concurrent is safe
         let mut collection_updates: Vec<(String, u64, String)> = Vec::new();
+        let mut tasks = tokio::task::JoinSet::new();
 
-        for (movie_id, tmdb_id) in &movies_without_collection {
-            pb.set_message(format!("Movie {}", tmdb_id));
+        for (movie_id, tmdb_id) in movies_without_collection {
+            let client = tmdb_client.clone();
+            let pb = pb.clone();
             
-            if let Ok(movie_details) = tmdb_client.get_movie_details(*tmdb_id).await {
-                if let Some(collection) = movie_details.belongs_to_collection {
-                    collection_updates.push((movie_id.clone(), collection.id, collection.name));
+            tasks.spawn(async move {
+                pb.set_message(format!("Movie {}", tmdb_id));
+                let result = client.get_movie_details(tmdb_id).await;
+                pb.inc(1);
+                (movie_id, tmdb_id, result)
+            });
+
+            // Limit concurrency
+            if tasks.len() >= concurrency_limit {
+                if let Some(result) = tasks.join_next().await {
+                    if let Ok((movie_id, _tmdb_id, result)) = result {
+                        if let Ok(movie_details) = result {
+                            if let Some(collection) = movie_details.belongs_to_collection {
+                                collection_updates.push((movie_id, collection.id, collection.name));
+                            }
+                        }
+                    }
                 }
             }
-            
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            pb.inc(1);
+        }
+
+        // Wait for remaining tasks
+        while let Some(result) = tasks.join_next().await {
+            if let Ok((movie_id, _tmdb_id, result)) = result {
+                if let Ok(movie_details) = result {
+                    if let Some(collection) = movie_details.belongs_to_collection {
+                        collection_updates.push((movie_id, collection.id, collection.name));
+                    }
+                }
+            }
         }
 
         pb.finish_with_message("Done fetching movie collection info");
@@ -1080,32 +1105,62 @@ async fn update_collections(config: &Config) -> Result<()> {
             .progress_chars("=> "),
     );
 
-    for collection_id in &collections_to_update {
-        pb.set_message(format!("Collection {}", collection_id));
+    // Use concurrent requests for collection details using JoinSet
+    let concurrency_limit = 20;
+    let mut tasks = tokio::task::JoinSet::new();
+    let mut collection_results: Vec<(u64, Option<crate::services::tmdb::CollectionDetails>)> = Vec::new();
 
-        match tmdb_client.get_collection_details(*collection_id).await {
-            Ok(details) => {
-                let total = details.parts.len();
+    for collection_id in collections_to_update {
+        let client = tmdb_client.clone();
+        let pb = pb.clone();
+        
+        tasks.spawn(async move {
+            pb.set_message(format!("Collection {}", collection_id));
+            let result = client.get_collection_details(collection_id).await.ok();
+            pb.inc(1);
+            (collection_id, result)
+        });
 
-                // Update the collection in index
-                if let Some(collection) = index.collections.get_mut(collection_id) {
-                    collection.total_in_collection = total;
+        // Limit concurrency
+        if tasks.len() >= concurrency_limit {
+            if let Some(result) = tasks.join_next().await {
+                if let Ok(result) = result {
+                    collection_results.push(result);
+                }
+            }
+        }
+    }
 
-                    // Track NFO files that need updating
-                    for movie in &collection.movies {
-                        if movie.owned {
-                            if let Some(ref disk) = movie.disk {
-                                // Find the movie entry to get the relative path
-                                if let Some(movie_entry) = index
-                                    .movies
-                                    .iter()
-                                    .find(|m| m.tmdb_id == Some(movie.tmdb_id) && m.disk == *disk)
-                                {
-                                    nfo_updates.insert(
-                                        (disk.clone(), movie_entry.relative_path.clone()),
-                                        total,
-                                    );
-                                }
+    // Wait for remaining tasks
+    while let Some(result) = tasks.join_next().await {
+        if let Ok(result) = result {
+            collection_results.push(result);
+        }
+    }
+
+    // Process results
+    for (collection_id, details_opt) in collection_results {
+        if let Some(details) = details_opt {
+            let total = details.parts.len();
+
+            // Update the collection in index
+            if let Some(collection) = index.collections.get_mut(&collection_id) {
+                collection.total_in_collection = total;
+
+                // Track NFO files that need updating
+                for movie in &collection.movies {
+                    if movie.owned {
+                        if let Some(ref disk) = movie.disk {
+                            // Find the movie entry to get the relative path
+                            if let Some(movie_entry) = index
+                                .movies
+                                .iter()
+                                .find(|m| m.tmdb_id == Some(movie.tmdb_id) && m.disk == *disk)
+                            {
+                                nfo_updates.insert(
+                                    (disk.clone(), movie_entry.relative_path.clone()),
+                                    total,
+                                );
                             }
                         }
                     }
@@ -1118,15 +1173,9 @@ async fn update_collections(config: &Config) -> Result<()> {
                     total
                 );
             }
-            Err(e) => {
-                tracing::warn!("[COLLECTION] Failed to fetch {}: {}", collection_id, e);
-            }
+        } else {
+            tracing::warn!("[COLLECTION] Failed to fetch {}", collection_id);
         }
-
-        pb.inc(1);
-
-        // Rate limiting: small delay between API calls
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 
     pb.finish_with_message("Done fetching from TMDB");
