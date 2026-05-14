@@ -8,7 +8,7 @@
 //! - Edge cases (empty scans, repeated scans, path updates)
 
 use media_organizer::core::indexer::{merge_disk_into_central, search};
-use media_organizer::models::index::{CentralIndex, DiskIndex, DiskInfo, MovieEntry, TvSeriesEntry};
+use media_organizer::models::index::{CentralIndex, DiskIndex, VolumeGroupInfo, MovieEntry, TvSeriesEntry};
 use std::collections::HashMap;
 
 // ========== TEST FIXTURES ==========
@@ -20,7 +20,7 @@ fn create_movie_disk_index(label: &str, path: &str, movies: Vec<MovieEntry>) -> 
 
     DiskIndex {
         version: "1.0".to_string(),
-        disk: DiskInfo {
+        disk: VolumeGroupInfo {
             label: label.to_string(),
             uuid: Some("test-uuid".to_string()),
             last_indexed: chrono::Utc::now().to_rfc3339(),
@@ -43,7 +43,7 @@ fn create_tv_series_disk_index(label: &str, path: &str, tv_series: Vec<TvSeriesE
 
     DiskIndex {
         version: "1.0".to_string(),
-        disk: DiskInfo {
+        disk: VolumeGroupInfo {
             label: label.to_string(),
             uuid: Some("test-uuid".to_string()),
             last_indexed: chrono::Utc::now().to_rfc3339(),
@@ -867,7 +867,7 @@ fn test_backward_compatibility_base_path() {
         "base_path": "/mnt/OldDisk/Movies"
     }"#;
 
-    let disk_info: DiskInfo = serde_json::from_str(disk_info_json).unwrap();
+    let disk_info: VolumeGroupInfo = serde_json::from_str(disk_info_json).unwrap();
 
     // Verify backward compatibility - paths should be empty (default)
     assert_eq!(disk_info.label, "OldDisk");
@@ -1154,4 +1154,177 @@ fn test_tv_series_no_owned_content() {
 
     assert_eq!(central.statistics.complete_tv_series, 0);
     assert_eq!(central.statistics.incomplete_tv_series, 0);
+}
+
+// ========== COLLECTION UPDATE IDEMPOTENCY TESTS ==========
+
+#[test]
+fn test_collection_update_idempotency() {
+    // Test that updating collections multiple times produces the same result
+    let mut movie1 = create_test_movie("1", "Movie 1", "disk1", 12345);
+    movie1.collection_id = Some(100);
+    movie1.collection_name = Some("Test Collection".to_string());
+    
+    let mut movie2 = create_test_movie("2", "Movie 2", "disk1", 12346);
+    movie2.collection_id = Some(100);
+    movie2.collection_name = Some("Test Collection".to_string());
+
+    let disk = create_movie_disk_index("disk1", "/mnt/disk1", vec![movie1, movie2]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk);
+    
+    // First update
+    central.update_statistics();
+    let stats1 = central.statistics.clone();
+    
+    // Second update (should be idempotent)
+    central.update_statistics();
+    let stats2 = central.statistics.clone();
+    
+    // Third update
+    central.update_statistics();
+    let stats3 = central.statistics;
+    
+    // All should be equal
+    assert_eq!(stats1.complete_collections, stats2.complete_collections);
+    assert_eq!(stats2.complete_collections, stats3.complete_collections);
+    assert_eq!(stats1.incomplete_collections, stats2.incomplete_collections);
+    assert_eq!(stats2.incomplete_collections, stats3.incomplete_collections);
+}
+
+#[test]
+fn test_tv_update_idempotency() {
+    // Test that updating TV series statistics multiple times produces the same result
+    let mut tv = create_test_tv_series("tv1", "Test Series", "local", 11111);
+    tv.seasons = 5;
+    tv.episodes = 60;
+    tv.owned_seasons = 5;
+    tv.owned_episodes = 60;
+
+    let disk = create_tv_series_disk_index("local", "/mnt/local", vec![tv]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk);
+    
+    // First update
+    central.update_statistics();
+    let stats1 = central.statistics.clone();
+    
+    // Second update (should be idempotent)
+    central.update_statistics();
+    let stats2 = central.statistics.clone();
+    
+    // Third update
+    central.update_statistics();
+    let stats3 = central.statistics;
+    
+    // All should be equal
+    assert_eq!(stats1.complete_tv_series, stats2.complete_tv_series);
+    assert_eq!(stats2.complete_tv_series, stats3.complete_tv_series);
+    assert_eq!(stats1.incomplete_tv_series, stats2.incomplete_tv_series);
+    assert_eq!(stats2.incomplete_tv_series, stats3.incomplete_tv_series);
+}
+
+// ========== INDEX REBUILD IDEMPOTENCY TESTS ==========
+
+#[test]
+fn test_rebuild_index_idempotency() {
+    // Test that rebuilding index multiple times produces consistent results
+    let movie1 = create_test_movie("1", "Movie 1", "disk1", 12345);
+    let movie2 = create_test_movie("2", "Movie 2", "disk2", 12346);
+    
+    let mut tv = create_test_tv_series("tv1", "Test Series", "disk1", 11111);
+    tv.seasons = 3;
+    tv.episodes = 36;
+    tv.owned_seasons = 2;
+    tv.owned_episodes = 24;
+
+    let disk1 = create_movie_disk_index("disk1", "/mnt/disk1", vec![movie1]);
+    let disk2 = create_movie_disk_index("disk2", "/mnt/disk2", vec![movie2]);
+    let tv_disk = create_tv_series_disk_index("disk1", "/mnt/disk1/TV", vec![tv]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk1);
+    merge_disk_into_central(&mut central, disk2);
+    merge_disk_into_central(&mut central, tv_disk);
+    
+    // First rebuild
+    central.update_statistics();
+    let movies_count1 = central.movies.len();
+    let tv_count1 = central.tv_series.len();
+    let stats1 = central.statistics.clone();
+    
+    // Second rebuild (should be idempotent)
+    central.update_statistics();
+    let movies_count2 = central.movies.len();
+    let tv_count2 = central.tv_series.len();
+    let stats2 = central.statistics.clone();
+    
+    // Third rebuild
+    central.update_statistics();
+    let movies_count3 = central.movies.len();
+    let tv_count3 = central.tv_series.len();
+    let stats3 = central.statistics;
+    
+    // All counts should be equal
+    assert_eq!(movies_count1, movies_count2);
+    assert_eq!(movies_count2, movies_count3);
+    assert_eq!(tv_count1, tv_count2);
+    assert_eq!(tv_count2, tv_count3);
+    
+    // All statistics should be equal
+    assert_eq!(stats1.total_movies, stats2.total_movies);
+    assert_eq!(stats2.total_movies, stats3.total_movies);
+    assert_eq!(stats1.total_tv_series, stats2.total_tv_series);
+    assert_eq!(stats2.total_tv_series, stats3.total_tv_series);
+}
+
+// ========== STATISTICS UPDATE ACCURACY TESTS ==========
+
+#[test]
+fn test_statistics_update_with_mixed_media() {
+    // Test statistics update with both movies and TV shows across multiple disks
+    let movie1 = create_test_movie("1", "Movie 1", "disk1", 12345);
+    let movie2 = create_test_movie("2", "Movie 2", "disk1", 12346);
+    let movie3 = create_test_movie("3", "Movie 3", "disk2", 12347);
+    
+    let mut tv1 = create_test_tv_series("tv1", "Series 1", "disk1", 11111);
+    tv1.seasons = 5;
+    tv1.episodes = 60;
+    tv1.owned_seasons = 5;
+    tv1.owned_episodes = 60;  // Complete
+    
+    let mut tv2 = create_test_tv_series("tv2", "Series 2", "disk2", 22222);
+    tv2.seasons = 3;
+    tv2.episodes = 36;
+    tv2.owned_seasons = 2;
+    tv2.owned_episodes = 24;  // Incomplete
+
+    let disk1_movies = create_movie_disk_index("disk1", "/mnt/disk1/Movies", vec![movie1, movie2]);
+    let disk2_movies = create_movie_disk_index("disk2", "/mnt/disk2/Movies", vec![movie3]);
+    let disk1_tv = create_tv_series_disk_index("disk1", "/mnt/disk1/TV", vec![tv1]);
+    let disk2_tv = create_tv_series_disk_index("disk2", "/mnt/disk2/TV", vec![tv2]);
+    
+    let mut central = CentralIndex::default();
+    merge_disk_into_central(&mut central, disk1_movies);
+    merge_disk_into_central(&mut central, disk2_movies);
+    merge_disk_into_central(&mut central, disk1_tv);
+    merge_disk_into_central(&mut central, disk2_tv);
+    
+    central.update_statistics();
+    
+    // Verify total counts
+    assert_eq!(central.statistics.total_movies, 3);
+    assert_eq!(central.statistics.total_tv_series, 2);
+    
+    // Verify disk-specific counts
+    assert_eq!(central.disks.get("disk1").unwrap().movie_count, 2);
+    assert_eq!(central.disks.get("disk1").unwrap().tv_series_count, 1);
+    assert_eq!(central.disks.get("disk2").unwrap().movie_count, 1);
+    assert_eq!(central.disks.get("disk2").unwrap().tv_series_count, 1);
+    
+    // Verify completeness statistics
+    assert_eq!(central.statistics.complete_tv_series, 1);  // Series 1 is complete
+    assert_eq!(central.statistics.incomplete_tv_series, 1);  // Series 2 is incomplete
 }

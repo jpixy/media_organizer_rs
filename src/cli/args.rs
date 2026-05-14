@@ -263,6 +263,17 @@ pub enum IndexAction {
         /// Hide TV show paths (show minimal info)
         #[arg(long)]
         hide_paths: bool,
+
+        /// Update TV show details from TMDB and write back to NFO files
+        #[arg(long)]
+        update: bool,
+    },
+
+    /// Rebuild indexes and recalculate all statistics
+    Rebuild {
+        /// Skip preflight checks
+        #[arg(long)]
+        skip_preflight: bool,
     },
 }
 

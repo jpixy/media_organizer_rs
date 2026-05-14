@@ -2,14 +2,15 @@
 
 use crate::cli::args::IndexAction;
 use crate::core::indexer;
-use crate::models::index::{DiskInfo, MovieEntry, TvSeriesEntry};
+use crate::models::config::Config;
+use crate::models::index::{VolumeGroupInfo, MovieEntry, TvSeriesEntry};
 use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::Path;
 
 /// Execute index subcommand.
-pub async fn execute_index(action: IndexAction) -> Result<()> {
+pub async fn execute_index(action: IndexAction, config: &Config) -> Result<()> {
     match action {
         IndexAction::Scan {
             path,
@@ -37,7 +38,7 @@ pub async fn execute_index(action: IndexAction) -> Result<()> {
             update,
         } => {
             if update {
-                update_collections().await?;
+                update_collections(config).await?;
             }
             list_collections(&filter, &format, hide_paths).await
         }
@@ -45,7 +46,14 @@ pub async fn execute_index(action: IndexAction) -> Result<()> {
             filter,
             format,
             hide_paths,
-        } => list_tv(&filter, &format, hide_paths).await,
+            update,
+        } => {
+            if update {
+                update_tv(config).await?;
+            }
+            list_tv(&filter, &format, hide_paths).await
+        }
+        IndexAction::Rebuild { skip_preflight: _ } => rebuild_index().await,
     }
 }
 
@@ -134,6 +142,39 @@ async fn scan_directory(
         println!("{}", "[INDEX] Content unchanged.".bold().blue());
         println!("  Using cached index ({} movies, {} TV shows)", disk_index.disk.movie_count, disk_index.disk.tv_series_count);
     }
+
+    Ok(())
+}
+
+/// Rebuild indexes and recalculate all statistics.
+async fn rebuild_index() -> Result<()> {
+    println!("{}", "[INDEX] Rebuilding indexes and recalculating statistics...".bold().cyan());
+
+    let mut index = indexer::load_central_index()?;
+
+    let before_movies = index.movies.len();
+    let before_tv = index.tv_series.len();
+    let before_collections = index.collections.len();
+
+    println!("  Before: {} movies, {} TV shows, {} collections", before_movies, before_tv, before_collections);
+
+    // Rebuild all indexes (including collections)
+    index.rebuild_indexes();
+    index.update_statistics();
+
+    // Save the updated index
+    indexer::save_central_index(&index)?;
+
+    let after_collections = index.collections.len();
+    let after_complete = index.statistics.complete_collections;
+    let after_incomplete = index.statistics.incomplete_collections;
+    let after_tv_complete = index.statistics.complete_tv_series;
+    let after_tv_incomplete = index.statistics.incomplete_tv_series;
+
+    println!();
+    println!("{}", "[INDEX] Rebuild complete!".bold().green());
+    println!("  Collections: {} total ({} complete, {} incomplete)", after_collections, after_complete, after_incomplete);
+    println!("  TV Series: {} total ({} complete, {} incomplete)", after_tv_complete + after_tv_incomplete, after_tv_complete, after_tv_incomplete);
 
     Ok(())
 }
@@ -932,7 +973,7 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
 }
 
 /// Update collection totals from TMDB API and write back to NFO files.
-async fn update_collections() -> Result<()> {
+async fn update_collections(config: &Config) -> Result<()> {
     use crate::services::tmdb::{TmdbClient, TmdbConfig};
     use std::path::PathBuf;
 
@@ -945,7 +986,71 @@ async fn update_collections() -> Result<()> {
 
     let mut index = indexer::load_central_index()?;
 
-    // Find collections that need updating (total_in_collection == 0)
+    // Initialize TMDB client from config
+    let tmdb_config = TmdbConfig::from_config(&config.tmdb)?;
+    let tmdb_client = TmdbClient::new(tmdb_config);
+
+    // Step 1: Find movies without collection_id but with tmdb_id
+    // and fetch their collection info from TMDB
+    let movies_without_collection: Vec<(String, u64)> = index
+        .movies
+        .iter()
+        .filter(|m| m.collection_id.is_none() && m.tmdb_id.is_some())
+        .map(|m| (m.id.clone(), m.tmdb_id.unwrap()))
+        .collect();
+
+    if !movies_without_collection.is_empty() {
+        println!(
+            "  Found {} movies without collection info, fetching from TMDB...",
+            movies_without_collection.len()
+        );
+
+        let pb = ProgressBar::new(movies_without_collection.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+                .unwrap()
+                .progress_chars("=> "),
+        );
+
+        // Store updates to apply later
+        let mut collection_updates: Vec<(String, u64, String)> = Vec::new();
+
+        for (movie_id, tmdb_id) in &movies_without_collection {
+            pb.set_message(format!("Movie {}", tmdb_id));
+            
+            if let Ok(movie_details) = tmdb_client.get_movie_details(*tmdb_id).await {
+                if let Some(collection) = movie_details.belongs_to_collection {
+                    collection_updates.push((movie_id.clone(), collection.id, collection.name));
+                }
+            }
+            
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            pb.inc(1);
+        }
+
+        pb.finish_with_message("Done fetching movie collection info");
+        
+        // Apply updates to movies
+        for (movie_id, collection_id, collection_name) in collection_updates {
+            if let Some(m) = index.movies.iter_mut().find(|m| m.id == movie_id) {
+                m.collection_id = Some(collection_id);
+                m.collection_name = Some(collection_name.clone());
+                
+                tracing::debug!(
+                    "[MOVIE] Added collection {} (tmdb{}) to {}",
+                    collection_name,
+                    collection_id,
+                    m.title
+                );
+            }
+        }
+        
+        // Rebuild collections after adding new collection info
+        index.rebuild_indexes();
+    }
+
+    // Step 2: Find collections that need updating (total_in_collection == 0)
     let collections_to_update: Vec<u64> = index
         .collections
         .values()
@@ -962,10 +1067,6 @@ async fn update_collections() -> Result<()> {
         "  Found {} collections to update",
         collections_to_update.len()
     );
-
-    // Initialize TMDB client
-    let tmdb_config = TmdbConfig::from_env()?;
-    let tmdb_client = TmdbClient::new(tmdb_config);
 
     // Track which NFO files need updating (disk -> relative_path -> total_movies)
     let mut nfo_updates: std::collections::HashMap<(String, String), usize> =
@@ -1281,7 +1382,7 @@ async fn list_collections(filter: &str, format: &str, hide_paths: bool) -> Resul
                 // Show Volume Groups with paths
                 if !index.disks.is_empty() {
                     println!("{}", "Volume Groups:".bold());
-                    let mut sorted_disks: Vec<(&String, &DiskInfo)> = index.disks.iter().collect();
+                    let mut sorted_disks: Vec<(&String, &VolumeGroupInfo)> = index.disks.iter().collect();
                     sorted_disks.sort_by(|a, b| a.0.cmp(b.0));
                     for (label, disk) in &sorted_disks {
                         let disk_path = if !disk.base_path.is_empty() {
@@ -1370,6 +1471,83 @@ struct TvSeriesOutput {
     total_episodes: u32,
     disk: String,
     path: Option<String>,
+}
+
+/// Update TV show details from TMDB API.
+async fn update_tv(config: &Config) -> Result<()> {
+    use crate::services::tmdb::{TmdbClient, TmdbConfig};
+
+    println!(
+        "{}",
+        "[UPDATE] Fetching TV show details from TMDB..."
+            .bold()
+            .cyan()
+    );
+
+    let mut index = indexer::load_central_index()?;
+
+    // Initialize TMDB client from config
+    let tmdb_config = TmdbConfig::from_config(&config.tmdb)?;
+    let tmdb_client = TmdbClient::new(tmdb_config);
+
+    // Find TV shows that need updating (seasons == 0 means no TMDB data)
+    let tv_shows_to_update: Vec<_> = index
+        .tv_series
+        .iter()
+        .filter(|t| t.tmdb_id.is_some() && t.seasons == 0)
+        .map(|t| (t.id.clone(), t.tmdb_id.unwrap()))
+        .collect();
+
+    if tv_shows_to_update.is_empty() {
+        println!("  All TV shows already have complete info.");
+        return Ok(());
+    }
+
+    println!(
+        "  Found {} TV shows to update",
+        tv_shows_to_update.len()
+    );
+
+    let pb = ProgressBar::new(tv_shows_to_update.len() as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("=> "),
+    );
+
+    for (tv_id, tmdb_id) in &tv_shows_to_update {
+        pb.set_message(format!("TV Show {}", tmdb_id));
+        
+        if let Ok(tv_details) = tmdb_client.get_tv_details(*tmdb_id).await {
+            // Update the TV show entry
+            if let Some(tv) = index.tv_series.iter_mut().find(|t| t.id == *tv_id) {
+                tv.seasons = tv_details.number_of_seasons as u16;
+                tv.episodes = tv_details.number_of_episodes as u32;
+                
+                tracing::debug!(
+                    "[TV] Updated {} (tmdb{}): {} seasons, {} episodes",
+                    tv.title,
+                    tmdb_id,
+                    tv.seasons,
+                    tv.episodes
+                );
+            }
+        }
+        
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        pb.inc(1);
+    }
+
+    pb.finish_with_message("Done fetching from TMDB");
+
+    // Update statistics and save
+    index.update_statistics();
+    indexer::save_central_index(&index)?;
+
+    println!("{}", "[OK] TV show info updated".bold().green());
+
+    Ok(())
 }
 
 /// List TV shows with season/episode statistics.
@@ -1500,7 +1678,7 @@ async fn list_tv(filter: &str, format: &str, hide_paths: bool) -> Result<()> {
                 // Show Volume Groups with paths
                 if !index.disks.is_empty() {
                     println!("{}", "Volume Groups:".bold());
-                    let mut sorted_disks: Vec<(&String, &DiskInfo)> = index.disks.iter().collect();
+                    let mut sorted_disks: Vec<(&String, &VolumeGroupInfo)> = index.disks.iter().collect();
                     sorted_disks.sort_by(|a, b| a.0.cmp(b.0));
                     for (label, disk) in &sorted_disks {
                         let disk_path = if !disk.base_path.is_empty() {

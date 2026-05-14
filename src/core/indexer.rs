@@ -248,8 +248,7 @@ pub fn scan_directory(
 
     let mut total_size: u64 = 0;
 
-    // Always scan for both movie.nfo and tvshow.nfo regardless of media_type
-    // The media_type only affects which paths get stored, not what gets scanned
+    // Scan all .nfo files recursively
     for entry in WalkDir::new(path)
         .follow_links(true)
         .into_iter()
@@ -258,33 +257,36 @@ pub fn scan_directory(
         let entry_path = entry.path();
 
         if entry_path.is_file() {
-            if let Some(filename) = entry_path.file_name() {
-                match filename.to_str() {
-                    Some("movie.nfo") => {
-                        match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
-                            Ok(ParsedNfo::Movie(movie)) => {
+            // Check if it's an NFO file by extension
+            if let Some(ext) = entry_path.extension() {
+                if ext.to_ascii_lowercase() == "nfo" {
+                    match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
+                        Ok(ParsedNfo::Movie(movie)) => {
+                            if media_type == "movies" {
                                 total_size += movie.size_bytes;
                                 index.movies.push(movie);
-                            }
-                            Ok(ParsedNfo::TvSeries(_)) => {} // Shouldn't happen
-                            Err(e) => {
-                                tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
+                            } else {
+                                tracing::warn!(
+                                    "Skipping movie NFO (type mismatch): {} (expected tv_series)",
+                                    entry_path.display()
+                                );
                             }
                         }
-                    }
-                    Some("tvshow.nfo") => {
-                        match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
-                            Ok(ParsedNfo::TvSeries(tvshow)) => {
+                        Ok(ParsedNfo::TvSeries(tvshow)) => {
+                            if media_type == "tv_series" {
                                 total_size += tvshow.size_bytes;
                                 index.tv_series.push(tvshow);
-                            }
-                            Ok(ParsedNfo::Movie(_)) => {} // Shouldn't happen
-                            Err(e) => {
-                                tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
+                            } else {
+                                tracing::warn!(
+                                    "Skipping TV show NFO (type mismatch): {} (expected movies)",
+                                    entry_path.display()
+                                );
                             }
                         }
+                        Err(e) => {
+                            tracing::warn!("Failed to parse NFO {}: {}", entry_path.display(), e);
+                        }
                     }
-                    _ => {}
                 }
             }
         }

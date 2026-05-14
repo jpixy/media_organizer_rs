@@ -12,8 +12,8 @@ pub struct CentralIndex {
     pub created_at: String,
     /// Last update timestamp
     pub updated_at: String,
-    /// Indexed disks
-    pub disks: HashMap<String, DiskInfo>,
+    /// Indexed volume groups
+    pub disks: HashMap<String, VolumeGroupInfo>,
     /// All indexed movies
     pub movies: Vec<MovieEntry>,
     /// All indexed TV shows
@@ -42,21 +42,21 @@ impl Default for CentralIndex {
     }
 }
 
-/// Information about an indexed disk.
+/// Information about a volume group.
 ///
-/// Supports composite storage: one disk label can have multiple media types
+/// Supports composite storage: one volume label can have multiple media types
 /// (movies and tv_series) with different paths.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiskInfo {
-    /// Disk label (user-friendly name)
+pub struct VolumeGroupInfo {
+    /// Volume label (user-friendly name)
     pub label: String,
-    /// Disk UUID (hardware identifier)
+    /// Volume UUID (hardware identifier)
     pub uuid: Option<String>,
     /// Last indexing timestamp
     pub last_indexed: String,
-    /// Number of movies on this disk
+    /// Number of movies on this volume
     pub movie_count: usize,
-    /// Number of TV shows on this disk
+    /// Number of TV shows on this volume
     pub tv_series_count: usize,
     /// Total size in bytes
     pub total_size_bytes: u64,
@@ -236,16 +236,16 @@ pub struct IndexStatistics {
     pub incomplete_tv_series: usize,
 }
 
-/// Individual disk index (stored separately for each disk).
+/// Individual volume group index (stored separately for each volume).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskIndex {
     /// Schema version
     pub version: String,
-    /// Disk information
-    pub disk: DiskInfo,
-    /// Movies on this disk
+    /// Volume group information
+    pub disk: VolumeGroupInfo,
+    /// Movies on this volume
     pub movies: Vec<MovieEntry>,
-    /// TV shows on this disk
+    /// TV shows on this volume
     pub tv_series: Vec<TvSeriesEntry>,
 }
 
@@ -253,7 +253,7 @@ impl Default for DiskIndex {
     fn default() -> Self {
         Self {
             version: "1.0".to_string(),
-            disk: DiskInfo {
+            disk: VolumeGroupInfo {
                 label: String::new(),
                 uuid: None,
                 last_indexed: chrono::Utc::now().to_rfc3339(),
@@ -327,6 +327,7 @@ impl CentralIndex {
     /// Rebuild search indexes from movie and tvshow entries.
     pub fn rebuild_indexes(&mut self) {
         self.indexes = SearchIndexes::default();
+        self.collections = HashMap::new(); // Clear and rebuild collections from all movies
 
         // Index movies
         for movie in &self.movies {

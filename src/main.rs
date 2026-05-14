@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
         }
 
         Commands::Index { action } => {
-            index::execute_index(action).await?;
+            index::execute_index(action, &config).await?;
         }
 
         Commands::Search {
