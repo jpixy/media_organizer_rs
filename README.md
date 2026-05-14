@@ -120,13 +120,13 @@ Build a searchable index from organized media directories:
 
 ```bash
 # Scan and index a directory
-media-organizer index scan /path/to/movies --media-type movies
+media-organizer index scan /path/to/movies --media-type movies --volume-label MyDisk1
 
-# Scan TV shows
-media-organizer index scan /path/to/tv_series --media-type tv_series
+# Scan TV shows (same disk)
+media-organizer index scan /path/to/tv_series --media-type tv_series --volume-label MyDisk1
 
-# Custom disk label
-media-organizer index scan /mnt/disk1/movies --disk-label MyDisk1
+# Force re-scan (replace existing entries)
+media-organizer index scan /path/to/movies --media-type movies --volume-label MyDisk1 --force
 
 # Show statistics
 media-organizer index stats
@@ -143,14 +143,32 @@ media-organizer index remove OldDisk --confirm
 # Find duplicate media by TMDB ID across disks
 media-organizer index duplicates
 
-# Find only duplicate movies
-media-organizer index duplicates --media-type movies
+# Find only cross-volume duplicates (default)
+media-organizer index duplicates --volume-filter cross
 
-# Find only duplicate TV shows
-media-organizer index duplicates --media-type tv_series
+# Find only same-volume duplicates
+media-organizer index duplicates --volume-filter same
 
-# Output as JSON
-media-organizer index duplicates --format json
+# Manage movie collections
+media-organizer index collections              # Show collection statistics
+media-organizer index collections --update     # Update collection info from TMDB
+
+# Manage TV series statistics
+media-organizer index tv                      # Show TV series statistics
+media-organizer index tv --update             # Update TV info from TMDB
+
+# Rebuild indexes and recalculate statistics
+media-organizer index rebuild
+```
+
+**Index Update Workflow:**
+```bash
+# Step 1: Scan directory (automatically rebuilds indexes)
+media-organizer index scan /path/to/media --media-type movies --volume-label MyDisk1 --force
+
+# Step 2 (optional): Update collection/TV info from TMDB
+media-organizer index collections --update
+media-organizer index tv --update
 ```
 
 ### search - Search Media Collection

@@ -149,13 +149,46 @@ media-organizer execute /下载/未整理剧集_organized/plan_*.json
 
 ```bash
 # 索引电影目录
-media-organizer index scan /媒体库/电影 --media-type movies --disk-label 主硬盘
+media-organizer index scan /媒体库/电影 --media-type movies --volume-label 主硬盘
 
 # 索引电视剧目录
-media-organizer index scan /媒体库/电视剧 --media-type tv_series --disk-label 主硬盘
+media-organizer index scan /媒体库/电视剧 --media-type tv_series --volume-label 主硬盘
+
+# 强制重新扫描（文件变化时）
+media-organizer index scan /媒体库/电影 --media-type movies --volume-label 主硬盘 --force
 
 # 查看收藏统计
 media-organizer index stats
+
+# 更新电影系列信息（从 TMDB 获取）
+media-organizer index collections --update
+
+# 更新电视剧信息（从 TMDB 获取）
+media-organizer index tv --update
+```
+
+### 索引更新完整流程
+
+```bash
+# Step 1: 扫描目录（自动重建索引）
+media-organizer index scan /媒体库/电影 --media-type movies --volume-label 主硬盘 --force
+
+# Step 2（可选）: 从 TMDB 更新系列/剧集信息
+media-organizer index collections --update
+media-organizer index tv --update
+
+# 查看最终统计
+media-organizer index stats
+```
+
+### 查找重复文件
+
+```bash
+# 查找跨硬盘重复（默认）
+media-organizer index duplicates
+
+# 仅查找电影重复
+media-organizer index duplicates --media-type movies --volume-filter cross
 ```
 
 ---

@@ -72,6 +72,23 @@ pub struct VolumeGroupInfo {
     pub content_hash: String,
 }
 
+/// Information about a single video file within a movie directory.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoFileInfo {
+    /// File name
+    pub file_name: String,
+    /// File path relative to movie directory
+    pub file_path: String,
+    /// File size in bytes
+    pub size_bytes: u64,
+    /// Video resolution (e.g., "1080p", "4K", "720p")
+    pub resolution: Option<String>,
+    /// Video format (e.g., "mkv", "mp4", "avi")
+    pub format: Option<String>,
+    /// Video codec (e.g., "h264", "hevc", "av1")
+    pub codec: Option<String>,
+}
+
 /// A movie entry in the index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MovieEntry {
@@ -111,10 +128,12 @@ pub struct MovieEntry {
     pub runtime: Option<u32>,
     /// Rating (0-10)
     pub rating: Option<f32>,
-    /// File size in bytes
+    /// File size in bytes (total of all video files)
     pub size_bytes: u64,
     /// Video resolution (e.g., "1080p", "4K")
     pub resolution: Option<String>,
+    /// List of video files in this movie directory (for multi-version support)
+    pub video_files: Vec<VideoFileInfo>,
     /// When this entry was indexed
     pub indexed_at: String,
 }

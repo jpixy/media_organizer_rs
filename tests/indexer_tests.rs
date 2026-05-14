@@ -61,6 +61,8 @@ fn create_tv_series_disk_index(label: &str, path: &str, tv_series: Vec<TvSeriesE
 
 /// Create a test movie entry
 fn create_test_movie(id: &str, title: &str, disk: &str, tmdb_id: u64) -> MovieEntry {
+    use media_organizer::models::index::VideoFileInfo;
+    
     MovieEntry {
         id: id.to_string(),
         disk: disk.to_string(),
@@ -82,6 +84,14 @@ fn create_test_movie(id: &str, title: &str, disk: &str, tmdb_id: u64) -> MovieEn
         rating: Some(7.5),
         size_bytes: 1_000_000_000,
         resolution: Some("1080p".to_string()),
+        video_files: vec![VideoFileInfo {
+            file_name: format!("{}.mkv", title),
+            file_path: format!("{}/{}.mkv", title, title),
+            size_bytes: 1_000_000_000,
+            resolution: Some("1080p".to_string()),
+            format: Some("mkv".to_string()),
+            codec: Some("h264".to_string()),
+        }],
         indexed_at: chrono::Utc::now().to_rfc3339(),
     }
 }

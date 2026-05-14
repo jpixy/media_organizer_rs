@@ -242,7 +242,9 @@ Subcommands:
   verify       验证索引与文件一致性
   remove       从索引移除硬盘
   duplicates   查找重复媒体
-  collections  列出电影系列合集
+  collections  电影系列合集管理
+  tv           电视剧统计管理
+  rebuild      重建索引与统计
 ```
 
 #### scan - 扫描目录
@@ -299,8 +301,67 @@ media-organizer index stats
 
 #### duplicates - 查找重复项
 ```bash
-media-organizer index duplicates
+media-organizer index duplicates [OPTIONS]
+
+Options:
+  --media-type <类型>      movies / tv_series / all (默认: all)
+  --volume-filter <过滤>   all / same / cross (默认: cross)
+  --format <格式>          table / simple / json (默认: table)
 ```
+
+**参数说明:**
+- `--volume-filter cross`: 只显示跨卷组重复（不同硬盘之间）
+- `--volume-filter same`: 只显示同卷组重复（同一硬盘内）
+- `--volume-filter all`: 显示所有重复
+
+---
+
+#### collections - 电影系列合集管理
+```bash
+media-organizer index collections [OPTIONS]
+
+Options:
+  --update                 从 TMDB 更新系列信息
+```
+
+**功能说明:**
+- 不带参数时：列出所有电影系列合集及其完整度统计
+- `--update`: 从 TMDB 获取电影所属系列信息，更新索引中的 collection 数据
+
+**示例:**
+```bash
+# 查看系列统计
+media-organizer index collections
+
+# 更新系列信息
+media-organizer index collections --update
+```
+
+---
+
+#### tv - 电视剧统计管理
+```bash
+media-organizer index tv [OPTIONS]
+
+Options:
+  --update                 从 TMDB 更新剧集信息
+```
+
+**功能说明:**
+- 不带参数时：列出所有电视剧及其季/集统计
+- `--update`: 从 TMDB 获取电视剧的总季数和总集数信息
+
+---
+
+#### rebuild - 重建索引与统计
+```bash
+media-organizer index rebuild
+```
+
+**功能说明:**
+- 重新计算所有索引结构和统计数据
+- 重新整理电影系列合集和电视剧统计
+- 不验证磁盘上的文件是否存在（文件验证由 scan 命令处理）
 
 ---
 
@@ -442,6 +503,44 @@ graph TD
             └── Season 01/
                 └── [黑镜]-S01E01-[国歌]-720p-WEB-h264.mkv
 ```
+
+### 4.3 索引更新工作流程
+
+**完整的索引更新流程包括以下步骤：**
+
+| 步骤 | 命令 | 作用 | 是否必需 |
+|------|------|------|----------|
+| 1 | `index scan --force` | 扫描目录，解析 NFO 文件，更新索引 | ✅ 文件变化时 |
+| 2 | `index collections --update` | 从 TMDB 获取电影系列信息 | ❌ 可选 |
+| 3 | `index tv --update` | 从 TMDB 获取电视剧信息 | ❌ 可选 |
+| 4 | `index rebuild` | 手动重建索引和统计 | ❌ 一般不需要 |
+
+**自动触发机制:**
+- `scan --force` 会自动调用 `rebuild_indexes()` 和 `update_statistics()`
+- `collections --update` 和 `tv --update` 会自动调用 `rebuild_indexes()`
+- **因此，`rebuild` 命令通常不需要手动执行**
+
+**推荐工作流程:**
+
+```bash
+# 场景 1: 添加新文件或修改现有文件
+media-organizer index scan --force /path/to/media --volume-label Disk_Movies_01 --media-type movies
+
+# 场景 2: 更新系列/剧集信息（文件未变化）
+media-organizer index collections --update
+media-organizer index tv --update
+
+# 场景 3: 完整更新（文件变化 + 更新 TMDB 信息）
+media-organizer index scan --force /path/to/media --volume-label Disk_Movies_01 --media-type movies && \
+media-organizer index collections --update && \
+media-organizer index tv --update
+```
+
+**关键点说明:**
+- `collection_id` 字段的来源：
+  - 从 NFO 文件的 `<tmdbcollectionid>` 标签读取
+  - 或从 TMDB API 获取（通过 `--update` 命令）
+- 如果 NFO 文件中没有 collection 信息，必须运行 `--update` 命令才能获取系列统计
 
 ---
 

@@ -417,6 +417,17 @@ struct DuplicateEntry {
     path: String,
     size_bytes: u64,
     size_human: String,
+    video_files: Vec<DuplicateVideoFile>,
+}
+
+/// Information about a single video file in a duplicate group.
+#[derive(Debug, Clone, serde::Serialize)]
+struct DuplicateVideoFile {
+    file_name: String,
+    size_bytes: u64,
+    size_human: String,
+    resolution: Option<String>,
+    format: Option<String>,
 }
 
 /// Data structure for duplicate group.
@@ -430,6 +441,7 @@ struct DuplicateGroup {
     entries: Vec<DuplicateEntry>,
     total_size_bytes: u64,
     total_size_human: String,
+    is_multi_version: bool,
 }
 
 /// Format bytes to human-readable string.
@@ -537,6 +549,13 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
 
         for (tmdb_id, movies) in tmdb_groups {
             if movies.len() > 1 {
+                let disk_paths: Vec<_> = movies.iter().map(|m| (m.disk.clone(), m.relative_path.clone())).collect();
+                let all_same_location = disk_paths.iter().all(|(disk, path)| {
+                    disk == &disk_paths[0].0 && path == &disk_paths[0].1
+                });
+
+                let is_multi_version = all_same_location;
+
                 let entries: Vec<DuplicateEntry> = movies
                     .iter()
                     .map(|m| {
@@ -546,12 +565,25 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                                     .or_else(|| Some(d.base_path.clone()))
                             })
                             .unwrap_or_default();
+                        
+                        let video_files: Vec<DuplicateVideoFile> = m.video_files
+                            .iter()
+                            .map(|vf| DuplicateVideoFile {
+                                file_name: vf.file_name.clone(),
+                                size_bytes: vf.size_bytes,
+                                size_human: format_size(vf.size_bytes),
+                                resolution: vf.resolution.clone(),
+                                format: vf.format.clone(),
+                            })
+                            .collect();
+                        
                         DuplicateEntry {
                             disk: m.disk.clone(),
                             disk_path,
                             path: m.relative_path.clone(),
                             size_bytes: m.size_bytes,
                             size_human: format_size(m.size_bytes),
+                            video_files,
                         }
                     })
                     .collect();
@@ -571,6 +603,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
+                    is_multi_version,
                 });
             }
         }
@@ -586,6 +619,13 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
 
         for (_, movies) in imdb_groups {
             if movies.len() > 1 {
+                let disk_paths: Vec<_> = movies.iter().map(|m| (m.disk.clone(), m.relative_path.clone())).collect();
+                let all_same_location = disk_paths.iter().all(|(disk, path)| {
+                    disk == &disk_paths[0].0 && path == &disk_paths[0].1
+                });
+
+                let is_multi_version = all_same_location;
+
                 let entries: Vec<DuplicateEntry> = movies
                     .iter()
                     .map(|m| {
@@ -595,12 +635,25 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                                     .or_else(|| Some(d.base_path.clone()))
                             })
                             .unwrap_or_default();
+                        
+                        let video_files: Vec<DuplicateVideoFile> = m.video_files
+                            .iter()
+                            .map(|vf| DuplicateVideoFile {
+                                file_name: vf.file_name.clone(),
+                                size_bytes: vf.size_bytes,
+                                size_human: format_size(vf.size_bytes),
+                                resolution: vf.resolution.clone(),
+                                format: vf.format.clone(),
+                            })
+                            .collect();
+                        
                         DuplicateEntry {
                             disk: m.disk.clone(),
                             disk_path,
                             path: m.relative_path.clone(),
                             size_bytes: m.size_bytes,
                             size_human: format_size(m.size_bytes),
+                            video_files,
                         }
                     })
                     .collect();
@@ -620,6 +673,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
+                    is_multi_version,
                 });
             }
         }
@@ -685,6 +739,30 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                         })
                         .unwrap_or_default();
                     
+                    let video_files1: Vec<DuplicateVideoFile> = m1.video_files
+                        .iter()
+                        .map(|vf| DuplicateVideoFile {
+                            file_name: vf.file_name.clone(),
+                            size_bytes: vf.size_bytes,
+                            size_human: format_size(vf.size_bytes),
+                            resolution: vf.resolution.clone(),
+                            format: vf.format.clone(),
+                        })
+                        .collect();
+                    
+                    let video_files2: Vec<DuplicateVideoFile> = m2.video_files
+                        .iter()
+                        .map(|vf| DuplicateVideoFile {
+                            file_name: vf.file_name.clone(),
+                            size_bytes: vf.size_bytes,
+                            size_human: format_size(vf.size_bytes),
+                            resolution: vf.resolution.clone(),
+                            format: vf.format.clone(),
+                        })
+                        .collect();
+                    
+                    let is_multi_version = m1.disk == m2.disk && m1.relative_path == m2.relative_path;
+                    
                     duplicates.push(DuplicateGroup {
                         tmdb_id: 0,
                         title: m1.title.clone(),
@@ -698,6 +776,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                                 path: m1.relative_path.clone(),
                                 size_bytes: m1.size_bytes,
                                 size_human: format_size(m1.size_bytes),
+                                video_files: video_files1,
                             },
                             DuplicateEntry {
                                 disk: m2.disk.clone(),
@@ -705,10 +784,12 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                                 path: m2.relative_path.clone(),
                                 size_bytes: m2.size_bytes,
                                 size_human: format_size(m2.size_bytes),
+                                video_files: video_files2,
                             },
                         ],
                         total_size_bytes: total_size,
                         total_size_human: format_size(total_size),
+                        is_multi_version,
                     });
                 }
             }
@@ -742,6 +823,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                             path: t.relative_path.clone(),
                             size_bytes: t.size_bytes,
                             size_human: format_size(t.size_bytes),
+                            video_files: vec![],
                         }
                     })
                     .collect();
@@ -761,6 +843,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
+                    is_multi_version: false,
                 });
             }
         }
@@ -791,6 +874,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                             path: t.relative_path.clone(),
                             size_bytes: t.size_bytes,
                             size_human: format_size(t.size_bytes),
+                            video_files: vec![],
                         }
                     })
                     .collect();
@@ -810,6 +894,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
+                    is_multi_version: false,
                 });
             }
         }
@@ -882,6 +967,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                                 path: t1.relative_path.clone(),
                                 size_bytes: t1.size_bytes,
                                 size_human: format_size(t1.size_bytes),
+                                video_files: vec![],
                             },
                             DuplicateEntry {
                                 disk: t2.disk.clone(),
@@ -889,10 +975,12 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                                 path: t2.relative_path.clone(),
                                 size_bytes: t2.size_bytes,
                                 size_human: format_size(t2.size_bytes),
+                                video_files: vec![],
                             },
                         ],
                         total_size_bytes: total_size,
                         total_size_human: format_size(total_size),
+                        is_multi_version: false,
                     });
                 }
             }
@@ -999,11 +1087,17 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                         "low" => "[LOW]".cyan(),
                         _ => "[?]".white(),
                     };
+                    let version_badge = if group.is_multi_version {
+                        "[MULTI-VERSION]".yellow().bold()
+                    } else {
+                        "[CROSS-DISK]".red().bold()
+                    };
 
                     println!(
-                        "{} {} {} {} - tmdb{} - {} copies",
+                        "{} {} {} {} {} - tmdb{} - {} copies",
                         type_badge,
                         confidence_badge,
+                        version_badge,
                         group.title.bold(),
                         year_str,
                         group.tmdb_id,
@@ -1019,6 +1113,19 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                             entry.size_human,
                             entry.path
                         );
+                        if group.is_multi_version && !entry.video_files.is_empty() {
+                            for vf in &entry.video_files {
+                                let res_str = vf.resolution.as_deref().unwrap_or("?");
+                                let fmt_str = vf.format.as_deref().unwrap_or("?");
+                                println!(
+                                    "             └── {} [{}] [{}] ({})",
+                                    vf.file_name,
+                                    vf.size_human,
+                                    res_str,
+                                    fmt_str
+                                );
+                            }
+                        }
                     }
                     println!();
                 }

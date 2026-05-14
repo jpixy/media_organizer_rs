@@ -3,16 +3,28 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-/// Media Organizer - Organize your video files with AI
+/// Media Organizer - High-performance media file organizer with AI-powered filename parsing
+/// 
+/// Features:
+/// - AI-powered filename parsing using Ollama (optional)
+/// - TMDB metadata integration
+/// - Central indexing across multiple disks
+/// - Full rollback support for safe operations
+/// - Cross-disk search and duplicate detection
+/// 
+/// Quick Start:
+///   media-organizer plan movies /path/to/movies -t /path/to/library
+///   media-organizer execute plan_*.json
+///   media-organizer index scan /path/to/library --media-type movies --volume-label MyDisk
 #[derive(Parser, Debug)]
 #[command(name = "media-organizer")]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about = "Organize your movie and TV show collection with AI-powered parsing")]
 pub struct Cli {
-    /// Enable verbose output
+    /// Enable verbose output (show detailed logs)
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
-    /// Skip preflight checks
+    /// Skip preflight checks (ffprobe, TMDB connection, etc.)
     #[arg(long, global = true)]
     pub skip_preflight: bool,
 
@@ -169,79 +181,131 @@ pub enum Commands {
 
 #[derive(Subcommand, Debug)]
 pub enum IndexAction {
-    /// Scan and index a directory
+    /// Scan and index a media directory
+    /// 
+    /// Scans the specified directory for NFO files and builds a searchable index.
+    /// Automatically rebuilds indexes and recalculates statistics after scanning.
+    /// 
+    /// Example:
+    ///   media-organizer index scan /mnt/library/movies --media-type movies --volume-label Disk_Movies_01
+    ///   media-organizer index scan /mnt/library/tv --media-type tv_series --volume-label Disk_TV_01 --force
     Scan {
-        /// Directory to scan
+        /// Directory to scan for media files
         #[arg(value_name = "PATH")]
         path: PathBuf,
 
-        /// Media type: movies or tv_series
+        /// Media type: movies or tv_series (required)
+        /// 
+        /// Specifies whether to scan for movies or TV series. This parameter is mandatory.
         #[arg(value_name = "TYPE")]
         media_type: String,
 
         /// Volume group label (auto-detected if not provided)
+        /// 
+        /// Labels the disk/volume for organizational purposes. Multiple directories can share
+        /// the same volume label (e.g., movies and TV shows on the same physical disk).
         #[arg(long)]
         volume_label: Option<String>,
 
-        /// Force re-index (replace existing entries)
+        /// Force re-index (replace existing entries for this volume)
+        /// 
+        /// When specified, replaces all existing entries for this volume instead of merging.
+        /// Use this when the directory structure has changed significantly.
         #[arg(long)]
         force: bool,
     },
 
-    /// Show collection statistics
+    /// Show overall collection statistics
+    /// 
+    /// Displays statistics for all indexed media including volume groups,
+    /// movie collections, and TV series. Shows complete/incomplete counts
+    /// and total sizes.
     Stats,
 
     /// List contents of a specific volume group
+    /// 
+    /// Lists all movies or TV shows in a specific volume group.
+    /// 
+    /// Example:
+    ///   media-organizer index list Disk_Movies_01
+    ///   media-organizer index list Disk_TV_01 --media-type tv_series
     List {
         /// Volume group label to list
         #[arg(value_name = "VOLUME")]
         volume_label: String,
 
-        /// Media type filter: movies, tv_series, or all
+        /// Media type filter: movies, tv_series, or all (default: all)
         #[arg(long, default_value = "all")]
         media_type: String,
     },
 
-    /// Verify index against actual files
+    /// Verify index integrity against actual files
+    /// 
+    /// Checks if all indexed files still exist on disk and validates NFO files.
     Verify {
         /// Path to verify
         #[arg(value_name = "PATH")]
         path: PathBuf,
     },
 
-    /// Remove a volume group from the index
+    /// Remove a volume group from the central index
+    /// 
+    /// Removes all entries associated with the specified volume group.
+    /// Use --confirm to actually delete the data.
+    /// 
+    /// Example:
+    ///   media-organizer index remove OldDisk --confirm
     Remove {
         /// Volume group label to remove
         #[arg(value_name = "VOLUME")]
         volume_label: String,
 
-        /// Confirm removal
+        /// Confirm removal (required to prevent accidental deletion)
         #[arg(long)]
         confirm: bool,
     },
 
-    /// Find duplicate movies/TV shows by TMDB ID across disks
+    /// Find duplicate movies/TV shows by TMDB ID
+    /// 
+    /// Identifies duplicate media files across volume groups based on TMDB ID.
+    /// Useful for finding redundant copies that can be safely deleted.
+    /// 
+    /// Example:
+    ///   media-organizer index duplicates
+    ///   media-organizer index duplicates --media-type movies --volume-filter cross
     Duplicates {
-        /// Media type filter: movies, tv_series, or all
+        /// Media type filter: movies, tv_series, or all (default: all)
         #[arg(long, default_value = "all")]
         media_type: String,
 
-        /// Output format: table, simple, json
+        /// Output format: table, simple, json (default: table)
         #[arg(long, default_value = "table")]
         format: String,
 
-        /// Volume filter: all, same, or cross
+        /// Volume filter: all, same, or cross (default: cross)
+        /// 
+        /// - all: Show all duplicates
+        /// - same: Only show duplicates within the same volume group
+        /// - cross: Only show duplicates across different volume groups (most useful)
         #[arg(long, default_value = "cross")]
         volume_filter: String,
     },
 
-    /// List movie collections (franchise series)
+    /// Manage movie collections (franchise series)
+    /// 
+    /// Lists all movie collections and their completion status.
+    /// Use --update to fetch collection information from TMDB.
+    /// 
+    /// Example:
+    ///   media-organizer index collections
+    ///   media-organizer index collections --filter complete
+    ///   media-organizer index collections --update
     Collections {
-        /// Filter: complete, incomplete, or all
+        /// Filter: complete, incomplete, or all (default: all)
         #[arg(long, default_value = "all")]
         filter: String,
 
-        /// Output format: table, simple, json
+        /// Output format: table, simple, json (default: table)
         #[arg(long, default_value = "table")]
         format: String,
 
@@ -249,18 +313,29 @@ pub enum IndexAction {
         #[arg(long)]
         hide_paths: bool,
 
-        /// Update collection totals from TMDB and write back to NFO files
+        /// Update collection information from TMDB
+        /// 
+        /// Fetches collection details (total movies, names) from TMDB for all movies
+        /// that don't have collection info. Automatically rebuilds indexes afterward.
         #[arg(long)]
         update: bool,
     },
 
-    /// List TV shows with season/episode statistics
+    /// Manage TV shows with season/episode statistics
+    /// 
+    /// Lists all TV shows and their completion status (how many seasons/episodes owned).
+    /// Use --update to fetch TV show information from TMDB.
+    /// 
+    /// Example:
+    ///   media-organizer index tv
+    ///   media-organizer index tv --filter incomplete
+    ///   media-organizer index tv --update
     Tv {
-        /// Filter: complete, incomplete, or all
+        /// Filter: complete, incomplete, or all (default: all)
         #[arg(long, default_value = "all")]
         filter: String,
 
-        /// Output format: table, simple, json
+        /// Output format: table, simple, json (default: table)
         #[arg(long, default_value = "table")]
         format: String,
 
@@ -268,12 +343,24 @@ pub enum IndexAction {
         #[arg(long)]
         hide_paths: bool,
 
-        /// Update TV show details from TMDB and write back to NFO files
+        /// Update TV show details from TMDB
+        /// 
+        /// Fetches TV show details (total seasons, total episodes) from TMDB.
+        /// Automatically rebuilds indexes afterward.
         #[arg(long)]
         update: bool,
     },
 
     /// Rebuild indexes and recalculate all statistics
+    /// 
+    /// Recalculates collection and TV series statistics without re-scanning files.
+    /// This is useful after making manual changes to NFO files.
+    /// 
+    /// Note: scan --force and --update commands automatically trigger this.
+    /// You rarely need to run this manually.
+    /// 
+    /// Example:
+    ///   media-organizer index rebuild
     Rebuild {
         /// Skip preflight checks
         #[arg(long)]

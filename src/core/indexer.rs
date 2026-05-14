@@ -1,6 +1,6 @@
 //! Central index management - scanning, building, and searching.
 
-use crate::models::index::{CentralIndex, CollectionInfo, DiskIndex, MovieEntry, TvSeriesEntry};
+use crate::models::index::{CentralIndex, CollectionInfo, DiskIndex, MovieEntry, TvSeriesEntry, VideoFileInfo};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -247,6 +247,9 @@ pub fn scan_directory(
     index.disk.content_hash = content_hash;
 
     let mut total_size: u64 = 0;
+    
+    // Track already processed paths to avoid duplicates
+    let mut processed_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     // Scan all .nfo files recursively
     for entry in WalkDir::new(path)
@@ -260,6 +263,28 @@ pub fn scan_directory(
             // Check if it's an NFO file by extension
             if let Some(ext) = entry_path.extension() {
                 if ext.to_ascii_lowercase() == "nfo" {
+                    // Get the parent directory as the unique identifier
+                    let nfo_dir = match entry_path.parent() {
+                        Some(dir) => dir,
+                        None => {
+                            tracing::warn!("Skipping NFO without parent directory: {}", entry_path.display());
+                            continue;
+                        }
+                    };
+                    
+                    let relative_path = nfo_dir
+                        .strip_prefix(path)
+                        .unwrap_or(nfo_dir)
+                        .to_string_lossy()
+                        .to_string();
+                    
+                    // Skip if already processed this path
+                    if processed_paths.contains(&relative_path) {
+                        tracing::debug!("Skipping duplicate entry: {}", relative_path);
+                        continue;
+                    }
+                    processed_paths.insert(relative_path);
+                    
                     match parse_nfo_file(entry_path, disk_label, &index.disk.uuid, path) {
                         Ok(ParsedNfo::Movie(movie)) => {
                             if media_type == "movies" {
@@ -334,12 +359,12 @@ fn parse_nfo_file(
         .to_string_lossy()
         .to_string();
 
-    // Calculate total size of video files in directory
-    let size_bytes = calculate_directory_video_size(nfo_dir);
+    // Collect video files and calculate total size
+    let (video_files, size_bytes) = collect_video_files(nfo_dir);
 
     // Determine if movie or tvshow based on root element
     if content.contains("<movie>") {
-        let movie = parse_movie_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes)?;
+        let movie = parse_movie_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes, video_files)?;
         Ok(ParsedNfo::Movie(movie))
     } else if content.contains("<tvshow>") {
         let tvshow = parse_tv_series_nfo(&content, disk_label, disk_uuid, &relative_path, size_bytes, nfo_dir)?;
@@ -356,6 +381,7 @@ fn parse_movie_nfo(
     disk_uuid: &Option<String>,
     relative_path: &str,
     size_bytes: u64,
+    video_files: Vec<VideoFileInfo>,
 ) -> Result<MovieEntry> {
     // Simple XML parsing using regex (for robustness with malformed XML)
     let get_tag = |tag: &str| -> Option<String> {
@@ -483,6 +509,7 @@ fn parse_movie_nfo(
         rating,
         size_bytes,
         resolution,
+        video_files,
         indexed_at: chrono::Utc::now().to_rfc3339(),
     })
 }
@@ -594,26 +621,100 @@ fn parse_tv_series_nfo(
     })
 }
 
-/// Calculate total size of video files in a directory (recursive).
-fn calculate_directory_video_size(dir: &Path) -> u64 {
+/// Collect video file information from a directory.
+fn collect_video_files(dir: &Path) -> (Vec<VideoFileInfo>, u64) {
     let video_extensions = [
-        "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts",
+        "mkv", "mp4", "avi", "mov", "wmv", "m4v", "ts", "m2ts", "flv", "webm",
+        "mpg", "mpeg", "vob", "ogv", "ogm", "divx", "xvid", "3gp", "3g2", "mts", "rm", "rmvb", "asf",
+        "f4v",
     ];
 
-    WalkDir::new(dir)
+    let mut video_files = Vec::new();
+    let mut total_size: u64 = 0;
+
+    for entry in WalkDir::new(dir)
+        .max_depth(3)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file())
-        .filter(|e| {
-            e.path()
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| video_extensions.contains(&ext.to_lowercase().as_str()))
-                .unwrap_or(false)
-        })
-        .filter_map(|e| e.metadata().ok())
-        .map(|m| m.len())
-        .sum()
+    {
+        if entry.path().is_file() {
+            if let Some(ext) = entry.path().extension() {
+                let ext_str = ext.to_string_lossy().to_lowercase();
+                if video_extensions.contains(&ext_str.as_str()) {
+                    if let Ok(metadata) = entry.metadata() {
+                        let file_size = metadata.len();
+                        total_size += file_size;
+                        
+                        let file_name = entry.file_name().to_string_lossy().to_string();
+                        let file_path = entry.path().to_string_lossy().to_string();
+                        
+                        let format = Some(ext_str.clone());
+                        
+                        let resolution = detect_resolution_from_filename(&file_name);
+                        let codec = detect_codec_from_filename(&file_name);
+                        
+                        video_files.push(VideoFileInfo {
+                            file_name,
+                            file_path,
+                            size_bytes: file_size,
+                            resolution,
+                            format,
+                            codec,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    (video_files, total_size)
+}
+
+/// Detect resolution from filename.
+fn detect_resolution_from_filename(filename: &str) -> Option<String> {
+    let patterns = [
+        ("2160", "4K"),
+        ("3840", "4K"),
+        ("1080", "1080p"),
+        ("1920", "1080p"),
+        ("720", "720p"),
+        ("1280", "720p"),
+        ("480", "480p"),
+        ("576", "576p"),
+        ("4K", "4K"),
+        ("8K", "8K"),
+    ];
+    
+    for (pattern, resolution) in patterns.iter() {
+        if filename.to_lowercase().contains(*pattern) {
+            return Some(resolution.to_string());
+        }
+    }
+    None
+}
+
+/// Detect video codec from filename.
+fn detect_codec_from_filename(filename: &str) -> Option<String> {
+    let filename_lower = filename.to_lowercase();
+    let codecs = [
+        ("hevc", "HEVC"),
+        ("h265", "H.265"),
+        ("h.265", "H.265"),
+        ("av1", "AV1"),
+        ("vp9", "VP9"),
+        ("vp10", "VP10"),
+        ("x264", "H.264"),
+        ("x265", "H.265"),
+        ("h264", "H.264"),
+        ("h.264", "H.264"),
+    ];
+    
+    for (pattern, codec) in codecs.iter() {
+        if filename_lower.contains(*pattern) {
+            return Some(codec.to_string());
+        }
+    }
+    None
 }
 
 /// Count number of owned seasons by counting season directories like "Season 01", "Season 1", etc.
