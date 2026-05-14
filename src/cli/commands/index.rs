@@ -28,8 +28,8 @@ pub async fn execute_index(action: IndexAction, config: &Config) -> Result<()> {
             volume_label,
             confirm,
         } => remove_volume(&volume_label, confirm).await,
-        IndexAction::Duplicates { media_type, format } => {
-            find_duplicates(&media_type, &format).await
+        IndexAction::Duplicates { media_type, format, volume_filter } => {
+            find_duplicates(&media_type, &format, &volume_filter).await
         }
         IndexAction::Collections {
             filter,
@@ -112,13 +112,18 @@ async fn scan_directory(
     pb.finish_with_message(if was_updated { "Scan complete" } else { "Content unchanged - using cached index" });
 
     if was_updated {
-        // Save disk index only if content changed
-        indexer::save_disk_index(&disk_index)?;
+            // Save disk index only if content changed
+            indexer::save_disk_index(&disk_index)?;
 
-        // Update central index
-        let mut central = indexer::load_central_index()?;
-        indexer::merge_disk_into_central(&mut central, disk_index.clone());
-        indexer::save_central_index(&central)?;
+            // Update central index
+            let mut central = indexer::load_central_index()?;
+            indexer::merge_disk_into_central(&mut central, disk_index.clone());
+            
+            // Rebuild indexes and recalculate statistics
+            central.rebuild_indexes();
+            central.update_statistics();
+            
+            indexer::save_central_index(&central)?;
 
         // Print summary
         println!();
@@ -490,8 +495,29 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     dp[a_chars.len()][b_chars.len()]
 }
 
+/// Check if a group of entries matches the volume filter criteria.
+fn matches_volume_filter(entries: &[DuplicateEntry], volume_filter: &str) -> bool {
+    match volume_filter {
+        "all" => true,
+        "same" => {
+            // All entries are on the same volume
+            if entries.is_empty() {
+                return false;
+            }
+            let first_volume = &entries[0].disk;
+            entries.iter().all(|e| &e.disk == first_volume)
+        }
+        "cross" => {
+            // Entries span multiple volumes
+            let volumes: std::collections::HashSet<_> = entries.iter().map(|e| &e.disk).collect();
+            volumes.len() > 1
+        }
+        _ => true,
+    }
+}
+
 /// Find duplicates with enhanced matching logic.
-async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
+async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     let show_movies = media_type == "all" || media_type == "movies";
@@ -511,31 +537,38 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
 
         for (tmdb_id, movies) in tmdb_groups {
             if movies.len() > 1 {
-                let total_size: u64 = movies.iter().map(|m| m.size_bytes).sum();
+                let entries: Vec<DuplicateEntry> = movies
+                    .iter()
+                    .map(|m| {
+                        let disk_path = index.disks.get(&m.disk)
+                            .and_then(|d| {
+                                d.paths.values().next().cloned()
+                                    .or_else(|| Some(d.base_path.clone()))
+                            })
+                            .unwrap_or_default();
+                        DuplicateEntry {
+                            disk: m.disk.clone(),
+                            disk_path,
+                            path: m.relative_path.clone(),
+                            size_bytes: m.size_bytes,
+                            size_human: format_size(m.size_bytes),
+                        }
+                    })
+                    .collect();
+
+                // Apply volume filter
+                if !matches_volume_filter(&entries, volume_filter) {
+                    continue;
+                }
+
+                let total_size: u64 = entries.iter().map(|e| e.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
                     tmdb_id,
                     title: movies[0].title.clone(),
                     year: movies[0].year,
                     media_type: "movie".to_string(),
                     confidence: "high".to_string(),
-                    entries: movies
-                        .iter()
-                        .map(|m| {
-                            let disk_path = index.disks.get(&m.disk)
-                                .and_then(|d| {
-                                    d.paths.values().next().cloned()
-                                        .or_else(|| Some(d.base_path.clone()))
-                                })
-                                .unwrap_or_default();
-                            DuplicateEntry {
-                                disk: m.disk.clone(),
-                                disk_path,
-                                path: m.relative_path.clone(),
-                                size_bytes: m.size_bytes,
-                                size_human: format_size(m.size_bytes),
-                            }
-                        })
-                        .collect(),
+                    entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
                 });
@@ -553,31 +586,38 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
 
         for (_, movies) in imdb_groups {
             if movies.len() > 1 {
-                let total_size: u64 = movies.iter().map(|m| m.size_bytes).sum();
+                let entries: Vec<DuplicateEntry> = movies
+                    .iter()
+                    .map(|m| {
+                        let disk_path = index.disks.get(&m.disk)
+                            .and_then(|d| {
+                                d.paths.values().next().cloned()
+                                    .or_else(|| Some(d.base_path.clone()))
+                            })
+                            .unwrap_or_default();
+                        DuplicateEntry {
+                            disk: m.disk.clone(),
+                            disk_path,
+                            path: m.relative_path.clone(),
+                            size_bytes: m.size_bytes,
+                            size_human: format_size(m.size_bytes),
+                        }
+                    })
+                    .collect();
+
+                // Apply volume filter
+                if !matches_volume_filter(&entries, volume_filter) {
+                    continue;
+                }
+
+                let total_size: u64 = entries.iter().map(|e| e.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
                     tmdb_id: 0,
                     title: movies[0].title.clone(),
                     year: movies[0].year,
                     media_type: "movie".to_string(),
                     confidence: "medium".to_string(),
-                    entries: movies
-                        .iter()
-                        .map(|m| {
-                            let disk_path = index.disks.get(&m.disk)
-                                .and_then(|d| {
-                                    d.paths.values().next().cloned()
-                                        .or_else(|| Some(d.base_path.clone()))
-                                })
-                                .unwrap_or_default();
-                            DuplicateEntry {
-                                disk: m.disk.clone(),
-                                disk_path,
-                                path: m.relative_path.clone(),
-                                size_bytes: m.size_bytes,
-                                size_human: format_size(m.size_bytes),
-                            }
-                        })
-                        .collect(),
+                    entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
                 });
@@ -596,9 +636,21 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                 let m1 = movies_without_ids[i];
                 let m2 = movies_without_ids[j];
                 
-                // Check if they're on different disks (same disk duplicates are less interesting)
-                if m1.disk == m2.disk {
-                    continue;
+                // Apply volume filter
+                match volume_filter {
+                    "cross" => {
+                        // Only show cross-disk duplicates
+                        if m1.disk == m2.disk {
+                            continue;
+                        }
+                    }
+                    "same" => {
+                        // Only show same-disk duplicates
+                        if m1.disk != m2.disk {
+                            continue;
+                        }
+                    }
+                    _ => {} // "all" - show everything
                 }
                 
                 // Check title similarity (must be very high)
@@ -675,31 +727,38 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
 
         for (tmdb_id, tv_series) in tmdb_groups {
             if tv_series.len() > 1 {
-                let total_size: u64 = tv_series.iter().map(|t| t.size_bytes).sum();
+                let entries: Vec<DuplicateEntry> = tv_series
+                    .iter()
+                    .map(|t| {
+                        let disk_path = index.disks.get(&t.disk)
+                            .and_then(|d| {
+                                d.paths.values().next().cloned()
+                                    .or_else(|| Some(d.base_path.clone()))
+                            })
+                            .unwrap_or_default();
+                        DuplicateEntry {
+                            disk: t.disk.clone(),
+                            disk_path,
+                            path: t.relative_path.clone(),
+                            size_bytes: t.size_bytes,
+                            size_human: format_size(t.size_bytes),
+                        }
+                    })
+                    .collect();
+
+                // Apply volume filter
+                if !matches_volume_filter(&entries, volume_filter) {
+                    continue;
+                }
+
+                let total_size: u64 = entries.iter().map(|e| e.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
                     tmdb_id,
                     title: tv_series[0].title.clone(),
                     year: tv_series[0].year,
                     media_type: "tv_series".to_string(),
                     confidence: "high".to_string(),
-                    entries: tv_series
-                        .iter()
-                        .map(|t| {
-                            let disk_path = index.disks.get(&t.disk)
-                                .and_then(|d| {
-                                    d.paths.values().next().cloned()
-                                        .or_else(|| Some(d.base_path.clone()))
-                                })
-                                .unwrap_or_default();
-                            DuplicateEntry {
-                                disk: t.disk.clone(),
-                                disk_path,
-                                path: t.relative_path.clone(),
-                                size_bytes: t.size_bytes,
-                                size_human: format_size(t.size_bytes),
-                            }
-                        })
-                        .collect(),
+                    entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
                 });
@@ -717,31 +776,38 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
 
         for (_, tv_series) in imdb_groups {
             if tv_series.len() > 1 {
-                let total_size: u64 = tv_series.iter().map(|t| t.size_bytes).sum();
+                let entries: Vec<DuplicateEntry> = tv_series
+                    .iter()
+                    .map(|t| {
+                        let disk_path = index.disks.get(&t.disk)
+                            .and_then(|d| {
+                                d.paths.values().next().cloned()
+                                    .or_else(|| Some(d.base_path.clone()))
+                            })
+                            .unwrap_or_default();
+                        DuplicateEntry {
+                            disk: t.disk.clone(),
+                            disk_path,
+                            path: t.relative_path.clone(),
+                            size_bytes: t.size_bytes,
+                            size_human: format_size(t.size_bytes),
+                        }
+                    })
+                    .collect();
+
+                // Apply volume filter
+                if !matches_volume_filter(&entries, volume_filter) {
+                    continue;
+                }
+
+                let total_size: u64 = entries.iter().map(|e| e.size_bytes).sum();
                 duplicates.push(DuplicateGroup {
                     tmdb_id: 0,
                     title: tv_series[0].title.clone(),
                     year: tv_series[0].year,
                     media_type: "tv_series".to_string(),
                     confidence: "medium".to_string(),
-                    entries: tv_series
-                        .iter()
-                        .map(|t| {
-                            let disk_path = index.disks.get(&t.disk)
-                                .and_then(|d| {
-                                    d.paths.values().next().cloned()
-                                        .or_else(|| Some(d.base_path.clone()))
-                                })
-                                .unwrap_or_default();
-                            DuplicateEntry {
-                                disk: t.disk.clone(),
-                                disk_path,
-                                path: t.relative_path.clone(),
-                                size_bytes: t.size_bytes,
-                                size_human: format_size(t.size_bytes),
-                            }
-                        })
-                        .collect(),
+                    entries,
                     total_size_bytes: total_size,
                     total_size_human: format_size(total_size),
                 });
@@ -759,8 +825,19 @@ async fn find_duplicates(media_type: &str, format: &str) -> Result<()> {
                 let t1 = tv_without_ids[i];
                 let t2 = tv_without_ids[j];
                 
-                if t1.disk == t2.disk {
-                    continue;
+                // Apply volume filter
+                match volume_filter {
+                    "cross" => {
+                        if t1.disk == t2.disk {
+                            continue;
+                        }
+                    }
+                    "same" => {
+                        if t1.disk != t2.disk {
+                            continue;
+                        }
+                    }
+                    _ => {}
                 }
                 
                 let similarity = title_similarity(&t1.title, &t2.title);

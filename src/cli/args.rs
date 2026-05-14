@@ -229,6 +229,10 @@ pub enum IndexAction {
         /// Output format: table, simple, json
         #[arg(long, default_value = "table")]
         format: String,
+
+        /// Volume filter: all, same, or cross
+        #[arg(long, default_value = "cross")]
+        volume_filter: String,
     },
 
     /// List movie collections (franchise series)
