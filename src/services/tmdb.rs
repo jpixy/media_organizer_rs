@@ -410,6 +410,63 @@ impl TmdbClient {
         }
     }
 
+    /// Execute a request with automatic retry on transient errors.
+    async fn request_with_retry<R, F, Fut>(&self, build_request: F) -> Result<R>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = std::result::Result<reqwest::Response, reqwest::Error>>,
+        R: serde::de::DeserializeOwned,
+    {
+        const MAX_RETRIES: u32 = 3;
+        const INITIAL_BACKOFF_MS: u64 = 500;
+
+        let mut last_error = None;
+
+        for attempt in 0..MAX_RETRIES {
+            match build_request().await {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        return resp.json().await.map_err(crate::Error::from);
+                    }
+                    let status = resp.status();
+                    if status.is_server_error() && attempt < MAX_RETRIES - 1 {
+                        let backoff = INITIAL_BACKOFF_MS * 2u64.pow(attempt);
+                        tracing::warn!(
+                            "TMDB server error {} (attempt {}/{}), retrying in {}ms...",
+                            status,
+                            attempt + 1,
+                            MAX_RETRIES,
+                            backoff
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(backoff)).await;
+                        continue;
+                    }
+                    return resp.json().await.map_err(crate::Error::from);
+                }
+                Err(e) => {
+                    if attempt < MAX_RETRIES - 1 {
+                        let backoff = INITIAL_BACKOFF_MS * 2u64.pow(attempt);
+                        tracing::warn!(
+                            "TMDB request failed (attempt {}/{}): {}. Retrying in {}ms...",
+                            attempt + 1,
+                            MAX_RETRIES,
+                            e,
+                            backoff
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(backoff)).await;
+                        last_error = Some(crate::Error::Http(e));
+                        continue;
+                    }
+                    last_error = Some(crate::Error::Http(e));
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| {
+            crate::Error::Other("Unknown error after retries".to_string())
+        }))
+    }
+
     /// Search for movies.
     pub async fn search_movie(
         &self,
@@ -422,7 +479,7 @@ impl TmdbClient {
             &format!("&query={}{}", urlencoding::encode(query), year_param),
         );
 
-        let resp: MovieSearchResult = self.build_request(&url).send().await?.json().await?;
+        let resp: MovieSearchResult = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp.results)
     }
 
@@ -432,7 +489,7 @@ impl TmdbClient {
             &format!("movie/{}", movie_id),
             "&append_to_response=credits,release_dates",
         );
-        let resp = self.build_request(&url).send().await?.json().await?;
+        let resp: MovieDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 

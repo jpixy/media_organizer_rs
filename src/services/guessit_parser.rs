@@ -18,6 +18,58 @@
 
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
+use serde::de::{self, Visitor};
+use std::fmt;
+use std::result::Result as StdResult;
+
+fn deserialize_optional_string_or_vec<'de, D>(deserializer: D) -> StdResult<Option<Vec<String>>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    struct OptionalStringOrVecVisitor;
+
+    impl<'de> Visitor<'de> for OptionalStringOrVecVisitor {
+        type Value = Option<Vec<String>>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a string or an array of strings")
+        }
+
+        fn visit_none<E>(self) -> StdResult<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> StdResult<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_str<E>(self, value: &str) -> StdResult<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(vec![value.to_string()]))
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> StdResult<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut result = Vec::new();
+            while let Some(s) = seq.next_element::<String>()? {
+                result.push(s);
+            }
+            Ok(Some(result))
+        }
+    }
+
+    deserializer.deserialize_any(OptionalStringOrVecVisitor)
+}
 use std::process::Command;
 use tracing::{debug, error, info, warn};
 
@@ -51,8 +103,10 @@ pub fn clean_filename(filename: &str) -> String {
 pub struct GuessItResult {
     /// Title (may be in original language).
     pub title: Option<String>,
-    /// Alternative/secondary title (e.g., country edition).
-    pub alternative_title: Option<String>,
+    /// Alternative/secondary title(s) (e.g., country edition).
+    /// Can be a string or array of strings.
+    #[serde(deserialize_with = "deserialize_optional_string_or_vec")]
+    pub alternative_title: Option<Vec<String>>,
     /// Year of release.
     pub year: Option<u16>,
     /// Season number (TV shows).
@@ -109,11 +163,17 @@ impl GuessItResult {
     }
 
     /// Get primary title, preferring the main title over alternative.
-    pub fn primary_title(&self) -> Option<&str> {
-        self.title
-            .as_ref()
-            .map(|s| s.as_str())
-            .or_else(|| self.alternative_title.as_ref().map(|s| s.as_str()))
+    /// Returns the first alternative title if no primary title exists.
+    pub fn primary_title(&self) -> Option<String> {
+        if let Some(ref title) = self.title {
+            return Some(title.clone());
+        }
+        if let Some(ref alt_titles) = self.alternative_title {
+            if let Some(first) = alt_titles.first() {
+                return Some(first.clone());
+            }
+        }
+        None
     }
 
     /// Get a confidence indicator based on which fields are populated.

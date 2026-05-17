@@ -24,7 +24,7 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaConfig {
     /// Whether AI parsing is enabled. Default: false (AI disabled by default).
-    /// When disabled, only local parsing (hunch library + regex) is used.
+    /// When disabled, only local parsing (guessit library) is used.
     #[serde(default = "default_ai_enabled")]
     pub enabled: bool,
     /// Ollama host.

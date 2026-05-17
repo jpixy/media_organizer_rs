@@ -133,6 +133,7 @@ pub struct MovieEntry {
     /// Video resolution (e.g., "1080p", "4K")
     pub resolution: Option<String>,
     /// List of video files in this movie directory (for multi-version support)
+    #[serde(default)]
     pub video_files: Vec<VideoFileInfo>,
     /// When this entry was indexed
     pub indexed_at: String,

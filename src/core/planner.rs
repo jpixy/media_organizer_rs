@@ -855,7 +855,7 @@ impl Planner {
         }
 
         // Step 2: Parse filename (AI or regex) - fallback when no ID found
-        // First, try local parsing (hunch) to extract title/year
+        // First, try local parsing (guessit) to extract title/year
         let (parsed, _) = if media_type == MediaType::TvSeries && cached_show.is_some() {
             // FAST PATH: Extract episode from filename using regex
             let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
@@ -2445,7 +2445,13 @@ impl Planner {
         let needs_parent_context =
             filename_seems_minimal || (parent_has_cjk && filename_is_romanized && parent_has_title);
 
-        if needs_parent_context && parent_has_title {
+        // If filename already has CJK characters, don't combine with meaningless parent directories
+        // This prevents issues where guessit incorrectly parses the parent dir as the title
+        let filename_has_cjk = video.filename.chars().any(|c| {
+            matches!(c, '\u{4e00}'..='\u{9fff}' | '\u{3040}'..='\u{30ff}' | '\u{ac00}'..='\u{d7af}')
+        });
+        
+        if needs_parent_context && parent_has_title && !filename_has_cjk {
             // Combine parent dir name and filename for better context
             tracing::info!(
                 "Using parent dir for context: '{}' + '{}' (depth: {})",
@@ -3398,6 +3404,7 @@ impl Planner {
             let query = chinese_title.as_deref().unwrap_or("");
             if let Some(best) = self.select_best_movie_match(&chinese_results, query) {
                 let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
+                tracing::debug!("Priority 1: Selected title='{}' tmdb_year={:?}", best.title, tmdb_year);
                 if self.is_reasonable_match_with_year(
                     query,
                     &best.title,
@@ -3459,7 +3466,13 @@ impl Planner {
             self.add_shortened_queries(&mut shortened_queries, title);
 
             for query in &shortened_queries {
-                let results = client.search_movie(query, parsed.year).await?;
+                let results = match client.search_movie(query, parsed.year).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        tracing::warn!("TMDB search failed for shortened query '{}': {}", query, e);
+                        continue;
+                    }
+                };
                 if !results.is_empty() {
                     if let Some(best) = self.select_best_movie_match(&results, query) {
                         let tmdb_year = Self::extract_year_from_release_date(&best.release_date);

@@ -1338,3 +1338,79 @@ fn test_statistics_update_with_mixed_media() {
     assert_eq!(central.statistics.complete_tv_series, 1);  // Series 1 is complete
     assert_eq!(central.statistics.incomplete_tv_series, 1);  // Series 2 is incomplete
 }
+
+#[test]
+fn test_movie_entry_backward_compatibility() {
+    // Test backward compatibility: old index data without video_files field
+    let old_format_json = r#"{
+        "id": "test-movie-id",
+        "disk": "test-disk",
+        "disk_uuid": "test-uuid",
+        "relative_path": "Movies/Test Movie",
+        "title": "Test Movie",
+        "original_title": null,
+        "year": 2024,
+        "tmdb_id": 123456,
+        "imdb_id": "tt1234567",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_total_movies": null,
+        "country": "US",
+        "genres": ["Action", "Adventure"],
+        "actors": ["Actor One", "Actor Two"],
+        "directors": ["Director One"],
+        "runtime": 120,
+        "rating": 7.5,
+        "size_bytes": 1073741824,
+        "resolution": "1080p",
+        "indexed_at": "2024-01-01T00:00:00Z"
+    }"#;
+    
+    // Should successfully deserialize old format, video_files defaults to empty vec
+    let movie: MovieEntry = serde_json::from_str(old_format_json)
+        .expect("Should deserialize old format without video_files field");
+    
+    assert_eq!(movie.title, "Test Movie");
+    assert_eq!(movie.tmdb_id, Some(123456));
+    assert!(movie.video_files.is_empty());
+}
+
+#[test]
+fn test_movie_entry_new_format_with_video_files() {
+    // Test new format with video_files field
+    let new_format_json = r#"{
+        "id": "test-movie-id",
+        "disk": "test-disk",
+        "disk_uuid": "test-uuid",
+        "relative_path": "Movies/Test Movie",
+        "title": "Test Movie",
+        "original_title": null,
+        "year": 2024,
+        "tmdb_id": 123456,
+        "imdb_id": "tt1234567",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_total_movies": null,
+        "country": "US",
+        "genres": ["Action"],
+        "actors": [],
+        "directors": [],
+        "runtime": 120,
+        "rating": 7.5,
+        "size_bytes": 2147483648,
+        "resolution": "1080p",
+        "video_files": [
+            {"file_name": "movie_1080p.mkv", "file_path": "Movies/Test Movie/movie_1080p.mkv", "size_bytes": 1073741824, "resolution": "1080p", "format": "mkv", "codec": "h264"},
+            {"file_name": "movie_4k.mkv", "file_path": "Movies/Test Movie/movie_4k.mkv", "size_bytes": 1073741824, "resolution": "4K", "format": "mkv", "codec": "hevc"}
+        ],
+        "indexed_at": "2024-01-01T00:00:00Z"
+    }"#;
+    
+    let movie: MovieEntry = serde_json::from_str(new_format_json)
+        .expect("Should deserialize new format with video_files field");
+    
+    assert_eq!(movie.title, "Test Movie");
+    assert_eq!(movie.video_files.len(), 2);
+    assert_eq!(movie.video_files[0].file_name, "movie_1080p.mkv");
+    assert_eq!(movie.video_files[1].resolution, Some("4K".to_string()));
+}

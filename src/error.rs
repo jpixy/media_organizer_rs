@@ -38,6 +38,9 @@ pub enum Error {
     #[error("Failed to parse filename: {0}")]
     ParseError(String),
 
+    #[error("Parser error: {0}")]
+    Parser(String),
+
     #[error("AI parsing failed: {0}")]
     AiParseError(String),
 

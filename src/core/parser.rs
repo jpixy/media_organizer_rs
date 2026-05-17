@@ -1,17 +1,16 @@
-//! Filename parser module using hunch library.
+//! Filename parser module using Python guessit library.
 //!
-//! Uses hunch media filename parser to extract:
-//! - Original title (usually English)
-//! - Localized title (Chinese)
+//! Uses Python's guessit library via subprocess to extract:
+//! - Title (original and alternative)
 //! - Release year
 //! - Season/episode numbers
-//! - Technical metadata
+//! - Technical metadata (resolution, codec, etc.)
 
 use crate::models::media::MediaType;
+use crate::services::guessit_parser::GuessItParser;
 use crate::services::ollama::OllamaClient;
 use crate::Result;
 use chrono::Datelike;
-use hunch::hunch;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -83,7 +82,7 @@ pub struct ParserConfig {
     /// Minimum confidence threshold for valid results.
     pub min_confidence: f32,
     /// Whether AI (Ollama) parsing is enabled.
-    /// When false, only local parsing (hunch + regex) is used.
+    /// When false, only local parsing (guessit) is used.
     pub ai_enabled: bool,
     /// Ollama model to use for AI parsing.
     pub model: String,
@@ -104,6 +103,7 @@ impl Default for ParserConfig {
 pub struct FilenameParser {
     client: OllamaClient,
     config: ParserConfig,
+    guessit: GuessItParser,
 }
 
 impl FilenameParser {
@@ -112,6 +112,7 @@ impl FilenameParser {
         Self {
             client: OllamaClient::new(),
             config: ParserConfig::default(),
+            guessit: GuessItParser::new(),
         }
     }
 
@@ -120,6 +121,7 @@ impl FilenameParser {
         Self {
             client: OllamaClient::new(),
             config,
+            guessit: GuessItParser::new(),
         }
     }
 
@@ -128,6 +130,7 @@ impl FilenameParser {
         Self {
             client,
             config: ParserConfig::default(),
+            guessit: GuessItParser::new(),
         }
     }
 
@@ -181,7 +184,46 @@ impl FilenameParser {
         )
     }
 
-    /// Parse a single filename using hunch library as primary parser.
+    /// Split a mixed Chinese-English title into separate Chinese and English parts.
+    /// Returns (chinese_part, english_part)
+    fn split_chinese_english(&self, title: &str) -> (Option<String>, Option<String>) {
+        let has_chinese = title.chars().any(|c| c >= '\u{4e00}' && c <= '\u{9fff}');
+        let has_ascii = title.chars().any(|c| c.is_ascii_alphabetic());
+        
+        if !has_chinese || !has_ascii {
+            return (None, None);
+        }
+        
+        // Split by common separators: space, dot, dash
+        let separators = [' ', '.', '-', '_'];
+        let parts: Vec<&str> = title.split(|c| separators.contains(&c))
+            .filter(|s| !s.is_empty())
+            .collect();
+        
+        let mut chinese_part = String::new();
+        let mut english_part = String::new();
+        
+        for part in parts {
+            if part.chars().any(|c| c >= '\u{4e00}' && c <= '\u{9fff}') {
+                if !chinese_part.is_empty() {
+                    chinese_part.push(' ');
+                }
+                chinese_part.push_str(part);
+            } else if part.chars().any(|c| c.is_ascii_alphabetic()) {
+                if !english_part.is_empty() {
+                    english_part.push(' ');
+                }
+                english_part.push_str(part);
+            }
+        }
+        
+        (
+            if chinese_part.is_empty() { None } else { Some(chinese_part) },
+            if english_part.is_empty() { None } else { Some(english_part) }
+        )
+    }
+
+    /// Parse a single filename using guessit library as primary parser.
     pub async fn parse(&self, filename: &str, media_type: MediaType) -> Result<ParsedFilename> {
         // Step 0: Strip website/source prefixes from filename
         // Common patterns: "阳光电影dygod.org.世界大战.2025..." -> "世界大战.2025..."
@@ -193,24 +235,47 @@ impl FilenameParser {
             filename
         };
 
-        // Step 1: Primary parser - hunch library
-        let media_info = hunch(parse_input);
+        // Step 1: Primary parser - guessit library via Python subprocess
+        let type_hint = match media_type {
+            MediaType::Movies => Some("movie"),
+            MediaType::TvSeries => Some("episode"),
+        };
+        
+        let guessit_result = self.guessit.parse_with_type(parse_input, type_hint)?;
         let mut parsed = ParsedFilename::default();
         
-        if let Some(title) = media_info.title() {
-            if title.is_ascii() {
-                parsed.original_title = Some(title.to_string());
-            } else {
-                parsed.title = Some(title.to_string());
+        // Map guessit result to ParsedFilename
+        // primary_title() already handles fallback to alternative_title
+        if let Some(title) = guessit_result.primary_title() {
+            // Try to separate Chinese and English parts from mixed titles
+            let (chinese_part, english_part) = self.split_chinese_english(&title);
+            
+            if let Some(chinese) = chinese_part {
+                parsed.title = Some(chinese);
+            }
+            if let Some(english) = english_part {
+                parsed.original_title = Some(english);
+            }
+            
+            // Fallback: if no separation worked, use original logic
+            if parsed.title.is_none() && parsed.original_title.is_none() {
+                if title.contains('/') || title.chars().count() > 10 {
+                    // Likely a Chinese/dual title
+                    parsed.title = Some(title);
+                } else if title.is_ascii() {
+                    parsed.original_title = Some(title);
+                } else {
+                    parsed.title = Some(title);
+                }
             }
         }
         
-        parsed.year = media_info.year().map(|y| y as u16);
-        parsed.season = media_info.season().map(|s| s as u16);
-        parsed.episode = media_info.episode().map(|e| e as u16);
-        parsed.confidence = 0.9;
+        parsed.year = guessit_result.year;
+        parsed.season = guessit_result.season;
+        parsed.episode = guessit_result.episode;
+        parsed.confidence = guessit_result.confidence;
         
-        // Check if hunch returned valid result
+        // Check if guessit returned valid result
         if parsed.title.is_some() || parsed.original_title.is_some() {
             // If AI is enabled, validate the result with AI
             if self.config.ai_enabled {
@@ -218,7 +283,7 @@ impl FilenameParser {
                 let validation_prompt = self.generate_validation_prompt(&parsed, filename, media_type);
                 let validation = self.client.generate(&validation_prompt).await?;
                 
-                // If AI validation confirms the result, return hunch result
+                // If AI validation confirms the result, return guessit result
                 if self.is_validation_confirmed(&validation.response) {
                     println!("    [OK] AI validation passed");
                     return Ok(parsed);
@@ -231,14 +296,14 @@ impl FilenameParser {
             }
         }
         
-        // If AI is disabled, return the hunch result (even if no title found)
-        // This ensures the tool works without AI when hunch fails
+        // If AI is disabled, return the guessit result (even if no title found)
+        // This ensures the tool works without AI when guessit fails
         if !self.config.ai_enabled {
-            tracing::debug!("AI disabled, returning hunch-only result for: {}", filename);
+            tracing::debug!("AI disabled, returning guessit-only result for: {}", filename);
             return Ok(parsed);
         }
         
-        // Fallback to AI parser if hunch fails or AI validation failed
+        // Fallback to AI parser if guessit fails or AI validation failed
         let prompt = self.generate_prompt(filename, media_type);
 
         tracing::debug!("Parsing filename: {}", filename);
