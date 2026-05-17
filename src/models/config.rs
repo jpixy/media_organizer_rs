@@ -15,6 +15,9 @@ pub struct Config {
     /// Network configuration.
     #[serde(default)]
     pub network: NetworkConfig,
+    /// Organize configuration.
+    #[serde(default)]
+    pub organize: OrganizeConfig,
     /// Sessions directory.
     #[serde(skip)]
     pub sessions_dir: PathBuf,
@@ -68,6 +71,7 @@ impl Default for Config {
             ollama: OllamaConfig::default(),
             tmdb: TmdbConfig::default(),
             network: NetworkConfig::default(),
+            organize: OrganizeConfig::default(),
             sessions_dir: dirs_config_path().join("sessions"),
         }
     }
@@ -311,5 +315,41 @@ proxy = "http://127.0.0.1:7890"
         if let Some(v) = old_ollama_port { std::env::set_var("OLLAMA_PORT", v); }
         if let Some(v) = old_ollama_model { std::env::set_var("OLLAMA_MODEL", v); }
         if let Some(v) = old_ollama_timeout { std::env::set_var("OLLAMA_TIMEOUT", v); }
+    }
+}
+
+/// Organize configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrganizeConfig {
+    /// Whether to download posters. Default: true.
+    #[serde(default = "default_download_posters")]
+    pub download_posters: bool,
+    /// Poster size for TMDB. Default: "w500".
+    #[serde(default = "default_poster_size")]
+    pub poster_size: String,
+    /// Whether to generate NFO files. Default: true.
+    #[serde(default = "default_generate_nfo")]
+    pub generate_nfo: bool,
+}
+
+fn default_download_posters() -> bool {
+    true
+}
+
+fn default_poster_size() -> String {
+    "w500".to_string()
+}
+
+fn default_generate_nfo() -> bool {
+    true
+}
+
+impl Default for OrganizeConfig {
+    fn default() -> Self {
+        Self {
+            download_posters: default_download_posters(),
+            poster_size: default_poster_size(),
+            generate_nfo: default_generate_nfo(),
+        }
     }
 }

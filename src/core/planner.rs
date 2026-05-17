@@ -213,6 +213,9 @@ impl Planner {
         Ok(Self {
             config: PlannerConfig {
                 ai_enabled,
+                download_posters: config.organize.download_posters,
+                poster_size: config.organize.poster_size.clone(),
+                generate_nfo: config.organize.generate_nfo,
                 ..PlannerConfig::default()
             },
             parser: FilenameParser::new(),
@@ -4764,12 +4767,8 @@ impl Planner {
         };
         let target_file = target_folder.join(&filename);
 
-        // For TV shows, NFO goes in show root folder; for movies, in movie folder
-        let target_nfo = if season_folder.is_some() {
-            show_folder.join(&nfo_name)
-        } else {
-            target_folder.join(&nfo_name)
-        };
+        // NFO goes in same folder as video file
+        let target_nfo = target_folder.join(&nfo_name);
 
         // Operation 1: Create directory (including parent dirs)
         operations.push(Operation {
@@ -4805,14 +4804,8 @@ impl Planner {
 
         // Operation 4: Download poster
         if self.config.download_posters {
-            // For movies: poster in movie folder (which is target_folder)
-            // For TV shows: poster in show folder (which is show_folder, not season folder)
-            // Both already include the language_folder layer
-            let poster_folder = if season_folder.is_some() {
-                show_folder.clone() // TV shows: use show_folder (includes language_folder)
-            } else {
-                target_folder.clone() // Movies: use target_folder (includes language_folder)
-            };
+            // Poster goes in same folder as video file
+            let poster_folder = target_folder.clone();
 
             let poster_url = movie_metadata
                 .as_ref()
