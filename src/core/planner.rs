@@ -4686,7 +4686,7 @@ impl Planner {
                     disc_id.as_deref(),
                     extension,
                 );
-                let nfo = "movie.nfo".to_string();
+                let nfo = filename.replace(&format!(".{}", extension), ".nfo");
 
                 (folder, filename, nfo, None)
             }
@@ -4721,7 +4721,7 @@ impl Planner {
 
                 // For TV shows, use tvshow.nfo in root folder (not per-episode)
                 // Jellyfin/Kodi will fetch episode info automatically
-                let nfo = "tvshow.nfo".to_string();
+                let nfo = filename.replace(&format!(".{}", extension), ".nfo");
 
                 (folder, filename, nfo, Some(season_folder_name))
             }
@@ -4824,7 +4824,8 @@ impl Planner {
                 });
 
             if let Some(url) = poster_url {
-                let poster_path = poster_folder.join("poster.jpg");
+                let poster_filename = filename.replace(&format!(".{}", extension), ".jpg");
+                let poster_path = poster_folder.join(&poster_filename);
                 operations.push(Operation {
                     op: OperationType::Download,
                     from: None,
