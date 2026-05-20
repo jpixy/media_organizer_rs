@@ -1,6 +1,6 @@
 //! NFO file generator (Kodi compatible).
 
-use crate::models::media::{EpisodeMetadata, MovieMetadata, TvSeriesMetadata};
+use crate::models::media::{EpisodeMetadata, MovieMetadata, SeasonMetadata, TvSeriesMetadata};
 
 /// Generate movie NFO content (Kodi/Emby/Jellyfin compatible).
 pub fn generate_movie_nfo(movie: &MovieMetadata) -> String {
@@ -311,6 +311,62 @@ pub fn generate_episode_nfo(show: &TvSeriesMetadata, episode: &EpisodeMetadata) 
     }
 
     nfo.push_str("</episodedetails>\n");
+    nfo
+}
+
+/// Generate season NFO content (Kodi/Emby/Jellyfin compatible).
+pub fn generate_season_nfo(show: &TvSeriesMetadata, season: &SeasonMetadata) -> String {
+    let mut nfo = String::new();
+
+    nfo.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+    nfo.push_str("<season>\n");
+
+    // Season number
+    nfo.push_str(&format!("  <seasonnumber>{}</seasonnumber>\n", season.season_number));
+
+    // Title (season name)
+    nfo.push_str(&format!("  <title>{}</title>\n", escape_xml(&season.name)));
+
+    // Show title
+    nfo.push_str(&format!(
+        "  <showtitle>{}</showtitle>\n",
+        escape_xml(&show.name)
+    ));
+
+    // Air date
+    if let Some(ref air_date) = season.air_date {
+        nfo.push_str(&format!("  <aired>{}</aired>\n", air_date));
+    }
+
+    // Episode count
+    nfo.push_str(&format!(
+        "  <episodecount>{}</episodecount>\n",
+        season.episode_count
+    ));
+
+    // Overview
+    if let Some(ref overview) = season.overview {
+        nfo.push_str(&format!("  <plot>{}</plot>\n", escape_xml(overview)));
+    }
+
+    // Poster
+    if let Some(ref poster) = season.poster_url {
+        nfo.push_str(&format!("  <thumb>{}</thumb>\n", escape_xml(poster)));
+    }
+
+    // Show IDs for reference
+    nfo.push_str(&format!(
+        "  <uniqueid type=\"tmdb\" default=\"true\">{}</uniqueid>\n",
+        show.tmdb_id
+    ));
+    if let Some(ref imdb_id) = show.imdb_id {
+        nfo.push_str(&format!(
+            "  <uniqueid type=\"imdb\">{}</uniqueid>\n",
+            imdb_id
+        ));
+    }
+
+    nfo.push_str("</season>\n");
     nfo
 }
 

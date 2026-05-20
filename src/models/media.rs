@@ -195,3 +195,20 @@ pub struct EpisodeMetadata {
     /// Overview.
     pub overview: Option<String>,
 }
+
+/// TMDB metadata for a TV season.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SeasonMetadata {
+    /// Season number.
+    pub season_number: u16,
+    /// Season name.
+    pub name: String,
+    /// Season overview.
+    pub overview: Option<String>,
+    /// Air date.
+    pub air_date: Option<String>,
+    /// Poster URL.
+    pub poster_url: Option<String>,
+    /// Number of episodes.
+    pub episode_count: u16,
+}

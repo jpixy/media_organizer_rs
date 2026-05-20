@@ -1,7 +1,7 @@
 //! Plan data model.
 
 use super::media::{
-    EpisodeMetadata, MediaType, MovieMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
+    EpisodeMetadata, MediaType, MovieMetadata, SeasonMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -47,6 +47,9 @@ pub struct PlanItem {
     /// Episode metadata (for TV shows).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub episode_metadata: Option<EpisodeMetadata>,
+    /// Season metadata (for TV shows).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub season_metadata: Option<SeasonMetadata>,
     /// Video technical metadata.
     pub video_metadata: VideoMetadata,
     /// Target information.

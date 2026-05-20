@@ -20,6 +20,7 @@ fn create_test_plan_item(path: &str, target_path: &str) -> PlanItem {
         movie_metadata: None,
         tv_series_metadata: None,
         episode_metadata: None,
+        season_metadata: None,
         video_metadata: VideoMetadata::default(),
         target: Default::default(),
         operations: vec![Operation {

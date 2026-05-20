@@ -591,6 +591,7 @@ impl Planner {
                             movie_metadata: Some(movie_metadata),
                             tv_series_metadata: None,
                             episode_metadata: None,
+                            season_metadata: None,
                             video_metadata,
                             target: target_info,
                             operations,
@@ -757,6 +758,7 @@ impl Planner {
                                     movie_metadata: None,
                                     tv_series_metadata: Some(show_metadata.clone()),
                                     episode_metadata,
+                                    season_metadata: None,
                                     video_metadata,
                                     target: target_info,
                                     operations,
@@ -854,6 +856,7 @@ impl Planner {
                     movie_metadata: Some(movie_metadata),
                     tv_series_metadata: None,
                     episode_metadata: None,
+                    season_metadata: None,
                     video_metadata: video_metadata.clone(),
                     target: target_info,
                     operations,
@@ -1190,6 +1193,7 @@ impl Planner {
             movie_metadata: movie_metadata.clone(),
             tv_series_metadata: tv_series_metadata.clone(),
             episode_metadata: episode_metadata.clone(),
+            season_metadata: None,
             video_metadata: video_metadata.clone(),
             target: target_info,
             operations,
@@ -1451,6 +1455,7 @@ impl Planner {
             movie_metadata: movie_metadata.clone(),
             tv_series_metadata: tv_series_metadata.clone(),
             episode_metadata: episode_metadata.clone(),
+            season_metadata: None,
             video_metadata: video_metadata.clone(),
             target: target_info,
             operations,
@@ -1714,6 +1719,7 @@ impl Planner {
             movie_metadata: None,
             tv_series_metadata: Some(show_meta.clone()),
             episode_metadata: ep_meta,
+            season_metadata: None,
             video_metadata: video_metadata.clone(),
             target: target_info,
             operations,
@@ -2279,6 +2285,7 @@ impl Planner {
             movie_metadata,
             tv_series_metadata: tv_series_metadata.as_ref().map(|(show, _)| show.clone()),
             episode_metadata: tv_series_metadata.as_ref().and_then(|(_, ep)| ep.clone()),
+            season_metadata: None,
             video_metadata,
             target: target_info,
             operations,
@@ -4643,6 +4650,7 @@ impl Planner {
             movie_metadata: Some(cached_movie.clone()),
             tv_series_metadata: None,
             episode_metadata: None,
+            season_metadata: None,
             video_metadata,
             target: target_info,
             operations,
@@ -4807,6 +4815,21 @@ impl Planner {
                 url: None,
                 content_ref: Some("nfo".to_string()),
             });
+
+            // For TV series, also create season NFO in season folder
+            if let MediaType::TvSeries = media_type {
+                if season_folder.is_some() {
+                    let season_nfo_name = format!("season{:02}.nfo", parsed.season.unwrap_or(1));
+                    let season_nfo_path = target_folder.join(season_nfo_name);
+                    operations.push(Operation {
+                        op: OperationType::Create,
+                        from: None,
+                        to: season_nfo_path,
+                        url: None,
+                        content_ref: Some("nfo".to_string()),
+                    });
+                }
+            }
         }
 
         // Operation 4: Download poster

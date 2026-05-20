@@ -587,11 +587,10 @@ impl Executor {
                         }
                     }
                     Some(MediaType::TvSeries) => {
-                        // Check if this is tvshow.nfo (show-level) or episode.nfo
-                        let is_tv_series_nfo = path
-                            .file_name()
-                            .map(|n| n.to_string_lossy() == "tvshow.nfo")
-                            .unwrap_or(false);
+                        // Check if this is tvshow.nfo (show-level), seasonXX.nfo (season-level), or episode.nfo
+                        let file_name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                        let is_tv_series_nfo = file_name == "tvshow.nfo";
+                        let is_season_nfo = file_name.starts_with("season") && file_name.ends_with(".nfo");
 
                         if is_tv_series_nfo {
                             // Generate show-level NFO
@@ -600,6 +599,17 @@ impl Executor {
                             } else {
                                 return Err(crate::Error::ExecuteError(
                                     "Missing TV show metadata for NFO generation".to_string(),
+                                ));
+                            }
+                        } else if is_season_nfo {
+                            // Generate season-level NFO
+                            if let (Some(ref show), Some(ref season)) =
+                                (&item.tv_series_metadata, &item.season_metadata)
+                            {
+                                nfo::generate_season_nfo(show, season)
+                            } else {
+                                return Err(crate::Error::ExecuteError(
+                                    "Missing TV show or season metadata for NFO generation".to_string(),
                                 ));
                             }
                         } else {
