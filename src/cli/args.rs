@@ -369,6 +369,7 @@ pub enum IndexAction {
 }
 
 #[derive(Subcommand, Debug)]
+#[clap(rename_all = "snake_case")]
 pub enum PlanType {
     /// Plan for movies
     Movies {

@@ -712,11 +712,17 @@ pub fn extract_ids_from_path_starting_at(
     let mut current = start_dir.parent();
     while let Some(dir) = current {
         if let Some(dirname) = dir.file_name().and_then(|n| n.to_str()) {
+            tracing::debug!(
+                "[EXTRACT-ID] Checking directory: {} for tmdb/imdb IDs",
+                dirname
+            );
+
             // Check for IMDB ID
             if imdb_id.is_none() {
                 if let Some(ref re) = imdb_re {
                     if let Some(caps) = re.captures(dirname) {
                         imdb_id = caps.get(1).map(|m| m.as_str().to_string());
+                        tracing::debug!("[EXTRACT-ID] Found IMDB ID: {:?} in {}", imdb_id, dirname);
                     }
                 }
             }
@@ -726,6 +732,7 @@ pub fn extract_ids_from_path_starting_at(
                 if let Some(ref re) = tmdb_re {
                     if let Some(caps) = re.captures(dirname) {
                         tmdb_id = caps.get(1).and_then(|m| m.as_str().parse().ok());
+                        tracing::debug!("[EXTRACT-ID] Found TMDB ID: {:?} in {}", tmdb_id, dirname);
                     }
                 }
             }
@@ -749,6 +756,14 @@ pub fn extract_ids_from_path_starting_at(
         }
 
         current = dir.parent();
+    }
+
+    if tmdb_id.is_none() && imdb_id.is_none() {
+        tracing::debug!(
+            "[EXTRACT-ID] No IDs found in path: {} (starting from {})",
+            file_path.display(),
+            start_dir.display()
+        );
     }
 
     (tmdb_id, imdb_id)

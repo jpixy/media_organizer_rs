@@ -498,7 +498,7 @@ impl TmdbClient {
     /// Returns the full collection info including the list of all movies (parts).
     pub async fn get_collection_details(&self, collection_id: u64) -> Result<CollectionDetails> {
         let url = self.build_url(&format!("collection/{}", collection_id), "");
-        let resp = self.build_request(&url).send().await?.json().await?;
+        let resp: CollectionDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 
@@ -568,7 +568,7 @@ impl TmdbClient {
             &format!("tv/{}", tv_id),
             "&append_to_response=external_ids,credits",
         );
-        let resp = self.build_request(&url).send().await?.json().await?;
+        let resp: TvDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 
@@ -579,7 +579,7 @@ impl TmdbClient {
         season_number: u16,
     ) -> Result<SeasonDetails> {
         let url = self.build_url(&format!("tv/{}/season/{}", tv_id, season_number), "");
-        let resp = self.build_request(&url).send().await?.json().await?;
+        let resp: SeasonDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 
@@ -597,14 +597,14 @@ impl TmdbClient {
             ),
             "",
         );
-        let resp = self.build_request(&url).send().await?.json().await?;
+        let resp: EpisodeDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 
     /// Get movie credits (directors and actors).
     pub async fn get_movie_credits(&self, movie_id: u64) -> Result<Credits> {
         let url = self.build_url(&format!("movie/{}/credits", movie_id), "");
-        let resp = self.build_request(&url).send().await?.json().await?;
+        let resp: Credits = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 

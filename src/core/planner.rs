@@ -510,6 +510,13 @@ impl Planner {
         // ============================================================
         let (path_tmdb_id, path_imdb_id) = metadata::extract_ids_from_path(&video.path);
 
+        tracing::info!(
+            "[PATH-ID] Extract result for {}: tmdb={:?}, imdb={:?}",
+            video.filename,
+            path_tmdb_id,
+            path_imdb_id
+        );
+
         if path_tmdb_id.is_some() || path_imdb_id.is_some() {
             tracing::debug!(
                 "[PATH-ID] Found IDs in path: tmdb={:?}, imdb={:?} for {}",
