@@ -20,7 +20,7 @@ use futures::stream::{self, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::Mutex;
@@ -187,6 +187,13 @@ impl Executor {
 
             const DOWNLOAD_CONCURRENCY: usize = 4;
 
+            // Statistics for poster downloads
+            let mut downloaded_count = 0;
+            let mut skipped_count = 0;
+            let mut failed_count = 0;
+            let mut total_size: u64 = 0;
+            let mut failed_items: Vec<(PathBuf, String)> = Vec::new();
+
             let download_results: Vec<_> = stream::iter(download_ops.iter())
                 .map(|(op, _item)| {
                     let client = &self.http_client;
@@ -213,6 +220,7 @@ impl Executor {
 
                 match result {
                     Ok(Some(rb_op)) => {
+                        // Downloaded successfully
                         let mut seq_guard = seq.lock().await;
                         *seq_guard += 1;
                         let mut rb_op = rb_op;
@@ -220,15 +228,51 @@ impl Executor {
                         rb_op.executed = true;
                         rollback.lock().await.operations.push(rb_op);
                         success_count += 1;
+                        downloaded_count += 1;
+                        // Get file size
+                        if let Ok(metadata) = fs::metadata(&path) {
+                            total_size += metadata.len();
+                        }
                     }
                     Ok(None) => {
-                        success_count += 1; // Skipped (already exists)
+                        // Skipped (already exists)
+                        success_count += 1;
+                        skipped_count += 1;
                     }
                     Err(e) => {
+                        // Failed
                         tracing::warn!("Download failed: {} - {}", path.display(), e);
                         error_count += 1;
+                        failed_count += 1;
+                        failed_items.push((path, e.to_string()));
                     }
                 }
+            }
+
+            // Print poster download summary
+            if downloaded_count > 0 || skipped_count > 0 || failed_count > 0 {
+                println!();
+                println!("{}", "[Poster Download Summary]".bold().green());
+                println!("  {} {}", "Downloaded:".bold(), downloaded_count);
+                println!("  {} {}", "Skipped (already exist):".bold(), skipped_count);
+                println!("  {} {}", "Failed:".bold(), failed_count);
+                println!(
+                    "  {} {} ({})",
+                    "Total size:".bold(),
+                    total_size,
+                    format_size(total_size)
+                );
+
+                // Print failed items list
+                if !failed_items.is_empty() {
+                    println!();
+                    println!("{} {}", "Failed items:".bold().red(), failed_count);
+                    for (path, error) in &failed_items {
+                        let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                        println!("  - {}: {}", file_name, error);
+                    }
+                }
+                println!();
             }
         }
 
@@ -780,5 +824,27 @@ mod tests {
         let executor = Executor::new();
         let result = executor.validate(&plan);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_format_size() {
+        assert_eq!(format_size(0), "0 B");
+        assert_eq!(format_size(1023), "1023 B");
+        assert_eq!(format_size(1024), "1.00 KB");
+        assert_eq!(format_size(1048576), "1.00 MB");
+        assert_eq!(format_size(1073741824), "1.00 GB");
+    }
+}
+
+/// Format byte size to human readable string.
+fn format_size(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{} B", bytes)
+    } else if bytes < 1024 * 1024 {
+        format!("{:.2} KB", bytes as f64 / 1024.0)
+    } else if bytes < 1024 * 1024 * 1024 {
+        format!("{:.2} MB", bytes as f64 / (1024.0 * 1024.0))
+    } else {
+        format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
     }
 }

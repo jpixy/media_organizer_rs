@@ -219,7 +219,7 @@ async fn test_concurrent_task_spawning() {
     let results = futures::future::join_all(tasks).await;
     
     // Verify results
-    let mut expected = vec![0, 2, 4, 6, 8];
+    let expected = vec![0, 2, 4, 6, 8];
     let mut actual: Vec<i32> = results.into_iter().map(|r| r.unwrap()).collect();
     actual.sort();
     assert_eq!(actual, expected, "Concurrent tasks should return correct results");

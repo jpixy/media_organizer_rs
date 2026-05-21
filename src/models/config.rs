@@ -339,6 +339,18 @@ pub struct OrganizeConfig {
     /// Whether to generate TV season NFO files. Default: true.
     #[serde(default = "default_generate_tv_season_nfo")]
     pub generate_tv_season_nfo: bool,
+    /// Whether to move subtitle files and folders. Default: true.
+    #[serde(default = "default_true")]
+    pub move_subtitles: bool,
+    /// Whether to move sample videos and folders. Default: true.
+    #[serde(default = "default_true")]
+    pub move_samples: bool,
+    /// Whether to move extras videos and folders. Default: true.
+    #[serde(default = "default_true")]
+    pub move_extras: bool,
+    /// Whether to move poster images. Default: true.
+    #[serde(default = "default_true")]
+    pub move_posters: bool,
 }
 
 fn default_download_posters() -> bool {
@@ -365,6 +377,10 @@ fn default_generate_tv_season_nfo() -> bool {
     true
 }
 
+fn default_true() -> bool {
+    true
+}
+
 impl Default for OrganizeConfig {
     fn default() -> Self {
         Self {
@@ -374,6 +390,10 @@ impl Default for OrganizeConfig {
             generate_movie_nfo: default_generate_movie_nfo(),
             generate_tv_episode_nfo: default_generate_tv_episode_nfo(),
             generate_tv_season_nfo: default_generate_tv_season_nfo(),
+            move_subtitles: default_true(),
+            move_samples: default_true(),
+            move_extras: default_true(),
+            move_posters: default_true(),
         }
     }
 }

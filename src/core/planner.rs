@@ -157,6 +157,14 @@ pub struct PlannerConfig {
     pub generate_tv_season_nfo: bool,
     /// Whether AI parsing is enabled.
     pub ai_enabled: bool,
+    /// Whether to move subtitle files and folders.
+    pub move_subtitles: bool,
+    /// Whether to move sample videos and folders.
+    pub move_samples: bool,
+    /// Whether to move extras videos and folders.
+    pub move_extras: bool,
+    /// Whether to move poster images.
+    pub move_posters: bool,
 }
 
 impl Default for PlannerConfig {
@@ -170,6 +178,10 @@ impl Default for PlannerConfig {
             generate_tv_episode_nfo: true,
             generate_tv_season_nfo: true,
             ai_enabled: false, // AI disabled by default per requirements
+            move_subtitles: true,
+            move_samples: true,
+            move_extras: true,
+            move_posters: true,
         }
     }
 }
@@ -5114,8 +5126,8 @@ impl Planner {
             content_ref: None,
         });
 
-        // Operation 2.5: Move subtitle files and folders (keep original names)
-        self.add_subtitle_operations(&video.parent_dir, &target_folder, &mut operations);
+        // Operation 2.5: Move subtitle, sample, extras, and poster files (keep original names)
+        self.add_auxiliary_operations(&video.parent_dir, &target_folder, &mut operations);
 
         // Operation 3: Create NFO file
         match media_type {
@@ -5214,15 +5226,18 @@ impl Planner {
         Ok(Some((target_info, operations)))
     }
 
-    /// Add operations to move subtitle files and folders.
+    /// Add operations to move subtitle, sample, extras, and poster files.
     ///
     /// Detects and moves:
     /// - Subtitle folders: Sub, Subs, Subtitle, Subtitles, etc.
     /// - Subtitle files: .srt, .ass, .ssa, .sub, .idx, .vtt, .sup
+    /// - Sample videos: files/folders with "sample" in the name
+    /// - Extras folders: Extras, Bonus, Deleted Scenes, etc.
+    /// - Poster images: poster.jpg, folder.jpg, etc.
     ///
     /// Files/folders are moved without renaming.
     /// Note: Duplicates are handled by deduplicate_operations() at the plan level.
-    fn add_subtitle_operations(
+    fn add_auxiliary_operations(
         &self,
         source_dir: &Path,
         target_folder: &Path,
@@ -5235,8 +5250,21 @@ impl Planner {
         const SUBTITLE_EXTENSIONS: &[&str] =
             &["srt", "ass", "ssa", "sub", "idx", "vtt", "sup", "smi"];
 
+        // Poster image extensions
+        const POSTER_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
+
+        // Poster file names (case-insensitive)
+        const POSTER_FILENAMES: &[&str] = &[
+            "poster",
+            "folder",
+            "cover",
+            "thumb",
+            "thumbnail",
+            "海报",
+            "封面",
+        ];
+
         // Extras folder patterns (case-insensitive)
-        // These contain behind-the-scenes, deleted scenes, featurettes, samples, etc.
         const EXTRAS_PATTERNS: &[&str] = &[
             "extras",
             "extra",
@@ -5276,7 +5304,9 @@ impl Planner {
             // Check for folders
             if path.is_dir() {
                 // Check for subtitle folders
-                if SUBTITLE_FOLDERS.iter().any(|&f| name_lower == f) {
+                if self.config.move_subtitles
+                    && SUBTITLE_FOLDERS.iter().any(|&f| name_lower == f)
+                {
                     let target_path = target_folder.join(name);
                     tracing::debug!(
                         "Adding subtitle folder move: {} -> {}",
@@ -5295,33 +5325,80 @@ impl Planner {
                 }
 
                 // Check for extras folders (exact match or pattern match)
-                let is_extras = EXTRAS_PATTERNS.iter().any(|&p| name_lower == p)
-                    || name_lower.contains(".extras")
-                    || name_lower.contains("-extras")
-                    || name_lower.contains("_extras")
-                    || name_lower.contains(".featurette")
-                    || name_lower.contains("-featurette")
-                    || name_lower.contains(".sample")
-                    || name_lower.contains("-sample");
+                if self.config.move_extras {
+                    let is_extras = EXTRAS_PATTERNS.iter().any(|&p| name_lower == p)
+                        || name_lower.contains(".extras")
+                        || name_lower.contains("-extras")
+                        || name_lower.contains("_extras")
+                        || name_lower.contains(".featurette")
+                        || name_lower.contains("-featurette")
+                        || name_lower.contains(".sample")
+                        || name_lower.contains("-sample");
 
-                if is_extras {
-                    let target_path = target_folder.join(name);
-                    tracing::debug!(
-                        "Adding extras folder move: {} -> {}",
-                        path.display(),
-                        target_path.display()
-                    );
+                    if is_extras {
+                        let target_path = target_folder.join(name);
+                        tracing::debug!(
+                            "Adding extras folder move: {} -> {}",
+                            path.display(),
+                            target_path.display()
+                        );
 
-                    operations.push(Operation {
-                        op: OperationType::Move,
-                        from: Some(path),
-                        to: target_path,
-                        url: None,
-                        content_ref: None,
-                    });
+                        operations.push(Operation {
+                            op: OperationType::Move,
+                            from: Some(path),
+                            to: target_path,
+                            url: None,
+                            content_ref: None,
+                        });
+                        continue;
+                    }
+                }
+
+                // Check for sample directories
+                if self.config.move_samples {
+                    if name_lower == "sample" || name_lower == "samples" {
+                        let target_path = target_folder.join(name);
+                        tracing::debug!(
+                            "Adding sample folder move: {} -> {}",
+                            path.display(),
+                            target_path.display()
+                        );
+
+                        operations.push(Operation {
+                            op: OperationType::Move,
+                            from: Some(path),
+                            to: target_path,
+                            url: None,
+                            content_ref: None,
+                        });
+                        continue;
+                    }
+                }
+
+                // Check for poster folders (e.g., "poster/", "posters/")
+                if self.config.move_posters {
+                    if name_lower == "poster" || name_lower == "posters"
+                        || name_lower == "folder"
+                        || name_lower == "cover"
+                    {
+                        let target_path = target_folder.join(name);
+                        tracing::debug!(
+                            "Adding poster folder move: {} -> {}",
+                            path.display(),
+                            target_path.display()
+                        );
+
+                        operations.push(Operation {
+                            op: OperationType::Move,
+                            from: Some(path),
+                            to: target_path,
+                            url: None,
+                            content_ref: None,
+                        });
+                    }
                 }
             }
-            // Check for subtitle files and sample video files
+            // Check for files
             else if path.is_file() {
                 let ext = path
                     .extension()
@@ -5330,7 +5407,9 @@ impl Planner {
                     .unwrap_or_default();
 
                 // Check for subtitle files
-                if SUBTITLE_EXTENSIONS.iter().any(|&e| ext == e) {
+                if self.config.move_subtitles
+                    && SUBTITLE_EXTENSIONS.iter().any(|&e| ext == e)
+                {
                     let target_path = target_folder.join(name);
                     tracing::debug!(
                         "Adding subtitle file move: {} -> {}",
@@ -5348,30 +5427,60 @@ impl Planner {
                     continue;
                 }
 
+                // Check for poster images
+                if self.config.move_posters
+                    && POSTER_EXTENSIONS.iter().any(|&e| ext == e)
+                {
+                    // Check if filename matches poster patterns
+                    let is_poster = POSTER_FILENAMES
+                        .iter()
+                        .any(|&p| name_lower.starts_with(p));
+
+                    if is_poster {
+                        let target_path = target_folder.join(name);
+                        tracing::debug!(
+                            "Adding poster image move: {} -> {}",
+                            path.display(),
+                            target_path.display()
+                        );
+
+                        operations.push(Operation {
+                            op: OperationType::Move,
+                            from: Some(path),
+                            to: target_path,
+                            url: None,
+                            content_ref: None,
+                        });
+                        continue;
+                    }
+                }
+
                 // Check for sample video files (files with "sample" in filename)
-                // These are preview clips that should be moved with the movie
-                let is_video = [
-                    "mkv", "mp4", "avi", "mov", "wmv", "m4v", "ts", "m2ts", "flv", "webm",
-                ]
-                .iter()
-                .any(|&e| ext == e);
-                let is_sample = name_lower.contains("sample") && !name_lower.contains("sampler");
+                if self.config.move_samples {
+                    let is_video = [
+                        "mkv", "mp4", "avi", "mov", "wmv", "m4v", "ts", "m2ts", "flv", "webm",
+                    ]
+                    .iter()
+                    .any(|&e| ext == e);
+                    let is_sample =
+                        name_lower.contains("sample") && !name_lower.contains("sampler");
 
-                if is_video && is_sample {
-                    let target_path = target_folder.join(name);
-                    tracing::debug!(
-                        "Adding sample video file move: {} -> {}",
-                        path.display(),
-                        target_path.display()
-                    );
+                    if is_video && is_sample {
+                        let target_path = target_folder.join(name);
+                        tracing::debug!(
+                            "Adding sample video file move: {} -> {}",
+                            path.display(),
+                            target_path.display()
+                        );
 
-                    operations.push(Operation {
-                        op: OperationType::Move,
-                        from: Some(path),
-                        to: target_path,
-                        url: None,
-                        content_ref: None,
-                    });
+                        operations.push(Operation {
+                            op: OperationType::Move,
+                            from: Some(path),
+                            to: target_path,
+                            url: None,
+                            content_ref: None,
+                        });
+                    }
                 }
             }
         }

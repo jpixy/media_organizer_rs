@@ -20,6 +20,18 @@ generate_movie_nfo = true
 generate_tv_episode_nfo = true
 # 是否生成 TV 季 NFO 文件。默认: true
 generate_tv_season_nfo = true
+# 是否移动字幕文件和目录。默认: true
+# 字幕文件和目录: .srt, .ass, .ssa, Sub/, Subs/, 字幕/ 等
+move_subtitles = true
+# 是否移动 Sample 视频和目录。默认: true
+# Sample 视频: 文件名或目录名包含 "sample" 的视频文件
+move_samples = true
+# 是否移动 Extras 附加内容目录。默认: true
+# Extras 目录: Extras/, Bonus/, Deleted Scenes/, Featurettes/ 等
+move_extras = true
+# 是否移动海报图片。默认: true
+# 海报图片: poster.jpg, folder.png, cover.webp 等
+move_posters = true
 
 [network]
 # 是否启用代理。默认: false
