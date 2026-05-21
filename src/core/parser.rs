@@ -9,6 +9,7 @@
 use crate::models::media::MediaType;
 use crate::services::guessit_parser::GuessItParser;
 use crate::services::ollama::OllamaClient;
+use crate::utils::chinese::contains_chinese;
 use crate::Result;
 use chrono::Datelike;
 use serde::{Deserialize, Serialize};
@@ -1739,12 +1740,9 @@ impl SmartExtractedMetadata {
 
     /// Get the primary title (first non-empty title, preferring Chinese)
     pub fn primary_title(&self) -> Option<String> {
-        // If we have 2+ titles, prefer the second one (usually Chinese)
-        if self.titles.len() >= 2 {
-            let second = self.titles.get(1)?.trim();
-            if !second.is_empty() {
-                return Some(second.to_string());
-            }
+        // First, try to find a Chinese title
+        if let Some(chinese_title) = self.titles.iter().find(|t| contains_chinese(t)) {
+            return Some(chinese_title.trim().to_string());
         }
         // Fall back to first title
         self.titles
@@ -1753,8 +1751,13 @@ impl SmartExtractedMetadata {
             .filter(|s| !s.is_empty())
     }
 
-    /// Get the original title (first title)
+    /// Get the original title
     pub fn original_title(&self) -> Option<String> {
+        // Find the first non-Chinese title
+        if let Some(original_title) = self.titles.iter().find(|t| !contains_chinese(t)) {
+            return Some(original_title.trim().to_string());
+        }
+        // If all are Chinese, just take the first one
         self.titles
             .first()
             .map(|s| s.trim().to_string())
@@ -1945,13 +1948,22 @@ pub fn parse_organized_movie_folder(dirname: &str) -> Option<OrganizedMovieFolde
             smart.titles
         );
 
+        // Get primary (usually Chinese) title
+        let primary_title = smart.primary_title();
+        
+        // Get original title - make sure it's not the same as primary title
+        let original_title = smart.original_title();
+        
+        let title = if primary_title != original_title {
+            primary_title.clone()
+        } else {
+            // If they are the same, just set to None
+            None
+        };
+        
         return Some(OrganizedMovieFolderInfo {
-            original_title: smart.original_title(),
-            title: if smart.titles.len() >= 2 {
-                smart.titles.get(1).cloned()
-            } else {
-                None
-            },
+            original_title,
+            title,
             year,
             imdb_id: smart.imdb_id,
             tmdb_id,

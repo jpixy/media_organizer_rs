@@ -2,11 +2,118 @@
 
 use crate::models::media::{MovieMetadata, TvSeriesMetadata};
 
+/// ============================================================================
+/// Sorting Prefix Generation
+/// ============================================================================
+/// 
+/// Rule Priority (Highest to Lowest):
+/// 1. If there is a Chinese localized name/title, use PINYIN FIRST LETTER of that name
+/// 2. If no Chinese name:
+///    - Chinese original language: PINYIN FIRST LETTER of original name
+///    - English original language: FIRST LETTER after removing articles (The/A/An)
+///    - Other languages: FIRST LETTER of original name
+///
+/// Example Format (Chinese localized title comes first):
+/// [Z][一级机密][1급기밀](2017)-tt6955808-tmdb464927
+/// [D][黑暗骑士][The Dark Knight](2008)-tt0468569-tmdb155
+/// [Y][一级机密][1급기밀](2017)-tt6955808-tmdb464927
+/// [J][极恶非道3][アウトレイジ 最終章](2017)-tt6293042-tmdb452323
+/// ============================================================================
+
+/// Generate sorting prefix character.
+/// 
+/// Rule Priority (Highest to Lowest):
+/// 1. If there is a Chinese localized name/title, use PINYIN FIRST LETTER of that name
+/// 2. If no Chinese name:
+///    - Chinese original language: PINYIN FIRST LETTER of original name
+///    - English original language: FIRST LETTER after removing articles (The/A/An)
+///    - Other languages: FIRST LETTER of original name
+///
+/// Example Format:
+/// [Z][追龍](2017)-tt6015328-tmdb426242
+/// [D][The Dark Knight][黑暗骑士](2008)-tt0468569-tmdb155
+/// [Y][1급기밀][一级机密](2017)-tt6955808-tmdb464927
+/// [J][アウトレイジ 最終章][极恶非道3](2017)-tt6293042-tmdb452323
+fn generate_sort_prefix(
+    has_chinese_name: bool,
+    chinese_name: &str,
+    original_language: &str,
+    original_name: &str,
+) -> char {
+    // Rule 1: Highest priority - use Chinese name pinyin if available
+    if has_chinese_name {
+        if let Some(first_char) = chinese_name.chars().next() {
+            // Check if it's a CJK character
+            if ('\u{4E00}'..='\u{9FFF}').contains(&first_char) {
+                // It's a Chinese character, try to get pinyin
+                use pinyin::ToPinyin;
+                if let Some(pinyin) = first_char.to_pinyin() {
+                    let pinyin_str = pinyin.plain();
+                    if let Some(first_pinyin_char) = pinyin_str.chars().next() {
+                        return first_pinyin_char.to_ascii_uppercase();
+                    }
+                }
+            }
+        }
+        // Fallback to first character if pinyin fails
+        return chinese_name.chars().next().unwrap_or('?').to_ascii_uppercase();
+    }
+
+    // Rule 2: No Chinese name, decide by original language
+    match original_language {
+        // Chinese original language: use pinyin of original name
+        "zh" => {
+            if let Some(first_char) = original_name.chars().next() {
+                // Check if it's a CJK character
+                if ('\u{4E00}'..='\u{9FFF}').contains(&first_char) {
+                    // It's a Chinese character, try to get pinyin
+                    use pinyin::ToPinyin;
+                    if let Some(pinyin) = first_char.to_pinyin() {
+                        let pinyin_str = pinyin.plain();
+                        if let Some(first_pinyin_char) = pinyin_str.chars().next() {
+                            return first_pinyin_char.to_ascii_uppercase();
+                        }
+                    }
+                }
+            }
+            original_name.chars().next().unwrap_or('?').to_ascii_uppercase()
+        }
+        // English: remove articles first
+        "en" => {
+            let title_lower = original_name.to_lowercase();
+            let effective_title = if title_lower.starts_with("the ") {
+                &original_name[4..]
+            } else if title_lower.starts_with("a ") {
+                &original_name[2..]
+            } else if title_lower.starts_with("an ") {
+                &original_name[3..]
+            } else {
+                original_name
+            };
+            effective_title.chars().next().unwrap_or('?').to_ascii_uppercase()
+        }
+        // Other languages: use first character directly
+        _ => original_name.chars().next().unwrap_or('?').to_ascii_uppercase(),
+    }
+}
+
 /// Generate movie folder name.
 ///
-/// Format: `[${originalTitle}]-[${title}](${edition})-${year}-${imdb}-${tmdb}`
+/// New Format: `[${sortPrefix}][${title}][${originalTitle}](${edition})-${year}-${imdb}-${tmdb}`
+/// Sort Prefix Generation Rules: See `generate_sort_prefix` documentation
 pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) -> String {
     let mut parts = Vec::new();
+
+    // Add sorting prefix
+    let has_chinese = metadata.original_language == "zh" 
+        || normalize_title(&metadata.title) != normalize_title(&metadata.original_title);
+    let sort_prefix = generate_sort_prefix(
+        has_chinese,
+        &metadata.title,
+        &metadata.original_language,
+        &metadata.original_title,
+    );
+    parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication for Chinese movies
     let is_chinese = metadata.original_language == "zh";
@@ -16,9 +123,9 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
         // Only use one title for Chinese movies or when titles are the same
         parts.push(format!("[{}]", sanitize_filename(&metadata.title)));
     } else {
-        // Use both original and localized title
-        parts.push(format!("[{}]", sanitize_filename(&metadata.original_title)));
+        // Use both localized and original title (localized first)
         parts.push(format!("[{}]", sanitize_filename(&metadata.title)));
+        parts.push(format!("[{}]", sanitize_filename(&metadata.original_title)));
     }
 
     // Add edition if present
@@ -42,9 +149,21 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
 
 /// Generate TV show folder name.
 ///
-/// Format: `[${showOriginalTitle}][${showTitle}](${year})-${showImdb}-${showTmdb}`
+/// New Format: `[${sortPrefix}][${showTitle}][${showOriginalTitle}](${year})-${showImdb}-${showTmdb}`
+/// Sort Prefix Generation Rules: See `generate_sort_prefix` documentation
 pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     let mut parts = Vec::new();
+
+    // Add sorting prefix
+    let has_chinese = metadata.original_language == "zh" 
+        || normalize_title(&metadata.name) != normalize_title(&metadata.original_name);
+    let sort_prefix = generate_sort_prefix(
+        has_chinese,
+        &metadata.name,
+        &metadata.original_language,
+        &metadata.original_name,
+    );
+    parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication
     let is_chinese = metadata.original_language == "zh";
@@ -53,8 +172,9 @@ pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     if is_chinese || titles_same {
         parts.push(format!("[{}]", sanitize_filename(&metadata.name)));
     } else {
-        parts.push(format!("[{}]", sanitize_filename(&metadata.original_name)));
+        // Use both localized and original title (localized first)
         parts.push(format!("[{}]", sanitize_filename(&metadata.name)));
+        parts.push(format!("[{}]", sanitize_filename(&metadata.original_name)));
     }
 
     // Add year
@@ -112,6 +232,7 @@ mod tests {
         };
 
         let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[A]")); // Sort prefix: A
         assert!(folder.contains("[Avatar]"));
         assert!(folder.contains("[阿凡达]"));
         assert!(folder.contains("(2009)"));
@@ -132,7 +253,140 @@ mod tests {
         };
 
         let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[B]")); // Sort prefix: B
         // Should only have one title
         assert_eq!(folder.matches("[霸王别姬]").count(), 1);
+    }
+
+    #[test]
+    fn test_english_movie_with_the_prefix() {
+        let metadata = MovieMetadata {
+            tmdb_id: 155,
+            imdb_id: Some("tt0468569".to_string()),
+            original_title: "The Dark Knight".to_string(),
+            title: "黑暗骑士".to_string(),
+            original_language: "en".to_string(),
+            year: 2008,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[H]")); // Sort prefix: H (from "黑暗骑士" pinyin)
+        assert!(folder.contains("[The Dark Knight]"));
+        assert!(folder.contains("[黑暗骑士]"));
+        assert!(folder.contains("(2008)"));
+    }
+
+    #[test]
+    fn test_korean_movie_with_chinese_title() {
+        let metadata = MovieMetadata {
+            tmdb_id: 464927,
+            imdb_id: Some("tt6955808".to_string()),
+            original_title: "1급기밀".to_string(),
+            title: "一级机密".to_string(),
+            original_language: "ko".to_string(),
+            year: 2017,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[Y]")); // Sort prefix: Y (from "一级机密" pinyin)
+        assert!(folder.contains("[1급기밀]"));
+        assert!(folder.contains("[一级机密]"));
+        assert!(folder.contains("(2017)"));
+    }
+
+    #[test]
+    fn test_japanese_movie_with_chinese_title() {
+        let metadata = MovieMetadata {
+            tmdb_id: 452323,
+            imdb_id: Some("tt6293042".to_string()),
+            original_title: "アウトレイジ 最終章".to_string(),
+            title: "极恶非道3".to_string(),
+            original_language: "ja".to_string(),
+            year: 2017,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[J]")); // Sort prefix: J (from "极恶非道3" pinyin)
+        assert!(folder.contains("[アウトレイジ 最終章]"));
+        assert!(folder.contains("[极恶非道3]"));
+        assert!(folder.contains("(2017)"));
+    }
+
+    #[test]
+    fn test_english_movie_without_chinese_title() {
+        let metadata = MovieMetadata {
+            tmdb_id: 27205,
+            imdb_id: Some("tt1375666".to_string()),
+            original_title: "Inception".to_string(),
+            title: "Inception".to_string(), // No Chinese title
+            original_language: "en".to_string(),
+            year: 2010,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[I]")); // Sort prefix: I (from original title)
+        assert!(folder.contains("[Inception]"));
+        assert!(folder.contains("(2010)"));
+    }
+
+    #[test]
+    fn test_english_movie_with_a_prefix() {
+        let metadata = MovieMetadata {
+            tmdb_id: 68721,
+            imdb_id: Some("tt1280558".to_string()),
+            original_title: "A Star Is Born".to_string(),
+            title: "一个明星的诞生".to_string(),
+            original_language: "en".to_string(),
+            year: 2018,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[Y]")); // Sort prefix: Y (from Chinese title)
+        assert!(folder.contains("[一个明星的诞生]")); // Chinese title first
+        assert!(folder.contains("[A Star Is Born]")); // Original title second
+        assert!(folder.contains("(2018)"));
+    }
+
+    #[test]
+    fn test_english_movie_with_an_prefix() {
+        let metadata = MovieMetadata {
+            tmdb_id: 536554,
+            imdb_id: Some("tt8807684".to_string()),
+            original_title: "An American Pickle".to_string(),
+            title: "美国泡菜".to_string(),
+            original_language: "en".to_string(),
+            year: 2020,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[M]")); // Sort prefix: M (from Chinese title)
+        assert!(folder.contains("[美国泡菜]")); // Chinese title first
+        assert!(folder.contains("[An American Pickle]")); // Original title second
+        assert!(folder.contains("(2020)"));
+    }
+
+    #[test]
+    fn test_english_movie_with_the_prefix_and_chinese_title() {
+        let metadata = MovieMetadata {
+            tmdb_id: 155,
+            imdb_id: Some("tt0468569".to_string()),
+            original_title: "The Dark Knight".to_string(),
+            title: "黑暗骑士".to_string(),
+            original_language: "en".to_string(),
+            year: 2008,
+            ..Default::default()
+        };
+
+        let folder = generate_movie_folder(&metadata, None);
+        assert!(folder.contains("[H]")); // Sort prefix: H (from "黑暗骑士" pinyin)
+        assert!(folder.contains("[黑暗骑士]")); // Chinese title first
+        assert!(folder.contains("[The Dark Knight]")); // Original title second
+        assert!(folder.contains("(2008)"));
     }
 }
