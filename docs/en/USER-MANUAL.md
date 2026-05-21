@@ -94,10 +94,10 @@ cd media_organizer/media_organizer_rs
 cargo build --release
 
 # 安装到系统
-sudo cp target/release/media-organizer /usr/local/bin/
+sudo cp target/release/mediaorganizer /usr/local/bin/
 
 # 验证
-media-organizer --version
+mediaorganizer --version
 ```
 
 ---
@@ -107,7 +107,7 @@ media-organizer --version
 ### 3.1 全局选项
 
 ```bash
-media-organizer [OPTIONS] <COMMAND>
+mediaorganizer [OPTIONS] <COMMAND>
 
 Options:
   -v, --verbose         详细日志输出
@@ -124,10 +124,10 @@ Options:
 
 ```bash
 # 电影
-media-organizer plan movies <源目录> [OPTIONS]
+mediaorganizer plan movies <源目录> [OPTIONS]
 
 # 电视剧
-media-organizer plan tv_series <源目录> [OPTIONS]
+mediaorganizer plan tv_series <源目录> [OPTIONS]
 
 Options:
   -t, --target <目标目录>  目标目录 (✅ 可选)。如果不提供，将自动在源目录旁创建 `源目录名_organized` 作为目标
@@ -140,13 +140,13 @@ Options:
 **示例:**
 ```bash
 # 标准电影整理
-media-organizer plan movies /mnt/downloads/movies -t /mnt/library/movies
+mediaorganizer plan movies /mnt/downloads/movies -t /mnt/library/movies
 
 # 电视剧整理
-media-organizer plan tv_series /mnt/downloads/tv_series -t /mnt/library/tv_series
+mediaorganizer plan tv_series /mnt/downloads/tv_series -t /mnt/library/tv_series
 
 # 仅检查，不生成计划
-media-organizer plan movies /path --dry-run
+mediaorganizer plan movies /path --dry-run
 ```
 
 ---
@@ -156,7 +156,7 @@ media-organizer plan movies /path --dry-run
 **执行 plan 命令生成的计划文件。所有操作都是原子性的。**
 
 ```bash
-media-organizer execute <plan.json> [OPTIONS]
+mediaorganizer execute <plan.json> [OPTIONS]
 
 Options:
   -o, --output <路径>  rollback 文件输出路径
@@ -167,10 +167,10 @@ Options:
 **示例:**
 ```bash
 # 正常执行
-media-organizer execute plan_20260426_123456.json
+mediaorganizer execute plan_20260426_123456.json
 
 # 预览执行
-media-organizer execute plan_*.json --dry-run
+mediaorganizer execute plan_*.json --dry-run
 ```
 
 > 💡 **重要:** 每次执行都会自动生成对应的 rollback 文件，保存在同一目录下。
@@ -182,7 +182,7 @@ media-organizer execute plan_*.json --dry-run
 **完全回滚之前的执行操作，将所有文件精确移动回原始位置。**
 
 ```bash
-media-organizer rollback <rollback.json> [OPTIONS]
+mediaorganizer rollback <rollback.json> [OPTIONS]
 
 Options:
   --dry-run  预览回滚操作
@@ -192,10 +192,10 @@ Options:
 **示例:**
 ```bash
 # 预览回滚
-media-organizer rollback rollback_20260426_123456.json --dry-run
+mediaorganizer rollback rollback_20260426_123456.json --dry-run
 
 # 执行回滚
-media-organizer rollback rollback_*.json
+mediaorganizer rollback rollback_*.json
 ```
 
 > ✅ **保证:** 回滚操作是 100% 精确的，使用哈希值验证文件完整性。
@@ -205,7 +205,7 @@ media-organizer rollback rollback_*.json
 ### 3.5 sessions - 会话管理
 
 ```bash
-media-organizer sessions <SUBCOMMAND>
+mediaorganizer sessions <SUBCOMMAND>
 
 Subcommands:
   list      列出所有历史会话
@@ -219,7 +219,7 @@ Subcommands:
 ### 3.6 verify - 文件完整性验证
 
 ```bash
-media-organizer verify <路径>
+mediaorganizer verify <路径>
 
 Options:
   --fast     快速验证 (仅检查文件大小)
@@ -233,7 +233,7 @@ Options:
 **管理中央媒体索引系统。**
 
 ```bash
-media-organizer index <SUBCOMMAND>
+mediaorganizer index <SUBCOMMAND>
 
 Subcommands:
   scan         扫描目录建立索引
@@ -247,7 +247,7 @@ Subcommands:
 
 #### scan - 扫描目录
 ```bash
-media-organizer index scan <路径> [OPTIONS]
+mediaorganizer index scan <路径> [OPTIONS]
 
 Options:
   --media-type <类型>    movies / tv_series (默认: movies)
@@ -259,17 +259,17 @@ Options:
 **示例:**
 ```bash
 # 索引电影
-media-organizer index scan /mnt/library/movies --media-type movies --disk-label 主硬盘
+mediaorganizer index scan /mnt/library/movies --media-type movies --disk-label 主硬盘
 
 # 索引电视剧 (同一硬盘)
-media-organizer index scan /mnt/library/tv_series --media-type tv_series --disk-label 主硬盘
+mediaorganizer index scan /mnt/library/tv_series --media-type tv_series --disk-label 主硬盘
 ```
 
 > 💡 同一硬盘可同时包含多种媒体类型，使用相同的 disk-label。
 
 #### stats - 收藏统计
 ```bash
-media-organizer index stats
+mediaorganizer index stats
 ```
 
 输出示例:
@@ -299,7 +299,7 @@ media-organizer index stats
 
 #### duplicates - 查找重复项
 ```bash
-media-organizer index duplicates
+mediaorganizer index duplicates
 ```
 
 ---
@@ -309,7 +309,7 @@ media-organizer index duplicates
 **跨所有硬盘同时搜索电影和电视剧。即使硬盘离线也可搜索。**
 
 ```bash
-media-organizer search [OPTIONS]
+mediaorganizer search [OPTIONS]
 
 Options:
   -t, --title <标题>        按标题搜索
@@ -326,16 +326,16 @@ Options:
 **示例:**
 ```bash
 # 标题搜索
-media-organizer search --title "盗梦空间"
+mediaorganizer search --title "盗梦空间"
 
 # 演员搜索
-media-organizer search --actor "莱昂纳多"
+mediaorganizer search --actor "莱昂纳多"
 
 # 组合搜索
-media-organizer search --genre 科幻 --year 2010-2020 --language en
+mediaorganizer search --genre 科幻 --year 2010-2020 --language en
 
 # JSON 输出
-media-organizer search --title "黑镜" --format json
+mediaorganizer search --title "黑镜" --format json
 ```
 
 ---
@@ -343,7 +343,7 @@ media-organizer search --title "黑镜" --format json
 ### 3.9 export - 导出备份
 
 ```bash
-media-organizer export [OUTPUT] [OPTIONS]
+mediaorganizer export [OUTPUT] [OPTIONS]
 
 Options:
   --include-secrets    包含敏感数据 (API 密钥)
@@ -356,10 +356,10 @@ Options:
 **示例:**
 ```bash
 # 完整备份
-media-organizer export --auto-name
+mediaorganizer export --auto-name
 
 # 仅备份索引
-media-organizer export --only indexes --auto-name
+mediaorganizer export --only indexes --auto-name
 ```
 
 ---
@@ -367,7 +367,7 @@ media-organizer export --only indexes --auto-name
 ### 3.10 import - 导入恢复
 
 ```bash
-media-organizer import <备份文件> [OPTIONS]
+mediaorganizer import <备份文件> [OPTIONS]
 
 Options:
   --dry-run       预览导入内容
@@ -380,10 +380,10 @@ Options:
 **示例:**
 ```bash
 # 预览
-media-organizer import backup_20260426.zip --dry-run
+mediaorganizer import backup_20260426.zip --dry-run
 
 # 安全导入
-media-organizer import backup.zip --backup-first --merge
+mediaorganizer import backup.zip --backup-first --merge
 ```
 
 ---
@@ -491,13 +491,13 @@ graph TD
 
 ```bash
 # 评分大于 8.0 的科幻电影
-media-organizer search --genre 科幻 --min-rating 8.0
+mediaorganizer search --genre 科幻 --min-rating 8.0
 
 # 2020年之后的韩国电影
-media-organizer search --year 2020-2025 --language ko
+mediaorganizer search --year 2020-2025 --language ko
 
 # 克里斯托弗·诺兰导演的所有作品
-media-organizer search --director "克里斯托弗·诺兰"
+mediaorganizer search --director "克里斯托弗·诺兰"
 ```
 
 ---
@@ -508,18 +508,18 @@ media-organizer search --director "克里斯托弗·诺兰"
 
 ```bash
 # 每周完整备份
-0 2 * * 0 /usr/local/bin/media-organizer export --auto-name --output /backup/
+0 2 * * 0 /usr/local/bin/mediaorganizer export --auto-name --output /backup/
 
 # 每日索引备份
-0 3 * * * /usr/local/bin/media-organizer export --only indexes --auto-name
+0 3 * * * /usr/local/bin/mediaorganizer export --only indexes --auto-name
 ```
 
 ### 7.2 灾难恢复流程
 
 1. 安装系统与依赖
-2. 导入最新备份: `media-organizer import backup.zip`
-3. 验证索引: `media-organizer index stats`
-4. 扫描现有目录: `media-organizer index scan /path`
+2. 导入最新备份: `mediaorganizer import backup.zip`
+3. 验证索引: `mediaorganizer index stats`
+4. 扫描现有目录: `mediaorganizer index scan /path`
 
 ---
 
@@ -558,13 +558,13 @@ A: 检查 `unknown` 列表，手动重命名文件后重新运行 plan。确保 
 ### Q: 如何更新已整理文件的元数据？
 A: 使用 `--force` 参数重新扫描:
 ```bash
-media-organizer index scan /path --force
+mediaorganizer index scan /path --force
 ```
 
 ### Q: 搜索只返回电影，没有电视剧？
 A: 确保电视剧目录已单独索引:
 ```bash
-media-organizer index scan /path/to/tv_series --media-type tv_series
+mediaorganizer index scan /path/to/tv_series --media-type tv_series
 ```
 
 ### Q: 移动硬盘如何管理？

@@ -13,11 +13,11 @@ use std::path::PathBuf;
 /// - Cross-disk search and duplicate detection
 /// 
 /// Quick Start:
-///   media-organizer plan movies /path/to/movies -t /path/to/library
-///   media-organizer execute plan_*.json
-///   media-organizer index scan /path/to/library --media-type movies --volume-label MyDisk
+///   mediaorganizer plan movies /path/to/movies -t /path/to/library
+///   mediaorganizer execute plan_*.json
+///   mediaorganizer index scan /path/to/library --media-type movies --volume-label MyDisk
 #[derive(Parser, Debug)]
-#[command(name = "media-organizer")]
+#[command(name = "mediaorganizer")]
 #[command(author, version, about = "Organize your movie and TV show collection with AI-powered parsing")]
 pub struct Cli {
     /// Enable verbose output (show detailed logs)
@@ -177,6 +177,12 @@ pub enum Commands {
         #[arg(long)]
         backup_first: bool,
     },
+
+    /// Download posters for movies or TV series
+    Poster {
+        #[command(subcommand)]
+        media_type: PosterType,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -187,8 +193,8 @@ pub enum IndexAction {
     /// Automatically rebuilds indexes and recalculates statistics after scanning.
     /// 
     /// Example:
-    ///   media-organizer index scan /mnt/library/movies --media-type movies --volume-label Disk_Movies_01
-    ///   media-organizer index scan /mnt/library/tv --media-type tv_series --volume-label Disk_TV_01 --force
+    ///   mediaorganizer index scan /mnt/library/movies --media-type movies --volume-label Disk_Movies_01
+    ///   mediaorganizer index scan /mnt/library/tv --media-type tv_series --volume-label Disk_TV_01 --force
     Scan {
         /// Directory to scan for media files
         #[arg(value_name = "PATH")]
@@ -227,8 +233,8 @@ pub enum IndexAction {
     /// Lists all movies or TV shows in a specific volume group.
     /// 
     /// Example:
-    ///   media-organizer index list Disk_Movies_01
-    ///   media-organizer index list Disk_TV_01 --media-type tv_series
+    ///   mediaorganizer index list Disk_Movies_01
+    ///   mediaorganizer index list Disk_TV_01 --media-type tv_series
     List {
         /// Volume group label to list
         #[arg(value_name = "VOLUME")]
@@ -254,7 +260,7 @@ pub enum IndexAction {
     /// Use --confirm to actually delete the data.
     /// 
     /// Example:
-    ///   media-organizer index remove OldDisk --confirm
+    ///   mediaorganizer index remove OldDisk --confirm
     Remove {
         /// Volume group label to remove
         #[arg(value_name = "VOLUME")]
@@ -271,8 +277,8 @@ pub enum IndexAction {
     /// Useful for finding redundant copies that can be safely deleted.
     /// 
     /// Example:
-    ///   media-organizer index duplicates
-    ///   media-organizer index duplicates --media-type movies --volume-filter cross
+    ///   mediaorganizer index duplicates
+    ///   mediaorganizer index duplicates --media-type movies --volume-filter cross
     Duplicates {
         /// Media type filter: movies, tv_series, or all (default: all)
         #[arg(long, default_value = "all")]
@@ -297,9 +303,9 @@ pub enum IndexAction {
     /// Use --update to fetch collection information from TMDB.
     /// 
     /// Example:
-    ///   media-organizer index collections
-    ///   media-organizer index collections --filter complete
-    ///   media-organizer index collections --update
+    ///   mediaorganizer index collections
+    ///   mediaorganizer index collections --filter complete
+    ///   mediaorganizer index collections --update
     Collections {
         /// Filter: complete, incomplete, or all (default: all)
         #[arg(long, default_value = "all")]
@@ -327,9 +333,9 @@ pub enum IndexAction {
     /// Use --update to fetch TV show information from TMDB.
     /// 
     /// Example:
-    ///   media-organizer index tv
-    ///   media-organizer index tv --filter incomplete
-    ///   media-organizer index tv --update
+    ///   mediaorganizer index tv
+    ///   mediaorganizer index tv --filter incomplete
+    ///   mediaorganizer index tv --update
     Tv {
         /// Filter: complete, incomplete, or all (default: all)
         #[arg(long, default_value = "all")]
@@ -360,7 +366,7 @@ pub enum IndexAction {
     /// You rarely need to run this manually.
     /// 
     /// Example:
-    ///   media-organizer index rebuild
+    ///   mediaorganizer index rebuild
     Rebuild {
         /// Skip preflight checks
         #[arg(long)]
@@ -399,6 +405,36 @@ pub enum PlanType {
         /// Output path for plan.json
         #[arg(short, long, value_name = "OUTPUT")]
         output: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+#[clap(rename_all = "snake_case")]
+pub enum PosterType {
+    /// Download posters for movies
+    /// 
+    /// Downloads posters for movies in the specified directory.
+    /// If a poster already exists, it will be skipped.
+    /// 
+    /// Example:
+    ///   mediaorganizer poster movies /path/to/movies
+    Movies {
+        /// Source directory containing movies
+        #[arg(value_name = "PATH")]
+        path: PathBuf,
+    },
+
+    /// Download posters for TV series
+    /// 
+    /// Downloads season posters for TV series in the specified directory.
+    /// If a poster already exists, it will be skipped.
+    /// 
+    /// Example:
+    ///   mediaorganizer poster tv_series /path/to/tv_series
+    TvSeries {
+        /// Source directory containing TV series
+        #[arg(value_name = "PATH")]
+        path: PathBuf,
     },
 }
 

@@ -80,7 +80,7 @@ pub async fn execute_plan(plan_file: &Path, output: Option<&Path>, config: &Conf
     println!();
     println!(
         "    {}",
-        format!("media-organizer rollback {}", rollback_path.display()).bold()
+        format!("mediaorganizer rollback {}", rollback_path.display()).bold()
     );
     println!();
 

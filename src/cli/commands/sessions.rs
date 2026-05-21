@@ -1,6 +1,6 @@
 //! Sessions command implementation.
 //!
-//! Manages historical sessions stored in ~/.config/media_organizer/sessions/
+//! Manages historical sessions stored in ~/.config/mediaorganizer/sessions/
 
 use crate::core::planner;
 use crate::Result;

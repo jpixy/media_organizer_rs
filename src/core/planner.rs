@@ -13,7 +13,7 @@ use crate::core::parser::{self, FilenameParser, ParsedFilename};
 use crate::core::scanner::scan_directory;
 use crate::generators::{filename as gen_filename, folder as gen_folder};
 use crate::models::media::{
-    EpisodeMetadata, MediaType, MovieMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
+    EpisodeMetadata, MediaType, MovieMetadata, SeasonMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
 use crate::models::plan::{
     Operation, OperationType, ParsedInfo, Plan, PlanItem, PlanItemStatus, SampleItem, TargetInfo,
@@ -149,6 +149,12 @@ pub struct PlannerConfig {
     pub poster_size: String,
     /// Whether to generate NFO files.
     pub generate_nfo: bool,
+    /// Whether to generate movie NFO files.
+    pub generate_movie_nfo: bool,
+    /// Whether to generate TV episode NFO files.
+    pub generate_tv_episode_nfo: bool,
+    /// Whether to generate TV season NFO files.
+    pub generate_tv_season_nfo: bool,
     /// Whether AI parsing is enabled.
     pub ai_enabled: bool,
 }
@@ -160,6 +166,9 @@ impl Default for PlannerConfig {
             download_posters: true,
             poster_size: "w500".to_string(),
             generate_nfo: true,
+            generate_movie_nfo: true,
+            generate_tv_episode_nfo: true,
+            generate_tv_season_nfo: true,
             ai_enabled: false, // AI disabled by default per requirements
         }
     }
@@ -216,6 +225,9 @@ impl Planner {
                 download_posters: config.organize.download_posters,
                 poster_size: config.organize.poster_size.clone(),
                 generate_nfo: config.organize.generate_nfo,
+                generate_movie_nfo: config.organize.generate_movie_nfo,
+                generate_tv_episode_nfo: config.organize.generate_tv_episode_nfo,
+                generate_tv_season_nfo: config.organize.generate_tv_season_nfo,
                 ..PlannerConfig::default()
             },
             parser: FilenameParser::new(),
@@ -257,6 +269,14 @@ impl Planner {
             .process_videos(&scan_result.videos, source, target, media_type)
             .await?;
         let _process_time = process_start.elapsed();
+
+        // Step 2.5: Process organized TV folders without videos (generate season NFOs)
+        if media_type == MediaType::TvSeries {
+            let tv_folder_items = self
+                .process_organized_tv_folders(&scan_result.organized_tv_folders, target)
+                .await?;
+            items.extend(tv_folder_items);
+        }
 
         // Step 3: Process samples
         let samples = self.process_samples(&scan_result.samples, &items, target);
@@ -673,10 +693,11 @@ impl Planner {
                         let season = season_num.unwrap_or(1);
                         let episode = episode_num.unwrap_or(1);
 
-                        // Fetch show details and episode details IN PARALLEL
-                        let (show_result, episode_result) = tokio::join!(
+                        // Fetch show details, episode details, and season details IN PARALLEL
+                        let (show_result, episode_result, season_result) = tokio::join!(
                             client.get_tv_details(tmdb_id),
                             client.get_episode_details(tmdb_id, season, episode),
+                            client.get_season_details(tmdb_id, season),
                         );
 
                         if let Ok(show_details) = show_result {
@@ -692,6 +713,20 @@ impl Planner {
                                     season_number: ep_details.season_number,
                                     air_date: ep_details.air_date.clone(),
                                     overview: ep_details.overview.clone(),
+                                })
+                            } else {
+                                None
+                            };
+
+                            // Get season metadata from TMDB (already fetched in parallel)
+                            let season_metadata = if let Ok(season_details) = season_result {
+                                Some(SeasonMetadata {
+                                    season_number: season_details.season_number,
+                                    name: season_details.name,
+                                    overview: season_details.overview,
+                                    air_date: season_details.air_date,
+                                    poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                                    episode_count: season_details.episodes.len() as u16,
                                 })
                             } else {
                                 None
@@ -721,7 +756,7 @@ impl Planner {
                             };
 
                             // Generate target info - tv_series_metadata needs to be a tuple
-                            let tv_series_tuple = (show_metadata.clone(), episode_metadata.clone());
+                            let tv_series_tuple = (show_metadata.clone(), episode_metadata.clone(), season_metadata.clone());
                             let (target_info, operations) = match self.generate_target_info(
                                 video,
                                 &None,
@@ -758,7 +793,7 @@ impl Planner {
                                     movie_metadata: None,
                                     tv_series_metadata: Some(show_metadata.clone()),
                                     episode_metadata,
-                                    season_metadata: None,
+                                    season_metadata,
                                     video_metadata,
                                     target: target_info,
                                     operations,
@@ -1096,14 +1131,14 @@ impl Planner {
         };
 
         // Step 3: Get metadata via title search
-        let (movie_metadata, tv_series_metadata, episode_metadata) = match media_type {
+        let (movie_metadata, tv_series_metadata, episode_metadata, season_metadata) = match media_type {
             MediaType::Movies => {
                 // No direct ID available, use title search
                 let movie = self.query_tmdb_movie(&parsed).await?;
                 if movie.is_none() {
                     return Ok(None);
                 }
-                (movie, None, None)
+                (movie, None, None, None)
             }
             MediaType::TvSeries => {
                 if let Some(show_meta) = cached_show {
@@ -1113,7 +1148,26 @@ impl Planner {
                     let ep_meta = self
                         .get_episode_from_cache(show_meta.tmdb_id, season, episode, season_cache)
                         .await;
-                    (None, Some(show_meta.clone()), ep_meta)
+                    // Get season metadata
+                    let season_meta = if let Some(client) = &self.tmdb_client {
+                        match client.get_season_details(show_meta.tmdb_id, season).await {
+                            Ok(season_details) => Some(SeasonMetadata {
+                                season_number: season_details.season_number,
+                                name: season_details.name,
+                                overview: season_details.overview,
+                                air_date: season_details.air_date,
+                                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                                episode_count: season_details.episodes.len() as u16,
+                            }),
+                            Err(e) => {
+                                tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+                    (None, Some(show_meta.clone()), ep_meta, season_meta)
                 } else {
                     // First video: get show info and cache season
                     let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
@@ -1147,7 +1201,26 @@ impl Planner {
                     let ep_meta = self
                         .get_episode_from_cache(show_meta.tmdb_id, season, episode, season_cache)
                         .await;
-                    (None, Some(show_meta), ep_meta)
+                    // Get season metadata
+                    let season_meta = if let Some(client) = &self.tmdb_client {
+                        match client.get_season_details(show_meta.tmdb_id, season).await {
+                            Ok(season_details) => Some(SeasonMetadata {
+                                season_number: season_details.season_number,
+                                name: season_details.name,
+                                overview: season_details.overview,
+                                air_date: season_details.air_date,
+                                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                                episode_count: season_details.episodes.len() as u16,
+                            }),
+                            Err(e) => {
+                                tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+                    (None, Some(show_meta), ep_meta, season_meta)
                 }
             }
         };
@@ -1165,7 +1238,7 @@ impl Planner {
         // Step 4: Generate target info and operations
         let tv_series_with_episode = tv_series_metadata
             .as_ref()
-            .map(|show| (show.clone(), episode_metadata.clone()));
+            .map(|show| (show.clone(), episode_metadata.clone(), season_metadata.clone()));
 
         let (target_info, operations) = match self.generate_target_info(
             video,
@@ -1193,7 +1266,7 @@ impl Planner {
             movie_metadata: movie_metadata.clone(),
             tv_series_metadata: tv_series_metadata.clone(),
             episode_metadata: episode_metadata.clone(),
-            season_metadata: None,
+            season_metadata: season_metadata.clone(),
             video_metadata: video_metadata.clone(),
             target: target_info,
             operations,
@@ -1216,7 +1289,7 @@ impl Planner {
         season_cache: &SeasonEpisodesCache,
         precomputed_ffprobe: Option<&VideoMetadata>,
     ) -> Result<Option<(PlanItem, Option<TvSeriesMetadata>)>> {
-        let (parsed, movie_metadata, tv_series_metadata, episode_metadata) = match media_type {
+        let (parsed, movie_metadata, tv_series_metadata, episode_metadata, season_metadata) = match media_type {
             MediaType::TvSeries => {
                 // Parse organized TV show filename
                 let info = match parser::parse_organized_tv_series_filename(&video.filename) {
@@ -1308,7 +1381,27 @@ impl Planner {
                     )
                     .await;
 
-                (parsed, None, Some(show_meta), ep_meta)
+                // Get season metadata
+                let season_meta = if let Some(client) = &self.tmdb_client {
+                    match client.get_season_details(show_meta.tmdb_id, info.season).await {
+                        Ok(season_details) => Some(SeasonMetadata {
+                            season_number: season_details.season_number,
+                            name: season_details.name,
+                            overview: season_details.overview,
+                            air_date: season_details.air_date,
+                            poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                            episode_count: season_details.episodes.len() as u16,
+                        }),
+                        Err(e) => {
+                            tracing::warn!("Failed to get season {} details for {}: {}", info.season, show_meta.name, e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                (parsed, None, Some(show_meta), ep_meta, season_meta)
             }
             MediaType::Movies => {
                 // Parse organized movie filename
@@ -1410,7 +1503,7 @@ impl Planner {
                     raw_response: Some("organized_format".to_string()),
                 };
 
-                (parsed, Some(metadata), None, None)
+                (parsed, Some(metadata), None, None, None)
             }
         };
 
@@ -1427,7 +1520,7 @@ impl Planner {
         // Generate target info
         let tv_series_with_episode = tv_series_metadata
             .as_ref()
-            .map(|show| (show.clone(), episode_metadata.clone()));
+            .map(|show| (show.clone(), episode_metadata.clone(), season_metadata.clone()));
 
         let (target_info, operations) = match self.generate_target_info(
             video,
@@ -1455,7 +1548,7 @@ impl Planner {
             movie_metadata: movie_metadata.clone(),
             tv_series_metadata: tv_series_metadata.clone(),
             episode_metadata: episode_metadata.clone(),
-            season_metadata: None,
+            season_metadata: season_metadata.clone(),
             video_metadata: video_metadata.clone(),
             target: target_info,
             operations,
@@ -1548,13 +1641,13 @@ impl Planner {
         let poster_urls: Vec<String> = details
             .poster_path
             .as_ref()
-            .map(|p| vec![format!("https://image.tmdb.org/t/p/original{}", p)])
+            .map(|p| vec![format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)])
             .unwrap_or_default();
 
         let backdrop_url: Option<String> = details
             .backdrop_path
             .as_ref()
-            .map(|p| format!("https://image.tmdb.org/t/p/original{}", p));
+            .map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p));
 
         MovieMetadata {
             tmdb_id: details.id,
@@ -1670,6 +1763,22 @@ impl Planner {
             .get_episode_from_cache(show_meta.tmdb_id, season, episode, season_cache)
             .await;
 
+        // Get season metadata
+        let season_meta = match tmdb.get_season_details(folder_info.tmdb_id, season).await {
+            Ok(season_details) => Some(SeasonMetadata {
+                season_number: season_details.season_number,
+                name: season_details.name,
+                overview: season_details.overview,
+                air_date: season_details.air_date,
+                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                episode_count: season_details.episodes.len() as u16,
+            }),
+            Err(e) => {
+                tracing::warn!("[ORGANIZED-FOLDER] Failed to get season {} details for tmdb{}: {}", season, folder_info.tmdb_id, e);
+                None
+            }
+        };
+
         let parsed = ParsedFilename {
             title: Some(folder_info.title.clone()),
             original_title: None,
@@ -1691,7 +1800,7 @@ impl Planner {
         };
 
         // Generate target info
-        let tv_series_with_episode = Some((show_meta.clone(), ep_meta.clone()));
+        let tv_series_with_episode = Some((show_meta.clone(), ep_meta.clone(), season_meta.clone()));
 
         let (target_info, operations) = match self.generate_target_info(
             video,
@@ -1719,7 +1828,7 @@ impl Planner {
             movie_metadata: None,
             tv_series_metadata: Some(show_meta.clone()),
             episode_metadata: ep_meta,
-            season_metadata: None,
+            season_metadata: season_meta,
             video_metadata: video_metadata.clone(),
             target: target_info,
             operations,
@@ -1727,6 +1836,154 @@ impl Planner {
         };
 
         Ok(Some((plan_item, Some(show_meta))))
+    }
+
+    /// Process organized TV series folders that may not contain video files.
+    /// This generates season NFO files for folders that have tvshow.nfo but no videos.
+    async fn process_organized_tv_folders(
+        &self,
+        folders: &[PathBuf],
+        _target: &Path,
+    ) -> Result<Vec<PlanItem>> {
+        let mut items = Vec::new();
+        
+        if folders.is_empty() {
+            return Ok(items);
+        }
+        
+        let tmdb = match self.tmdb_client.as_ref() {
+            Some(client) => client,
+            None => {
+                tracing::warn!("TMDB client not initialized, skipping organized TV folders");
+                return Ok(items);
+            }
+        };
+        
+        for folder_path in folders {
+            // Extract folder info from directory name
+            let folder_name = folder_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if let Some(folder_info) = parser::parse_organized_tv_series_folder(folder_name) {
+                tracing::info!(
+                    "[ORGANIZED-TV-FOLDER] Processing: {} (tmdb{})",
+                    folder_info.title, folder_info.tmdb_id
+                );
+                
+                // Fetch TV show details
+                let show_meta = match self.fetch_tv_series_by_id(folder_info.tmdb_id).await {
+                    Ok(meta) => meta,
+                    Err(e) => {
+                        tracing::warn!("Failed to fetch TV series info for tmdb{}: {}", folder_info.tmdb_id, e);
+                        continue;
+                    }
+                };
+                
+                // Get season directories
+                let mut seasons = Vec::new();
+                if let Ok(entries) = std::fs::read_dir(folder_path) {
+                    for entry in entries.flatten() {
+                        if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                            if let Some(dir_name) = entry.file_name().to_str() {
+                                if let Some(season_num) = parser::extract_season_from_dirname(dir_name) {
+                                    seasons.push((season_num, entry.path()));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // If no season directories found, create entries for all seasons
+                if seasons.is_empty() {
+                    for season_num in 1..=show_meta.number_of_seasons {
+                        seasons.push((season_num, folder_path.join(format!("Season {:02}", season_num))));
+                    }
+                }
+                
+                // Process each season
+                for (season_num, season_path) in seasons {
+                    // Fetch season metadata
+                    let season_meta = match tmdb.get_season_details(folder_info.tmdb_id, season_num).await {
+                        Ok(season_details) => Some(SeasonMetadata {
+                            season_number: season_details.season_number,
+                            name: season_details.name,
+                            overview: season_details.overview,
+                            air_date: season_details.air_date,
+                            poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                            episode_count: season_details.episodes.len() as u16,
+                        }),
+                        Err(e) => {
+                            tracing::warn!("Failed to get season {} details for tmdb{}: {}", season_num, folder_info.tmdb_id, e);
+                            continue;
+                        }
+                    };
+                    
+                    // Generate season NFO operation
+                    if season_meta.is_some() && self.config.generate_nfo && self.config.generate_tv_season_nfo {
+                            let season_nfo_name = format!("[{}]-season{:02}.nfo", folder_info.title, season_num);
+                            let season_nfo_path = season_path.join(&season_nfo_name);
+                            
+                            // Create directory if it doesn't exist
+                            let mut operations = Vec::new();
+                            operations.push(Operation {
+                                op: OperationType::Mkdir,
+                                from: None,
+                                to: season_path.clone(),
+                                url: None,
+                                content_ref: None,
+                            });
+                            
+                            // Create season NFO
+                            operations.push(Operation {
+                                op: OperationType::Create,
+                                from: None,
+                                to: season_nfo_path.clone(),
+                                url: None,
+                                content_ref: Some("nfo".to_string()),
+                            });
+                            
+                            // Use tvshow.nfo as source file since it exists in organized folders
+                            let tvshow_nfo_path = folder_path.join("tvshow.nfo");
+                            let source_video = VideoFile {
+                                path: tvshow_nfo_path.clone(),
+                                filename: "tvshow.nfo".to_string(),
+                                parent_dir: folder_path.clone(),
+                                size: std::fs::metadata(&tvshow_nfo_path).map(|m| m.len()).unwrap_or(0),
+                                modified: chrono::Utc::now(),
+                                is_sample: false,
+                            };
+                            
+                            let plan_item = PlanItem {
+                                id: Uuid::new_v4().to_string(),
+                                source: source_video,
+                                parsed: ParsedInfo {
+                                    title: Some(folder_info.title.clone()),
+                                    original_title: None,
+                                    year: folder_info.year,
+                                    confidence: 1.0,
+                                    raw_response: None,
+                                },
+                                movie_metadata: None,
+                                tv_series_metadata: Some(show_meta.clone()),
+                                episode_metadata: None,
+                                season_metadata: season_meta,
+                                video_metadata: VideoMetadata::default(),
+                                target: TargetInfo {
+                                    folder: season_path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string(),
+                                    filename: season_nfo_name.clone(),
+                                    full_path: season_nfo_path.clone(),
+                                    nfo: season_nfo_name,
+                                    poster: None,
+                                },
+                                operations,
+                                status: PlanItemStatus::Pending,
+                            };
+                            
+                            items.push(plan_item);
+                    }
+                }
+            }
+        }
+        
+        Ok(items)
     }
 
     /// Find an organized TV show folder by looking up the directory hierarchy.
@@ -1878,13 +2135,13 @@ impl Planner {
         let poster_urls: Vec<String> = details
             .poster_path
             .as_ref()
-            .map(|p| vec![format!("https://image.tmdb.org/t/p/original{}", p)])
+            .map(|p| vec![format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)])
             .unwrap_or_default();
 
         let backdrop_url = details
             .backdrop_path
             .as_ref()
-            .map(|p| format!("https://image.tmdb.org/t/p/original{}", p));
+            .map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p));
 
         TvSeriesMetadata {
             tmdb_id: details.id,
@@ -2061,7 +2318,7 @@ impl Planner {
         target: &Path,
         media_type: MediaType,
         cached_show: Option<&(TvSeriesMetadata, Option<EpisodeMetadata>)>,
-    ) -> Result<Option<(PlanItem, Option<(TvSeriesMetadata, Option<EpisodeMetadata>)>)>> {
+    ) -> Result<Option<(PlanItem, Option<(TvSeriesMetadata, Option<EpisodeMetadata>, Option<SeasonMetadata>)>)>> {
         // Step 1: Parse filename - use regex for TV shows with cache, AI otherwise
         let parsed = if media_type == MediaType::TvSeries && cached_show.is_some() {
             // FAST PATH: Extract episode number from filename using regex (no AI call)
@@ -2126,9 +2383,22 @@ impl Planner {
                         parsed.episode
                     );
                     // Get episode info for this specific file using regex-extracted numbers
-                    let episode = if let (Some(season), Some(ep)) = (parsed.season, parsed.episode)
+                    let (episode, season_metadata) = if let (Some(season), Some(ep)) = (parsed.season, parsed.episode)
                     {
-                        if let Some(client) = &self.tmdb_client {
+                        let mut season_meta: Option<SeasonMetadata> = None;
+                        let episode_meta = if let Some(client) = &self.tmdb_client {
+                            // Try to get season details first
+                            if let Ok(season_details) = client.get_season_details(cached_show_meta.tmdb_id, season).await {
+                                season_meta = Some(SeasonMetadata {
+                                    season_number: season_details.season_number,
+                                    name: season_details.name,
+                                    overview: season_details.overview,
+                                    air_date: season_details.air_date,
+                                    poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                                    episode_count: season_details.episodes.len() as u16,
+                                });
+                            }
+                            
                             match client
                                 .get_episode_details(cached_show_meta.tmdb_id, season, ep)
                                 .await
@@ -2159,11 +2429,12 @@ impl Planner {
                                 air_date: None,
                                 overview: None,
                             })
-                        }
+                        };
+                        (episode_meta, season_meta)
                     } else {
-                        None
+                        (None, None)
                     };
-                    (None, Some((cached_show_meta.clone(), episode)))
+                    (None, Some((cached_show_meta.clone(), episode, season_metadata)))
                 } else {
                     // No cache, query TMDB with folder name as fallback
                     // Try to get meaningful folder name (skip quality descriptors)
@@ -2176,6 +2447,32 @@ impl Planner {
                         return Ok(None);
                     }
                     let show_meta = show.unwrap();
+
+                    // Track season metadata - always try to get it
+                    let mut season_metadata: Option<SeasonMetadata> = None;
+
+                    // Determine season number from episode metadata or parsed result
+                    let season_num = episode.as_ref().map(|e| e.season_number)
+                        .or_else(|| parsed.season)
+                        .or_else(|| {
+                            // Try to extract from filename
+                            let (season, _) = parser::extract_episode_from_filename(&video.filename);
+                            season
+                        });
+
+                    // Get season metadata if we have a season number
+                    if let (Some(season), Some(client)) = (season_num, &self.tmdb_client) {
+                        if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
+                            season_metadata = Some(SeasonMetadata {
+                                season_number: season_details.season_number,
+                                name: season_details.name,
+                                overview: season_details.overview,
+                                air_date: season_details.air_date,
+                                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                                episode_count: season_details.episodes.len() as u16,
+                            });
+                        }
+                    }
 
                     // If episode is None (AI didn't parse season/episode), try regex extraction
                     if episode.is_none() {
@@ -2201,6 +2498,20 @@ impl Planner {
 
                         if let (Some(season), Some(ep)) = (regex_season, regex_ep) {
                             if let Some(client) = &self.tmdb_client {
+                                // Get season details if not already fetched
+                                if season_metadata.is_none() {
+                                    if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
+                                        season_metadata = Some(SeasonMetadata {
+                                            season_number: season_details.season_number,
+                                            name: season_details.name,
+                                            overview: season_details.overview,
+                                            air_date: season_details.air_date,
+                                            poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                                            episode_count: season_details.episodes.len() as u16,
+                                        });
+                                    }
+                                }
+
                                 match client
                                     .get_episode_details(show_meta.tmdb_id, season, ep)
                                     .await
@@ -2236,7 +2547,7 @@ impl Planner {
                         }
                     }
 
-                    (None, Some((show_meta, episode)))
+                    (None, Some((show_meta, episode, season_metadata)))
                 }
             }
         };
@@ -2283,9 +2594,9 @@ impl Planner {
                 raw_response: parsed.raw_response,
             },
             movie_metadata,
-            tv_series_metadata: tv_series_metadata.as_ref().map(|(show, _)| show.clone()),
-            episode_metadata: tv_series_metadata.as_ref().and_then(|(_, ep)| ep.clone()),
-            season_metadata: None,
+            tv_series_metadata: tv_series_metadata.as_ref().map(|(show, _, _)| show.clone()),
+            episode_metadata: tv_series_metadata.as_ref().and_then(|(_, ep, _)| ep.clone()),
+            season_metadata: tv_series_metadata.as_ref().and_then(|(_, _, season)| season.clone()),
             video_metadata,
             target: target_info,
             operations,
@@ -4114,14 +4425,14 @@ impl Planner {
         let poster_urls = details
             .poster_path
             .as_ref()
-            .map(|p| vec![format!("https://image.tmdb.org/t/p/original{}", p)])
+            .map(|p| vec![format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)])
             .unwrap_or_default();
 
         // Get backdrop URL
         let backdrop_url = details
             .backdrop_path
             .as_ref()
-            .map(|p| client.get_poster_url(p, "original"));
+            .map(|p| client.get_poster_url(p, &self.config.poster_size));
 
         // Extract genres
         let genres = details
@@ -4521,7 +4832,7 @@ impl Planner {
         let backdrop_url = details
             .backdrop_path
             .as_ref()
-            .map(|p| client.get_poster_url(p, "original"));
+            .map(|p| client.get_poster_url(p, &self.config.poster_size));
 
         // Extract collection info (for movie series like "Pirates of the Caribbean")
         let (collection_id, collection_name, collection_overview, collection_total_movies) =
@@ -4664,7 +4975,7 @@ impl Planner {
         &self,
         video: &VideoFile,
         movie_metadata: &Option<MovieMetadata>,
-        tv_series_metadata: &Option<(TvSeriesMetadata, Option<EpisodeMetadata>)>,
+        tv_series_metadata: &Option<(TvSeriesMetadata, Option<EpisodeMetadata>, Option<SeasonMetadata>)>,
         parsed: &ParsedFilename,
         video_metadata: &VideoMetadata,
         target: &Path,
@@ -4709,7 +5020,7 @@ impl Planner {
                 (folder, filename, nfo, None)
             }
             MediaType::TvSeries => {
-                let (show, episode) = tv_series_metadata
+                let (show, episode, _season) = tv_series_metadata
                     .as_ref()
                     .ok_or_else(|| crate::Error::other("Missing TV show metadata"))?;
 
@@ -4756,7 +5067,7 @@ impl Planner {
             MediaType::TvSeries => {
                 tv_series_metadata
                     .as_ref()
-                    .map(|(show, _)| format_language_folder(&show.original_language))
+                    .map(|(show, _, _)| format_language_folder(&show.original_language))
             }
         };
 
@@ -4806,28 +5117,45 @@ impl Planner {
         // Operation 2.5: Move subtitle files and folders (keep original names)
         self.add_subtitle_operations(&video.parent_dir, &target_folder, &mut operations);
 
-        // Operation 3: Create NFO file (for TV shows, only if not already exists)
-        if self.config.generate_nfo {
-            operations.push(Operation {
-                op: OperationType::Create,
-                from: None,
-                to: target_nfo.clone(),
-                url: None,
-                content_ref: Some("nfo".to_string()),
-            });
-
-            // For TV series, also create season NFO in season folder
-            if let MediaType::TvSeries = media_type {
-                if season_folder.is_some() {
-                    let season_nfo_name = format!("season{:02}.nfo", parsed.season.unwrap_or(1));
-                    let season_nfo_path = target_folder.join(season_nfo_name);
+        // Operation 3: Create NFO file
+        match media_type {
+            MediaType::Movies => {
+                if self.config.generate_nfo && self.config.generate_movie_nfo {
                     operations.push(Operation {
                         op: OperationType::Create,
                         from: None,
-                        to: season_nfo_path,
+                        to: target_nfo.clone(),
                         url: None,
                         content_ref: Some("nfo".to_string()),
                     });
+                }
+            }
+            MediaType::TvSeries => {
+                // Create episode NFO
+                if self.config.generate_nfo && self.config.generate_tv_episode_nfo {
+                    operations.push(Operation {
+                        op: OperationType::Create,
+                        from: None,
+                        to: target_nfo.clone(),
+                        url: None,
+                        content_ref: Some("nfo".to_string()),
+                    });
+                }
+
+                // Create season NFO in season folder
+                if self.config.generate_nfo && self.config.generate_tv_season_nfo {
+                    if season_folder.is_some() {
+                        let (show, _, _) = tv_series_metadata.as_ref().unwrap();
+                        let season_nfo_name = format!("[{}]-season{:02}.nfo", show.name, parsed.season.unwrap_or(1));
+                        let season_nfo_path = target_folder.join(season_nfo_name);
+                        operations.push(Operation {
+                            op: OperationType::Create,
+                            from: None,
+                            to: season_nfo_path,
+                            url: None,
+                            content_ref: Some("nfo".to_string()),
+                        });
+                    }
                 }
             }
         }
@@ -4843,11 +5171,21 @@ impl Planner {
                 .or_else(|| {
                     tv_series_metadata
                         .as_ref()
-                        .and_then(|(s, _)| s.poster_urls.first().cloned())
+                        .and_then(|(s, _, _)| s.poster_urls.first().cloned())
                 });
 
             if let Some(url) = poster_url {
-                let poster_filename = filename.replace(&format!(".{}", extension), ".jpg");
+                // For movies: use video filename as poster name
+                // For TV series: use [show.name]-seasonXX.jpg (same naming as NFO)
+                let poster_filename = match media_type {
+                    MediaType::Movies => filename.replace(&format!(".{}", extension), ".jpg"),
+                    MediaType::TvSeries => {
+                        // Use [show.name]-seasonXX.jpg for TV series to ensure only one poster per season
+                        // and keep consistent naming with season NFO
+                        let (show, _, _) = tv_series_metadata.as_ref().unwrap();
+                        format!("[{}]-season{:02}.jpg", show.name, parsed.season.unwrap_or(1))
+                    }
+                };
                 let poster_path = poster_folder.join(&poster_filename);
                 operations.push(Operation {
                     op: OperationType::Download,

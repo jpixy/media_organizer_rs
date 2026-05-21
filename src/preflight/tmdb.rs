@@ -48,7 +48,7 @@ pub async fn check(config: &Config) -> CheckResult {
         CheckResult::fail(
             "TMDB API",
             "API key not configured",
-            "Configure TMDB API key in ~/.config/media_organizer/config.toml",
+            "Configure TMDB API key in ~/.config/mediaorganizer/config.toml",
             CheckSeverity::Required
         )
     }

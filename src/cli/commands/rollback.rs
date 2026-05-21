@@ -62,7 +62,7 @@ pub async fn rollback(rollback_file: &Path, dry_run: bool) -> Result<()> {
             println!("  To actually execute the rollback:");
             println!(
                 "     {}",
-                format!("media-organizer rollback {}", rollback_file.display()).bold()
+                format!("mediaorganizer rollback {}", rollback_file.display()).bold()
             );
         } else {
             println!("{}", "[OK] Rollback completed successfully!".green());
@@ -71,12 +71,12 @@ pub async fn rollback(rollback_file: &Path, dry_run: bool) -> Result<()> {
             println!("  Files have been restored. To reorganize, run:");
             println!(
                 "     {}",
-                "media-organizer plan movies <source> -t <target>".bold()
+                "mediaorganizer plan movies <source> -t <target>".bold()
             );
             println!("  or:");
             println!(
                 "     {}",
-                "media-organizer plan tv_series <source> -t <target>".bold()
+                "mediaorganizer plan tv_series <source> -t <target>".bold()
             );
         }
     } else {

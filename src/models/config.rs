@@ -112,13 +112,13 @@ impl Default for NetworkConfig {
 fn dirs_config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("media_organizer")
+        .join("mediaorganizer")
 }
 
 /// Get the configuration directory path.
 /// Public version for testing purposes.
 pub fn test_config_path(base_path: &std::path::Path) -> PathBuf {
-    base_path.join("media_organizer")
+    base_path.join("mediaorganizer")
 }
 
 /// Load configuration from file.
@@ -132,7 +132,7 @@ pub fn load_config() -> Config {
 /// Internal implementation that accepts a base directory for testing.
 pub(crate) fn load_config_from(base_dir: Option<&std::path::Path>) -> Config {
     let config_path = match base_dir {
-        Some(dir) => dir.join("media_organizer").join("config.toml"),
+        Some(dir) => dir.join("mediaorganizer").join("config.toml"),
         None => dirs_config_path().join("config.toml"),
     };
 
@@ -330,6 +330,15 @@ pub struct OrganizeConfig {
     /// Whether to generate NFO files. Default: true.
     #[serde(default = "default_generate_nfo")]
     pub generate_nfo: bool,
+    /// Whether to generate movie NFO files. Default: true.
+    #[serde(default = "default_generate_movie_nfo")]
+    pub generate_movie_nfo: bool,
+    /// Whether to generate TV episode NFO files. Default: true.
+    #[serde(default = "default_generate_tv_episode_nfo")]
+    pub generate_tv_episode_nfo: bool,
+    /// Whether to generate TV season NFO files. Default: true.
+    #[serde(default = "default_generate_tv_season_nfo")]
+    pub generate_tv_season_nfo: bool,
 }
 
 fn default_download_posters() -> bool {
@@ -344,12 +353,27 @@ fn default_generate_nfo() -> bool {
     true
 }
 
+fn default_generate_movie_nfo() -> bool {
+    true
+}
+
+fn default_generate_tv_episode_nfo() -> bool {
+    true
+}
+
+fn default_generate_tv_season_nfo() -> bool {
+    true
+}
+
 impl Default for OrganizeConfig {
     fn default() -> Self {
         Self {
             download_posters: default_download_posters(),
             poster_size: default_poster_size(),
             generate_nfo: default_generate_nfo(),
+            generate_movie_nfo: default_generate_movie_nfo(),
+            generate_tv_episode_nfo: default_generate_tv_episode_nfo(),
+            generate_tv_season_nfo: default_generate_tv_season_nfo(),
         }
     }
 }

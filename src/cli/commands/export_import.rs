@@ -89,7 +89,7 @@ pub async fn execute_export(
     );
     println!();
     println!(
-        "Tip: Import command: media-organizer import {}",
+        "Tip: Import command: mediaorganizer import {}",
         output_path.display()
     );
 

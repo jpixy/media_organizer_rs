@@ -62,23 +62,23 @@ cd media_organizer
 cargo build --release
 
 # View help
-./target/release/media-organizer --help
+./target/release/mediaorganizer --help
 ```
 
 ### 4. Organize Movies
 
 ```bash
 # Step 1: Generate organization plan
-./target/release/media-organizer plan movies /path/to/movies --target /path/to/organized
+./target/release/mediaorganizer plan movies /path/to/movies --target /path/to/organized
 
 # Step 2: Review the plan
 cat plan_*.json
 
 # Step 3: Execute the plan
-./target/release/media-organizer execute plan_*.json
+./target/release/mediaorganizer execute plan_*.json
 
 # Rollback if needed
-./target/release/media-organizer rollback rollback_*.json
+./target/release/mediaorganizer rollback rollback_*.json
 ```
 
 ## Commands
@@ -86,8 +86,8 @@ cat plan_*.json
 ### plan - Generate Organization Plan
 
 ```bash
-media-organizer plan movies <SOURCE> [OPTIONS]
-media-organizer plan tv_series <SOURCE> [OPTIONS]
+mediaorganizer plan movies <SOURCE> [OPTIONS]
+mediaorganizer plan tv_series <SOURCE> [OPTIONS]
 
 Options:
   -t, --target <TARGET>  Target directory
@@ -99,7 +99,7 @@ Options:
 ### execute - Execute Plan
 
 ```bash
-media-organizer execute <PLAN_FILE> [OPTIONS]
+mediaorganizer execute <PLAN_FILE> [OPTIONS]
 
 Options:
   -o, --output <OUTPUT>  Rollback file output path
@@ -108,7 +108,7 @@ Options:
 ### rollback - Rollback Operations
 
 ```bash
-media-organizer rollback <ROLLBACK_FILE> [OPTIONS]
+mediaorganizer rollback <ROLLBACK_FILE> [OPTIONS]
 
 Options:
   --dry-run  Dry run, show what would be done
@@ -120,55 +120,55 @@ Build a searchable index from organized media directories:
 
 ```bash
 # Scan and index a directory
-media-organizer index scan /path/to/movies --media-type movies --volume-label MyDisk1
+mediaorganizer index scan /path/to/movies --media-type movies --volume-label MyDisk1
 
 # Scan TV shows (same disk)
-media-organizer index scan /path/to/tv_series --media-type tv_series --volume-label MyDisk1
+mediaorganizer index scan /path/to/tv_series --media-type tv_series --volume-label MyDisk1
 
 # Force re-scan (replace existing entries)
-media-organizer index scan /path/to/movies --media-type movies --volume-label MyDisk1 --force
+mediaorganizer index scan /path/to/movies --media-type movies --volume-label MyDisk1 --force
 
 # Show statistics
-media-organizer index stats
+mediaorganizer index stats
 
 # List contents of a disk
-media-organizer index list JMedia_M05
+mediaorganizer index list JMedia_M05
 
 # Verify index against files
-media-organizer index verify /path/to/movies
+mediaorganizer index verify /path/to/movies
 
 # Remove a disk from index
-media-organizer index remove OldDisk --confirm
+mediaorganizer index remove OldDisk --confirm
 
 # Find duplicate media by TMDB ID across disks
-media-organizer index duplicates
+mediaorganizer index duplicates
 
 # Find only cross-volume duplicates (default)
-media-organizer index duplicates --volume-filter cross
+mediaorganizer index duplicates --volume-filter cross
 
 # Find only same-volume duplicates
-media-organizer index duplicates --volume-filter same
+mediaorganizer index duplicates --volume-filter same
 
 # Manage movie collections
-media-organizer index collections              # Show collection statistics
-media-organizer index collections --update     # Update collection info from TMDB
+mediaorganizer index collections              # Show collection statistics
+mediaorganizer index collections --update     # Update collection info from TMDB
 
 # Manage TV series statistics
-media-organizer index tv                      # Show TV series statistics
-media-organizer index tv --update             # Update TV info from TMDB
+mediaorganizer index tv                      # Show TV series statistics
+mediaorganizer index tv --update             # Update TV info from TMDB
 
 # Rebuild indexes and recalculate statistics
-media-organizer index rebuild
+mediaorganizer index rebuild
 ```
 
 **Index Update Workflow:**
 ```bash
 # Step 1: Scan directory (automatically rebuilds indexes)
-media-organizer index scan /path/to/media --media-type movies --volume-label MyDisk1 --force
+mediaorganizer index scan /path/to/media --media-type movies --volume-label MyDisk1 --force
 
 # Step 2 (optional): Update collection/TV info from TMDB
-media-organizer index collections --update
-media-organizer index tv --update
+mediaorganizer index collections --update
+mediaorganizer index tv --update
 ```
 
 ### search - Search Media Collection
@@ -177,35 +177,35 @@ Search across all indexed disks:
 
 ```bash
 # Search by title
-media-organizer search -t "Inception"
+mediaorganizer search -t "Inception"
 
 # Search by actor
-media-organizer search -a "Leonardo DiCaprio"
+mediaorganizer search -a "Leonardo DiCaprio"
 
 # Search by director
-media-organizer search -d "Christopher Nolan"
+mediaorganizer search -d "Christopher Nolan"
 
 # Search by collection/series
-media-organizer search -c "Pirates of the Caribbean"
+mediaorganizer search -c "Pirates of the Caribbean"
 
 # Search by year or year range
-media-organizer search -y 2024
-media-organizer search -y 2020-2024
+mediaorganizer search -y 2024
+mediaorganizer search -y 2020-2024
 
 # Search by genre
-media-organizer search -g "Action"
+mediaorganizer search -g "Action"
 
 # Search by language
-media-organizer search --language zh
+mediaorganizer search --language zh
 
 # Show disk online/offline status
-media-organizer search -t "Avatar" --show-status
+mediaorganizer search -t "Avatar" --show-status
 
 # Output as JSON
-media-organizer search -t "Avatar" --format json
+mediaorganizer search -t "Avatar" --format json
 
 # Combine filters
-media-organizer search -a "Tom Hanks" -y 2000-2020 --language en
+mediaorganizer search -a "Tom Hanks" -y 2000-2020 --language en
 ```
 
 ### export - Export Configuration
@@ -214,25 +214,25 @@ Backup your configuration and indexes:
 
 ```bash
 # Full export with auto-generated filename
-media-organizer export --auto-name
+mediaorganizer export --auto-name
 
 # Export to specific file
-media-organizer export backup.zip
+mediaorganizer export backup.zip
 
 # Include sensitive data (API keys)
-media-organizer export backup.zip --include-secrets
+mediaorganizer export backup.zip --include-secrets
 
 # Only export indexes
-media-organizer export backup.zip --only indexes
+mediaorganizer export backup.zip --only indexes
 
 # Only export specific disk
-media-organizer export backup.zip --disk JMedia_M05
+mediaorganizer export backup.zip --disk JMedia_M05
 
 # Add description
-media-organizer export backup.zip --description "Pre-migration backup"
+mediaorganizer export backup.zip --description "Pre-migration backup"
 
 # Exclude sessions (reduce size)
-media-organizer export backup.zip --exclude sessions
+mediaorganizer export backup.zip --exclude sessions
 ```
 
 ### import - Import Configuration
@@ -241,32 +241,32 @@ Restore configuration and indexes from backup:
 
 ```bash
 # Preview what will be imported
-media-organizer import backup.zip --dry-run
+mediaorganizer import backup.zip --dry-run
 
 # Full import
-media-organizer import backup.zip --force
+mediaorganizer import backup.zip --force
 
 # Merge with existing data
-media-organizer import backup.zip --merge
+mediaorganizer import backup.zip --merge
 
 # Backup existing config first
-media-organizer import backup.zip --backup-first --force
+mediaorganizer import backup.zip --backup-first --force
 
 # Only import indexes
-media-organizer import backup.zip --only indexes
+mediaorganizer import backup.zip --only indexes
 ```
 
 ### sessions - Manage Sessions
 
 ```bash
-media-organizer sessions list    # List all sessions
-media-organizer sessions show <ID>  # Show session details
+mediaorganizer sessions list    # List all sessions
+mediaorganizer sessions show <ID>  # Show session details
 ```
 
 ### verify - Verify Configuration
 
 ```bash
-media-organizer verify <PATH>    # Verify video files
+mediaorganizer verify <PATH>    # Verify video files
 ```
 
 ## Output Format

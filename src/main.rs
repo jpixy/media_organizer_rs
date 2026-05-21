@@ -4,8 +4,8 @@
 
 use clap::Parser;
 use media_organizer::cli::{
-    args::{Cli, Commands, PlanType, SessionsAction},
-    commands::{execute, export_import, index, plan, rollback, search, sessions, verify},
+    args::{Cli, Commands, PlanType, PosterType, SessionsAction},
+    commands::{execute, export_import, index, plan, poster, rollback, search, sessions, verify},
 };
 use media_organizer::models::config::load_config;
 use media_organizer::preflight;
@@ -132,6 +132,17 @@ async fn main() -> anyhow::Result<()> {
         } => {
             export_import::execute_import(backup_file, dry_run, only, merge, force, backup_first)
                 .await?;
+        }
+
+        Commands::Poster { media_type } => {
+            match media_type {
+                PosterType::Movies { path } => {
+                    poster::download_movie_posters(&path, &config).await?;
+                }
+                PosterType::TvSeries { path } => {
+                    poster::download_tv_season_posters(&path, &config).await?;
+                }
+            }
         }
     }
 

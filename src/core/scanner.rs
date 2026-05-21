@@ -31,6 +31,8 @@ pub struct ScanResult {
     pub total_files_scanned: usize,
     /// Total directories scanned.
     pub total_dirs_scanned: usize,
+    /// Organized TV series folders (containing tvshow.nfo)
+    pub organized_tv_folders: Vec<PathBuf>,
 }
 
 impl ScanResult {
@@ -203,6 +205,11 @@ pub fn scan_directory(path: &Path) -> Result<ScanResult> {
         if entry.file_type().is_dir() {
             result.total_dirs_scanned += 1;
             all_dirs.insert(entry_path.to_path_buf());
+            
+            // Check if this directory is an organized TV series folder (contains tvshow.nfo)
+            if entry_path.join("tvshow.nfo").exists() {
+                result.organized_tv_folders.push(entry_path.to_path_buf());
+            }
         } else if entry.file_type().is_file() {
             result.total_files_scanned += 1;
 

@@ -142,7 +142,7 @@ pub struct ExecutedOperation {
 
 ### ✅ 必须实现的子命令
 ```
-media-organizer
+mediaorganizer
   ├── plan movies <source> [--target]
   ├── plan tv_series <source> [--target]
   ├── execute <plan.json>

@@ -87,17 +87,17 @@ cd media_organizer/media_organizer_rs
 cargo build --release
 
 # 安装到系统
-sudo cp target/release/media-organizer /usr/local/bin/
+sudo cp target/release/mediaorganizer /usr/local/bin/
 
 # 验证安装
-media-organizer --version
+mediaorganizer --version
 ```
 
 ### 4. 预检查
 
 ```bash
 # 运行前置检查，确认所有依赖正常
-media-organizer plan movies /tmp --dry-run
+mediaorganizer plan movies /tmp --dry-run
 ```
 
 ✅ 成功输出:
@@ -116,31 +116,31 @@ media-organizer plan movies /tmp --dry-run
 
 ```bash
 # ✅ 最简用法: 自动在源目录旁创建 `未整理电影_organized` 作为目标
-media-organizer plan movies /下载/未整理电影
+mediaorganizer plan movies /下载/未整理电影
 
 # 💡 指定目标目录 (可选)
-media-organizer plan movies /下载/未整理电影 -t /媒体库/电影
+mediaorganizer plan movies /下载/未整理电影 -t /媒体库/电影
 
 # 检查生成的计划
 ls -lh /下载/未整理电影_organized/plan_*.json
 
 # 确认无误后执行
-media-organizer execute /下载/未整理电影_organized/plan_*.json
+mediaorganizer execute /下载/未整理电影_organized/plan_*.json
 
 # 如有问题可随时回滚
-media-organizer rollback /下载/未整理电影_organized/rollback_*.json
+mediaorganizer rollback /下载/未整理电影_organized/rollback_*.json
 ```
 
 ### 整理电视剧
 
 ```bash
 # ✅ 最简用法
-media-organizer plan tv_series /下载/未整理剧集
+mediaorganizer plan tv_series /下载/未整理剧集
 
 # 💡 指定目标目录 (可选)
-media-organizer plan tv_series /下载/未整理剧集 -t /媒体库/电视剧
+mediaorganizer plan tv_series /下载/未整理剧集 -t /媒体库/电视剧
 
-media-organizer execute /下载/未整理剧集_organized/plan_*.json
+mediaorganizer execute /下载/未整理剧集_organized/plan_*.json
 ```
 
 ---
@@ -149,13 +149,13 @@ media-organizer execute /下载/未整理剧集_organized/plan_*.json
 
 ```bash
 # 索引电影目录
-media-organizer index scan /媒体库/电影 --media-type movies --disk-label 主硬盘
+mediaorganizer index scan /媒体库/电影 --media-type movies --disk-label 主硬盘
 
 # 索引电视剧目录
-media-organizer index scan /媒体库/电视剧 --media-type tv_series --disk-label 主硬盘
+mediaorganizer index scan /媒体库/电视剧 --media-type tv_series --disk-label 主硬盘
 
 # 查看收藏统计
-media-organizer index stats
+mediaorganizer index stats
 ```
 
 ---
@@ -164,16 +164,16 @@ media-organizer index stats
 
 ```bash
 # 按标题搜索
-media-organizer search --title "盗梦空间"
+mediaorganizer search --title "盗梦空间"
 
 # 按演员搜索
-media-organizer search --actor "莱昂纳多·迪卡普里奥"
+mediaorganizer search --actor "莱昂纳多·迪卡普里奥"
 
 # 按年份范围搜索
-media-organizer search --year 2020-2025
+mediaorganizer search --year 2020-2025
 
 # 组合搜索
-media-organizer search --genre 科幻 --year 2010-2020
+mediaorganizer search --genre 科幻 --year 2010-2020
 ```
 
 ---

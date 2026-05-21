@@ -1,5 +1,25 @@
 # Media Organizer 配置文件示例
-# 将此文件复制到 ~/.config/media_organizer/config.toml
+# 将此文件复制到 ~/.config/mediaorganizer/config.toml
+
+# 最大并发会话数
+max_sessions = 10
+# 是否保存会话日志
+save_session_logs = true
+
+[organize]
+# 是否下载海报。默认: true
+download_posters = true
+# 海报尺寸。默认: "w500"
+# 可选值: "w92", "w154", "w185", "w342", "w500", "w780", "original"
+poster_size = "w500"
+# 是否生成 NFO 文件。默认: true
+generate_nfo = true
+# 是否生成电影 NFO 文件。默认: true
+generate_movie_nfo = true
+# 是否生成 TV 剧集 NFO 文件。默认: true
+generate_tv_episode_nfo = true
+# 是否生成 TV 季 NFO 文件。默认: true
+generate_tv_season_nfo = true
 
 [network]
 # 是否启用代理。默认: false

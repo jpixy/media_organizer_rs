@@ -1,6 +1,6 @@
 [package]
 name = "media_organizer"
-version = "0.2.20"
+version = "0.3.5"
 edition = "2021"
 authors = ["jpixy"]
 description = "A CLI tool for organizing video files (movies and TV shows) using AI and TMDB"
@@ -57,5 +57,5 @@ whoami = "1.5"
 tempfile = "3.9"
 
 [[bin]]
-name = "media-organizer"
+name = "mediaorganizer"
 path = "src/main.rs"

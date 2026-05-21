@@ -135,7 +135,7 @@ async fn plan_media(
     println!("  2. Execute the plan:");
     println!(
         "     {}",
-        format!("media-organizer execute {}", output_path.display()).bold()
+        format!("mediaorganizer execute {}", output_path.display()).bold()
     );
 
     // Warn about unknown files - group by error reason
