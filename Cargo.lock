@@ -1054,7 +1054,7 @@ dependencies = [
 
 [[package]]
 name = "media_organizer"
-version = "0.3.5"
+version = "0.3.7"
 dependencies = [
  "anyhow",
  "chrono",

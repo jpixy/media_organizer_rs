@@ -71,12 +71,39 @@ fn test_extract_season_from_dirname() {
 async fn test_download_file() {
     // Test that download_file function signature works
     // Note: We test with an invalid URL to avoid network dependency
-    let result = download_file("https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", &PathBuf::from("/tmp/test_poster.jpg")).await;
+    let result = download_file("https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", &PathBuf::from("/tmp/test_poster.jpg"), false, &None).await;
     
     // The download should fail because the URL is invalid
     assert!(result.is_err(), "Download should fail with invalid URL");
     
     println!("test_download_file: passed");
+}
+
+#[tokio::test]
+async fn test_download_file_with_proxy() {
+    // Test that download_file function works with proxy configuration
+    // We test with proxy_enabled=true but invalid proxy to avoid network dependency
+    let result = download_file(
+        "https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", 
+        &PathBuf::from("/tmp/test_poster_proxy.jpg"), 
+        true, 
+        &Some("http://127.0.0.1:7897".to_string())
+    ).await;
+    
+    // The download should fail because the URL is invalid
+    assert!(result.is_err(), "Download should fail with invalid URL even with proxy");
+    
+    // Test with proxy_enabled=false
+    let result_no_proxy = download_file(
+        "https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", 
+        &PathBuf::from("/tmp/test_poster_no_proxy.jpg"), 
+        false, 
+        &Some("http://127.0.0.1:7897".to_string())
+    ).await;
+    
+    assert!(result_no_proxy.is_err(), "Download should fail with invalid URL without proxy");
+    
+    println!("test_download_file_with_proxy: passed");
 }
 
 #[test]

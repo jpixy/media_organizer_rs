@@ -105,7 +105,7 @@ pub async fn download_movie_posters(path: &Path, config: &Config) -> Result<()> 
         }
         
         // Download poster
-        match download_file(&poster_url, &poster_path).await {
+        match download_file(&poster_url, &poster_path, config.network.proxy_enabled, &config.network.proxy).await {
             Ok(_) => {
                 tracing::info!("Downloaded poster: {}", poster_path.display());
                 downloaded_count += 1;
@@ -273,7 +273,7 @@ pub async fn download_tv_season_posters(path: &Path, config: &Config) -> Result<
             }
             
             // Download poster
-            match download_file(&poster_url, &poster_full_path).await {
+            match download_file(&poster_url, &poster_full_path, config.network.proxy_enabled, &config.network.proxy).await {
                 Ok(_) => {
                     tracing::info!("Downloaded poster: {}", poster_full_path.display());
                     downloaded_count += 1;
@@ -340,8 +340,20 @@ pub fn extract_season_from_dirname(dir_name: &str) -> Option<u32> {
 }
 
 /// Download a file from URL to path.
-pub async fn download_file(url: &str, path: &Path) -> Result<()> {
-    let response = reqwest::get(url).await.context("Failed to fetch URL")?;
+pub async fn download_file(url: &str, path: &Path, proxy_enabled: bool, proxy: &Option<String>) -> Result<()> {
+    let mut client_builder = reqwest::Client::builder();
+    
+    if proxy_enabled {
+        if let Some(proxy_url) = proxy {
+            if let Ok(proxy) = reqwest::Proxy::all(proxy_url) {
+                client_builder = client_builder.proxy(proxy);
+            }
+        }
+    }
+    
+    let client = client_builder.build().unwrap_or_else(|_| reqwest::Client::new());
+    
+    let response = client.get(url).send().await.context("Failed to fetch URL")?;
     let bytes = response.bytes().await.context("Failed to read response bytes")?;
     fs::write(path, bytes).context("Failed to write file")?;
     Ok(())

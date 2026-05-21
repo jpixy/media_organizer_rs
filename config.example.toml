@@ -9,9 +9,9 @@ save_session_logs = true
 [organize]
 # 是否下载海报。默认: true
 download_posters = true
-# 海报尺寸。默认: "w500"
+# 海报尺寸。默认: "w780"
 # 可选值: "w92", "w154", "w185", "w342", "w500", "w780", "original"
-poster_size = "w500"
+poster_size = "w780"
 # 是否生成 NFO 文件。默认: true
 generate_nfo = true
 # 是否生成电影 NFO 文件。默认: true
