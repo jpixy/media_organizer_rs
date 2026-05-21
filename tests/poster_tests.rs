@@ -1,6 +1,6 @@
 //! Unit tests for poster download command.
 
-use media_organizer::cli::commands::poster::{download_file, extract_season_from_dirname, is_video_file, parse_tmdb_id_from_folder_name};
+use media_organizer::cli::commands::poster::{download_file, download_file_with_size, extract_season_from_dirname, is_video_file, parse_tmdb_id_from_folder_name, format_size};
 use std::path::PathBuf;
 
 #[test]
@@ -80,6 +80,18 @@ async fn test_download_file() {
 }
 
 #[tokio::test]
+async fn test_download_file_with_size() {
+    // Test that download_file_with_size function signature works
+    // Note: We test with an invalid URL to avoid network dependency
+    let result = download_file_with_size("https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", &PathBuf::from("/tmp/test_poster_size.jpg"), false, &None).await;
+    
+    // The download should fail because the URL is invalid
+    assert!(result.is_err(), "Download should fail with invalid URL");
+    
+    println!("test_download_file_with_size: passed");
+}
+
+#[tokio::test]
 async fn test_download_file_with_proxy() {
     // Test that download_file function works with proxy configuration
     // We test with proxy_enabled=true but invalid proxy to avoid network dependency
@@ -104,6 +116,27 @@ async fn test_download_file_with_proxy() {
     assert!(result_no_proxy.is_err(), "Download should fail with invalid URL without proxy");
     
     println!("test_download_file_with_proxy: passed");
+}
+
+#[test]
+fn test_format_size() {
+    // Test format_size function
+    assert_eq!(format_size(0), "0 B", "Zero bytes");
+    assert_eq!(format_size(1023), "1023 B", "Less than 1 KB");
+    assert_eq!(format_size(1024), "1.00 KB", "Exactly 1 KB");
+    assert_eq!(format_size(1536), "1.50 KB", "1.5 KB");
+    assert_eq!(format_size(2048), "2.00 KB", "2 KB");
+    assert_eq!(format_size(1048575), "1023.99 KB", "Just under 1 MB");
+    assert_eq!(format_size(1048576), "1.00 MB", "Exactly 1 MB");
+    assert_eq!(format_size(1572864), "1.50 MB", "1.5 MB");
+    assert_eq!(format_size(1073741823), "1023.99 MB", "Just under 1 GB");
+    assert_eq!(format_size(1073741824), "1.00 GB", "Exactly 1 GB");
+    assert_eq!(format_size(1610612736), "1.50 GB", "1.5 GB");
+    
+    // Test large sizes
+    assert_eq!(format_size(5368709120), "5.00 GB", "5 GB");
+    
+    println!("test_format_size: passed");
 }
 
 #[test]
@@ -157,5 +190,39 @@ fn test_poster_naming_conventions() {
     let season_poster_name = format!("season{:02}.jpg", season_num);
     assert_eq!(season_poster_name, "season10.jpg", "Double digit season poster name");
     
+    // Test new season poster naming convention with bracket prefix
+    let tv_title = "炽道";
+    let season_poster_name = format!("[{}]-season{:02}.jpg", tv_title, season_num);
+    assert_eq!(season_poster_name, "[炽道]-season10.jpg", "Season poster with bracket prefix");
+    
     println!("test_poster_naming_conventions: passed");
+}
+
+#[tokio::test]
+async fn test_concurrent_task_spawning() {
+    // Test that tokio tasks can be spawned and joined
+    // This tests the concurrent download infrastructure without actual network calls
+    
+    let mut tasks = Vec::new();
+    
+    // Spawn multiple tasks
+    for i in 0..5 {
+        let task = tokio::spawn(async move {
+            // Simulate some work
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            i * 2
+        });
+        tasks.push(task);
+    }
+    
+    // Join all tasks
+    let results = futures::future::join_all(tasks).await;
+    
+    // Verify results
+    let mut expected = vec![0, 2, 4, 6, 8];
+    let mut actual: Vec<i32> = results.into_iter().map(|r| r.unwrap()).collect();
+    actual.sort();
+    assert_eq!(actual, expected, "Concurrent tasks should return correct results");
+    
+    println!("test_concurrent_task_spawning: passed");
 }
