@@ -5432,9 +5432,17 @@ impl Planner {
                     && POSTER_EXTENSIONS.iter().any(|&e| ext == e)
                 {
                     // Check if filename matches poster patterns
+                    // Supports: poster.jpg, folder.png, cover.webp
+                    // Also supports: video-name-poster.jpg, movie-fanart.png, etc.
                     let is_poster = POSTER_FILENAMES
                         .iter()
-                        .any(|&p| name_lower.starts_with(p));
+                        .any(|&p| name_lower.starts_with(p))
+                        || name_lower.contains("-poster")
+                        || name_lower.contains("-fanart")
+                        || name_lower.contains("-cover")
+                        || name_lower.contains("-thumb")
+                        || name_lower.contains("-thumbnail")
+                        || name_lower.contains("-clearlogo");
 
                     if is_poster {
                         let target_path = target_folder.join(name);
