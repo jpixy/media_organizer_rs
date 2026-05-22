@@ -351,6 +351,9 @@ pub struct OrganizeConfig {
     /// Whether to move poster images. Default: true.
     #[serde(default = "default_true")]
     pub move_posters: bool,
+    /// Whether to move OST (original soundtrack) folders. Default: true.
+    #[serde(default = "default_true")]
+    pub move_ost: bool,
 }
 
 fn default_download_posters() -> bool {
@@ -394,6 +397,7 @@ impl Default for OrganizeConfig {
             move_samples: default_true(),
             move_extras: default_true(),
             move_posters: default_true(),
+            move_ost: default_true(),
         }
     }
 }

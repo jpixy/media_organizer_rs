@@ -165,6 +165,8 @@ pub struct PlannerConfig {
     pub move_extras: bool,
     /// Whether to move poster images.
     pub move_posters: bool,
+    /// Whether to move OST (original soundtrack) folders.
+    pub move_ost: bool,
 }
 
 impl Default for PlannerConfig {
@@ -182,6 +184,7 @@ impl Default for PlannerConfig {
             move_samples: true,
             move_extras: true,
             move_posters: true,
+            move_ost: true,
         }
     }
 }
@@ -235,6 +238,7 @@ impl Planner {
 
         Ok(Self {
             config: PlannerConfig {
+                min_confidence: 0.7,
                 ai_enabled,
                 download_posters: config.organize.download_posters,
                 poster_size: config.organize.poster_size.clone(),
@@ -242,7 +246,11 @@ impl Planner {
                 generate_movie_nfo: config.organize.generate_movie_nfo,
                 generate_tv_episode_nfo: config.organize.generate_tv_episode_nfo,
                 generate_tv_season_nfo: config.organize.generate_tv_season_nfo,
-                ..PlannerConfig::default()
+                move_subtitles: config.organize.move_subtitles,
+                move_samples: config.organize.move_samples,
+                move_extras: config.organize.move_extras,
+                move_posters: config.organize.move_posters,
+                move_ost: config.organize.move_ost,
             },
             parser: FilenameParser::new(),
             tmdb_client,
@@ -5397,6 +5405,25 @@ impl Planner {
             "samples",
         ];
 
+        // OST (Original Soundtrack) folder patterns (case-insensitive)
+        // Note: These patterns check for EXACT matches or containment
+        // "音乐" can match "音乐" but not "Extras" due to word boundary checks
+        const OST_PATTERNS: &[&str] = &[
+            "ost",
+            "soundtrack",
+            " soundtrack",
+            "原声带",
+            "原声音乐",
+            "audio",
+            "music",
+            "score",
+        ];
+
+        // Chinese keywords that indicate OST folders (require exact match or suffix)
+        const OST_CHINESE_PATTERNS: &[&str] = &[
+            "音乐",
+        ];
+
         // Read source directory
         let entries = match std::fs::read_dir(source_dir) {
             Ok(entries) => entries,
@@ -5429,7 +5456,7 @@ impl Planner {
 
                     operations.push(Operation {
                         op: OperationType::Move,
-                        from: Some(path),
+                        from: Some(path.clone()),
                         to: target_path,
                         url: None,
                         content_ref: None,
@@ -5458,7 +5485,7 @@ impl Planner {
 
                         operations.push(Operation {
                             op: OperationType::Move,
-                            from: Some(path),
+                            from: Some(path.clone()),
                             to: target_path,
                             url: None,
                             content_ref: None,
@@ -5479,7 +5506,7 @@ impl Planner {
 
                         operations.push(Operation {
                             op: OperationType::Move,
-                            from: Some(path),
+                            from: Some(path.clone()),
                             to: target_path,
                             url: None,
                             content_ref: None,
@@ -5503,11 +5530,49 @@ impl Planner {
 
                         operations.push(Operation {
                             op: OperationType::Move,
-                            from: Some(path),
+                            from: Some(path.clone()),
                             to: target_path,
                             url: None,
                             content_ref: None,
                         });
+                    }
+                }
+
+                // Check for OST (Original Soundtrack) folders
+                if self.config.move_ost {
+                    // English patterns: exact match OR contains the pattern (but not as substring of another word)
+                    let is_english_ost = OST_PATTERNS.iter().any(|&p| {
+                        name_lower == p
+                            || name_lower.ends_with(p)
+                            || name_lower.starts_with(&format!("{}-", p))
+                            || name_lower.starts_with(&format!("{}_", p))
+                            || name_lower.starts_with(&format!("{} ", p))
+                            || name_lower.contains(&format!("-{}", p))
+                            || name_lower.contains(&format!("_{}", p))
+                            || name_lower.contains(&format!(" {}", p))
+                    });
+
+                    // Chinese patterns: exact match only (to avoid "音乐" matching "Extras")
+                    let is_chinese_ost = OST_CHINESE_PATTERNS.iter().any(|&p| name_lower == p);
+
+                    let is_ost = is_english_ost || is_chinese_ost;
+
+                    if is_ost {
+                        let target_path = target_folder.join(name);
+                        tracing::debug!(
+                            "Adding OST folder move: {} -> {}",
+                            path.display(),
+                            target_path.display()
+                        );
+
+                        operations.push(Operation {
+                            op: OperationType::Move,
+                            from: Some(path.clone()),
+                            to: target_path,
+                            url: None,
+                            content_ref: None,
+                        });
+                        continue;
                     }
                 }
             }
@@ -5532,7 +5597,7 @@ impl Planner {
 
                     operations.push(Operation {
                         op: OperationType::Move,
-                        from: Some(path),
+                        from: Some(path.clone()),
                         to: target_path,
                         url: None,
                         content_ref: None,
@@ -5575,7 +5640,7 @@ impl Planner {
 
                         operations.push(Operation {
                             op: OperationType::Move,
-                            from: Some(path),
+                            from: Some(path.clone()),
                             to: target_path,
                             url: None,
                             content_ref: None,
@@ -5604,7 +5669,7 @@ impl Planner {
 
                         operations.push(Operation {
                             op: OperationType::Move,
-                            from: Some(path),
+                            from: Some(path.clone()),
                             to: target_path,
                             url: None,
                             content_ref: None,
@@ -6309,5 +6374,120 @@ mod tests {
         assert!(plan.poster_stats.is_some());
         assert_eq!(plan.poster_stats.as_ref().unwrap().download_count, 5);
         assert_eq!(plan.poster_stats.as_ref().unwrap().skipped_count, 3);
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_ost_folder() {
+        use std::fs;
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // 创建各种 OST 文件夹
+        fs::create_dir_all(source_dir.join("OST")).unwrap();
+        fs::create_dir_all(source_dir.join("Soundtrack")).unwrap();
+        fs::create_dir_all(source_dir.join("原声带")).unwrap();
+        fs::create_dir_all(source_dir.join("Music")).unwrap();
+        fs::create_dir_all(source_dir.join("audio")).unwrap();
+        // 创建一个普通视频文件
+        fs::File::create(source_dir.join("video.mp4")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_ost = true;
+        planner.config.move_extras = false;  // 禁用 extras 移动
+
+        let mut operations = Vec::new();
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, None);
+
+        // 应该移动 5 个 OST 相关文件夹
+        // OST, Soundtrack, 原声带, Music, audio
+        let move_ops: Vec<_> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .collect();
+
+        assert_eq!(move_ops.len(), 5, "Expected 5 OST folders to be moved, got {}", move_ops.len());
+
+        let moved_folders: Vec<String> = move_ops
+            .iter()
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+
+        assert!(moved_folders.iter().any(|s| s == "OST"));
+        assert!(moved_folders.iter().any(|s| s == "Soundtrack"));
+        assert!(moved_folders.iter().any(|s| s == "原声带"));
+        assert!(moved_folders.iter().any(|s| s == "Music"));
+        assert!(moved_folders.iter().any(|s| s == "audio"));
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_ost_disabled() {
+        use std::fs;
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // 创建 OST 文件夹
+        fs::create_dir_all(source_dir.join("OST")).unwrap();
+        fs::create_dir_all(source_dir.join("Soundtrack")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_ost = false;  // 禁用 OST 移动
+
+        let mut operations = Vec::new();
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, None);
+
+        // 当 move_ost = false 时，不应该移动任何 OST 文件夹
+        let move_ops: Vec<_> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .collect();
+
+        assert_eq!(move_ops.len(), 0, "Expected 0 OST folders when move_ost is disabled");
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_ost_tv_series() {
+        use std::fs;
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // 创建 TV 系列的 OST 文件夹
+        fs::create_dir_all(source_dir.join("Breaking Bad OST")).unwrap();
+        fs::create_dir_all(source_dir.join("绝命毒师原声带")).unwrap();
+        fs::create_dir_all(source_dir.join("Soundtrack")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_ost = true;
+
+        let mut operations = Vec::new();
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, None);
+
+        // 应该移动 3 个 OST 文件夹
+        let move_ops: Vec<_> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .collect();
+
+        assert_eq!(move_ops.len(), 3, "Expected 3 OST folders for TV series");
+
+        let moved_folders: Vec<String> = move_ops
+            .iter()
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+
+        assert!(moved_folders.iter().any(|s| s == "Breaking Bad OST"));
+        assert!(moved_folders.iter().any(|s| s == "绝命毒师原声带"));
+        assert!(moved_folders.iter().any(|s| s == "Soundtrack"));
     }
 }

@@ -32,6 +32,9 @@ move_extras = true
 # 是否移动海报图片。默认: true
 # 海报图片: poster.jpg, folder.png, cover.webp 等
 move_posters = true
+# 是否移动 OST 原声带目录。默认: true
+# OST 目录: OST/, Soundtrack/, 原声带/, 音乐/, audio/, music/ 等
+move_ost = true
 
 [network]
 # 是否启用代理。默认: false

@@ -1,6 +1,6 @@
 # Media Organizer 完整用户手册
 
-版本 1.0 | 最后更新: 2026年4月
+版本 1.1 | 最后更新: 2026年5月
 
 ---
 
@@ -646,6 +646,128 @@ mediaorganizer search --director "克里斯托弗·诺兰"
 - 支持不同分辨率、编码的版本识别
 - 自动保留最佳质量版本
 - 可配置重复处理策略
+
+### 8.4 辅助文件/文件夹移动
+
+Media Organizer 支持自动识别并移动各类辅助内容（字幕、海报、原声带等）到目标目录，所有内容**原样保留文件名和结构**。
+
+| 配置项 | 默认值 | 功能 |
+|--------|-------|------|
+| `move_subtitles` | `true` | 移动字幕文件和文件夹 |
+| `move_samples` | `true` | 移动 Sample 样例视频和文件夹 |
+| `move_extras` | `true` | 移动 Extras 附加内容文件夹 |
+| `move_posters` | `true` | 移动海报、背景图、Clearlogo 等图片 |
+| `move_ost` | `true` | 移动 OST 原声带文件夹（新增） |
+
+---
+
+#### 8.4.1 字幕文件/文件夹
+
+| 类型 | 匹配规则 |
+|------|---------|
+| **文件夹** | 精确匹配：`sub`/`subs`/`subtitle`/`subtitles`/`字幕` |
+| **文件** | 扩展名：`srt`/`ass`/`ssa`/`sub`/`idx`/`vtt`/`sup`/`smi` |
+
+**示例：**
+```
+源目录/
+├── Sub/              → 移动
+├── 字幕/             → 移动
+├── video.chs.srt     → 移动
+└── video.ja.ass      → 移动
+```
+
+---
+
+#### 8.4.2 Sample 样例视频
+
+| 类型 | 匹配规则 |
+|------|---------|
+| **文件夹** | 精确匹配：`sample`/`samples` |
+| **文件** | 文件名含 "sample"（不含 "sampler"）+ 视频格式 |
+| **视频格式** | `mkv`/`mp4`/`avi`/`mov`/`wmv`/`m4v`/`ts`/`m2ts`/`flv`/`webm` |
+
+**示例：**
+```
+源目录/
+├── sample/              → 移动
+├── video.sample.mkv     → 移动
+└── video.sampler.mp4    → 不移动（含 sampler）
+```
+
+---
+
+#### 8.4.3 Extras 附加内容
+
+| 匹配模式 | 示例 |
+|---------|------|
+| **精确匹配** | `extras`/`extra`/`bonus`/`featurettes`/`making of`/`deleted scenes` |
+| **后缀模式** | `.extras`/`-extras`/`_extras`/`.featurette`/`.sample` |
+
+**示例：**
+```
+源目录/
+├── Extras/              → 移动
+├── Bonus/               → 移动
+├── Deleted Scenes/      → 移动
+└── Making Of/           → 移动
+```
+
+---
+
+#### 8.4.4 海报/Fanart/Clearlogo
+
+| 类型 | 匹配规则 |
+|------|---------|
+| **文件夹** | 精确匹配：`poster`/`posters`/`folder`/`cover` |
+| **图片文件** | 扩展名：`jpg`/`jpeg`/`png`/`webp` + 文件名匹配规则 |
+| **文件名匹配** | 前缀：`poster`/`folder`/`cover`/`thumb`/`thumbnail`/`海报`/`封面` |
+| **后缀模式** | `-poster`/`-fanart`/`-cover`/`-thumb`/`-thumbnail`/`-clearlogo` |
+| **媒体标题匹配** | 文件名包含媒体标题（中英文） |
+
+**示例：**
+```
+源目录/
+├── poster.jpg           → 移动
+├── folder.png           → 移动
+├── 海报.webp            → 移动
+├── Inception-poster.jpg → 移动
+├── movie-fanart.png     → 移动
+└── clearlogo.png        → 移动
+```
+
+---
+
+#### 8.4.5 OST 原声带文件夹（新增）
+
+| 匹配类型 | 示例 |
+|---------|------|
+| **英文精确匹配** | `ost`/`soundtrack`/`audio`/`music`/`score` |
+| **英文后缀模式** | `xxx-ost`/`xxx_soundtrack`/`xxx audio` |
+| **中文精确匹配** | `原声带`/`原声音乐`/`音乐` |
+
+**示例：**
+```
+源目录/
+├── OST/                 → 移动
+├── Soundtrack/          → 移动
+├── 原声带/              → 移动
+├── 音乐/                → 移动
+└── Inception-OST/       → 移动
+```
+
+---
+
+#### 8.4.6 工作流程
+
+所有辅助文件移动操作在 `plan` 阶段识别并添加到计划中，在 `execute` 阶段与主视频文件一同原子性移动：
+
+1. 扫描源目录 → 2. 识别各类辅助内容 → 3. 生成移动操作 → 4. 原样移动到目标目录
+
+**重要说明：**
+- 所有操作保留原始文件名和结构
+- 支持电影和电视剧两种媒体类型
+- 可通过配置项独立开关各类型的移动
 
 ---
 
