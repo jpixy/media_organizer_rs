@@ -30,6 +30,7 @@ fn create_test_plan_item(path: &str, target_path: &str) -> PlanItem {
             url: None,
             content_ref: None,
         }],
+        poster_download: None,
     }
 }
 

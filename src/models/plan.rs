@@ -6,6 +6,15 @@ use super::media::{
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Poster statistics.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PosterStats {
+    /// Number of posters that will be downloaded.
+    pub download_count: usize,
+    /// Number of posters skipped (local image exists).
+    pub skipped_count: usize,
+}
+
 /// Plan file structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Plan {
@@ -25,6 +34,9 @@ pub struct Plan {
     pub samples: Vec<SampleItem>,
     /// Unknown/failed files.
     pub unknown: Vec<UnknownItem>,
+    /// Poster download statistics.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_stats: Option<PosterStats>,
 }
 
 /// A single item in the plan.
@@ -56,6 +68,20 @@ pub struct PlanItem {
     pub target: TargetInfo,
     /// Operations to perform.
     pub operations: Vec<Operation>,
+    /// Poster download status for this item.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_download: Option<PosterDownloadStatus>,
+}
+
+/// Poster download status for a single item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PosterDownloadStatus {
+    /// Poster will be downloaded.
+    Download,
+    /// Poster download skipped (local image exists).
+    SkippedLocalExists,
+    /// No poster available.
+    NotAvailable,
 }
 
 /// Plan item status.

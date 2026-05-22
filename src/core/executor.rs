@@ -281,6 +281,14 @@ impl Executor {
 
         let total_time = total_start.elapsed();
 
+        // Print poster download summary from plan stats
+        if let Some(ref poster_stats) = plan.poster_stats {
+            println!("{}", "[Poster Download Summary]".bold().green());
+            println!("  {} {}", "Will download:".bold(), poster_stats.download_count);
+            println!("  {} {}", "Skipped (local image exists):".bold(), poster_stats.skipped_count);
+            println!();
+        }
+
         // Print summary
         println!("{}", "[Execution Summary]".bold().green());
         println!("  {} {}", "Successful operations:".bold(), success_count);

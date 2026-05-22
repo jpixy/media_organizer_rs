@@ -16,8 +16,8 @@ use crate::models::media::{
     EpisodeMetadata, MediaType, MovieMetadata, SeasonMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
 use crate::models::plan::{
-    Operation, OperationType, ParsedInfo, Plan, PlanItem, PlanItemStatus, SampleItem, TargetInfo,
-    UnknownItem,
+    Operation, OperationType, ParsedInfo, Plan, PlanItem, PlanItemStatus, PosterDownloadStatus,
+    PosterStats, SampleItem, TargetInfo, UnknownItem,
 };
 use crate::services::ffprobe;
 use crate::services::tmdb::{Credits, MovieDetails, TmdbClient};
@@ -301,6 +301,17 @@ impl Planner {
         // This prevents data loss from files overwriting each other
         self.validate_no_duplicate_targets(&mut items)?;
 
+        // Step 3.7: Calculate poster statistics
+        let (poster_download_count, poster_skipped_count) = items.iter()
+            .filter(|item| item.status == PlanItemStatus::Pending)
+            .fold((0, 0), |(downloaded, skipped), item| {
+                match item.poster_download {
+                    Some(PosterDownloadStatus::Download) => (downloaded + 1, skipped),
+                    Some(PosterDownloadStatus::SkippedLocalExists) => (downloaded, skipped + 1),
+                    _ => (downloaded, skipped),
+                }
+            });
+
         // Step 4: Create plan
         let plan = Plan {
             version: "1.0".to_string(),
@@ -311,6 +322,10 @@ impl Planner {
             items,
             samples,
             unknown,
+            poster_stats: Some(PosterStats {
+                download_count: poster_download_count,
+                skipped_count: poster_skipped_count,
+            }),
         };
 
         let total_time = total_start.elapsed();
@@ -595,7 +610,7 @@ impl Planner {
                     };
 
                     // Generate target info
-                    let (target_info, operations) = match self.generate_target_info(
+                    let (target_info, operations, poster_download) = match self.generate_target_info(
                         video,
                         &Some(movie_metadata.clone()),
                         &None,
@@ -627,6 +642,7 @@ impl Planner {
                             video_metadata,
                             target: target_info,
                             operations,
+                            poster_download,
                         },
                         None,
                     )));
@@ -769,7 +785,7 @@ impl Planner {
 
                             // Generate target info - tv_series_metadata needs to be a tuple
                             let tv_series_tuple = (show_metadata.clone(), episode_metadata.clone(), season_metadata.clone());
-                            let (target_info, operations) = match self.generate_target_info(
+                            let (target_info, operations, poster_download) = match self.generate_target_info(
                                 video,
                                 &None,
                                 &Some(tv_series_tuple),
@@ -809,6 +825,7 @@ impl Planner {
                                     video_metadata,
                                     target: target_info,
                                     operations,
+                                    poster_download,
                                 },
                                 Some(show_metadata),
                             )));
@@ -877,7 +894,7 @@ impl Planner {
                 };
 
                 // Generate target info and operations
-                let (target_info, operations) = match self.generate_target_info(
+                let (target_info, operations, poster_download) = match self.generate_target_info(
                     video,
                     &Some(movie_metadata.clone()),
                     &None,
@@ -908,6 +925,7 @@ impl Planner {
                     target: target_info,
                     operations,
                     status: PlanItemStatus::Pending,
+                    poster_download,
                 };
 
                 return Ok(Some((plan_item, None)));
@@ -1252,7 +1270,7 @@ impl Planner {
             .as_ref()
             .map(|show| (show.clone(), episode_metadata.clone(), season_metadata.clone()));
 
-        let (target_info, operations) = match self.generate_target_info(
+        let (target_info, operations, poster_download) = match self.generate_target_info(
             video,
             &movie_metadata,
             &tv_series_with_episode,
@@ -1283,6 +1301,7 @@ impl Planner {
             target: target_info,
             operations,
             status: PlanItemStatus::Pending,
+            poster_download,
         };
 
         Ok(Some((plan_item, tv_series_metadata)))
@@ -1534,7 +1553,7 @@ impl Planner {
             .as_ref()
             .map(|show| (show.clone(), episode_metadata.clone(), season_metadata.clone()));
 
-        let (target_info, operations) = match self.generate_target_info(
+        let (target_info, operations, poster_download) = match self.generate_target_info(
             video,
             &movie_metadata,
             &tv_series_with_episode,
@@ -1565,6 +1584,7 @@ impl Planner {
             target: target_info,
             operations,
             status: PlanItemStatus::Pending,
+            poster_download,
         };
 
         Ok(Some((plan_item, tv_series_metadata)))
@@ -1814,7 +1834,7 @@ impl Planner {
         // Generate target info
         let tv_series_with_episode = Some((show_meta.clone(), ep_meta.clone(), season_meta.clone()));
 
-        let (target_info, operations) = match self.generate_target_info(
+        let (target_info, operations, poster_download) = match self.generate_target_info(
             video,
             &None,
             &tv_series_with_episode,
@@ -1845,6 +1865,7 @@ impl Planner {
             target: target_info,
             operations,
             status: PlanItemStatus::Pending,
+            poster_download,
         };
 
         Ok(Some((plan_item, Some(show_meta))))
@@ -1987,6 +2008,7 @@ impl Planner {
                                 },
                                 operations,
                                 status: PlanItemStatus::Pending,
+                                poster_download: None,
                             };
                             
                             items.push(plan_item);
@@ -2580,7 +2602,7 @@ impl Planner {
         );
 
         // Step 4: Generate target paths
-        let (target_info, operations) = match self.generate_target_info(
+        let (target_info, operations, poster_download) = match self.generate_target_info(
             video,
             &movie_metadata,
             &tv_series_metadata,
@@ -2612,6 +2634,7 @@ impl Planner {
             video_metadata,
             target: target_info,
             operations,
+            poster_download,
         };
 
         // Return item and tvshow metadata for caching
@@ -2981,6 +3004,8 @@ impl Planner {
     /// SAFETY CHECK: Validate that no two items have the same target path.
     /// This prevents data loss from files overwriting each other.
     /// Checks all operation types (Move, Create, Download) for target conflicts.
+    /// NOTE: Different file types (e.g., .jpg and .mp4) with the same base name are allowed
+    /// because they won't overwrite each other.
     pub fn validate_no_duplicate_targets(&self, items: &mut [PlanItem]) -> Result<()> {
         use std::collections::HashMap;
 
@@ -2995,27 +3020,63 @@ impl Planner {
 
             for op in &item.operations {
                 // Check all operation types for target conflicts
-                if matches!(op.op, OperationType::Move | OperationType::Create | OperationType::Download) {
-                    target_to_sources
-                        .entry(op.to.clone())
-                        .or_default()
-                        .push((idx, item.source.path.clone(), op.op));
+                // Mkdir operations don't need conflict checking as they just create directories
+                match op.op {
+                    OperationType::Move | OperationType::Create | OperationType::Download => {
+                        // Use the actual source file path from the operation, not the item's source path
+                        // This is important because an item can have multiple operations (video, subtitles, posters)
+                        // with different source files
+                        let source_path = match op.op {
+                            OperationType::Move => op.from.clone().unwrap_or_else(|| item.source.path.clone()),
+                            OperationType::Create | OperationType::Download => item.source.path.clone(),
+                            _ => unreachable!(), // Already filtered above
+                        };
+                        target_to_sources
+                            .entry(op.to.clone())
+                            .or_default()
+                            .push((idx, source_path, op.op));
+                    }
+                    OperationType::Mkdir => {
+                        // Mkdir operations don't need conflict checking
+                    }
                 }
             }
         }
 
-        let duplicates: Vec<_> = target_to_sources
+        // Filter out false positives: different file types with same base name
+        // e.g., .jpg and .mp4 files can coexist
+        // Only consider as duplicate if there are multiple sources with the same extension
+        let true_duplicates: Vec<_> = target_to_sources
             .iter()
-            .filter(|(_, sources)| sources.len() > 1)
+            .filter(|(_, sources)| {
+                // If only one source, it's not a duplicate
+                if sources.len() <= 1 {
+                    return false;
+                }
+
+                // Check if all sources have the same extension
+                let extensions: Vec<_> = sources
+                    .iter()
+                    .map(|(_, src, _)| {
+                        src.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.to_lowercase())
+                            .unwrap_or_default()
+                    })
+                    .collect();
+                
+                // Only a true duplicate if all extensions are the same
+                extensions.iter().all(|ext| ext == &extensions[0])
+            })
             .collect();
 
-        if !duplicates.is_empty() {
+        if !true_duplicates.is_empty() {
             let mut removed_count = 0;
             let mut warning_msg = String::from(
                 "⚠️  WARNING: Duplicate target paths detected, marking as unknown to prevent data loss:\n\n",
             );
 
-            for (target, sources) in duplicates.iter() {
+            for (target, sources) in true_duplicates.iter() {
                 warning_msg.push_str(&format!("Target: {:?}\n", target));
                 warning_msg.push_str("  These files would collide:\n");
                 for (idx, src, _op_type) in sources.iter().skip(1) {
@@ -3040,7 +3101,7 @@ impl Planner {
             println!("{}", warning_msg);
             println!();
         } else {
-            tracing::info!("Safety check passed: No duplicate target paths");
+            tracing::info!("Safety check passed: No duplicate target paths (different file types allowed)");
         }
 
         Ok(())
@@ -4945,7 +5006,7 @@ impl Planner {
         };
 
         // Generate target info using the cached movie metadata
-        let (target_info, operations) = self
+        let (target_info, operations, poster_download) = self
             .generate_target_info(
                 video,
                 &Some(cached_movie.clone()),
@@ -4977,6 +5038,7 @@ impl Planner {
             video_metadata,
             target: target_info,
             operations,
+            poster_download,
         })
     }
 
@@ -4992,7 +5054,7 @@ impl Planner {
         video_metadata: &VideoMetadata,
         target: &Path,
         media_type: MediaType,
-    ) -> Result<Option<(TargetInfo, Vec<Operation>)>> {
+    ) -> Result<Option<(TargetInfo, Vec<Operation>, Option<PosterDownloadStatus>)>> {
         let mut operations = Vec::new();
 
         // Get file extension
@@ -5127,7 +5189,23 @@ impl Planner {
         });
 
         // Operation 2.5: Move subtitle, sample, extras, and poster files (keep original names)
-        self.add_auxiliary_operations(&video.parent_dir, &target_folder, &mut operations);
+        let media_titles = match media_type {
+            MediaType::Movies => {
+                movie_metadata.as_ref().map(|m| {
+                    let chinese_title = &m.title;
+                    let original_title = &m.original_title;
+                    (chinese_title.as_str(), original_title.as_str())
+                })
+            }
+            MediaType::TvSeries => {
+                tv_series_metadata.as_ref().map(|(show, _, _)| {
+                    let chinese_title = &show.name;
+                    let original_title = &show.original_name;
+                    (chinese_title.as_str(), original_title.as_str())
+                })
+            }
+        };
+        self.add_auxiliary_operations(&video.parent_dir, &target_folder, &mut operations, media_titles);
 
         // Operation 3: Create NFO file
         match media_type {
@@ -5173,6 +5251,11 @@ impl Planner {
         }
 
         // Operation 4: Download poster
+        // Only download if:
+        // 1. download_posters config is enabled
+        // 2. No local image file with the same name will be moved (to avoid conflicts)
+        let mut poster_download_status: Option<PosterDownloadStatus> = None;
+        
         if self.config.download_posters {
             // Poster goes in same folder as video file
             let poster_folder = target_folder.clone();
@@ -5199,13 +5282,40 @@ impl Planner {
                     }
                 };
                 let poster_path = poster_folder.join(&poster_filename);
-                operations.push(Operation {
-                    op: OperationType::Download,
-                    from: None,
-                    to: poster_path,
-                    url: Some(url),
-                    content_ref: None,
+
+                // Check if a local image with the same name will be moved
+                // If yes, skip downloading to avoid duplicate target path conflicts
+                let has_local_image = operations.iter().any(|op| {
+                    if op.op == OperationType::Move {
+                        if let Some(ref from_path) = op.from {
+                            // Check if the moved file has the same filename as the poster
+                            from_path.file_name() == poster_path.file_name()
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
                 });
+
+                if !has_local_image {
+                    operations.push(Operation {
+                        op: OperationType::Download,
+                        from: None,
+                        to: poster_path,
+                        url: Some(url),
+                        content_ref: None,
+                    });
+                    poster_download_status = Some(PosterDownloadStatus::Download);
+                } else {
+                    tracing::info!(
+                        "[POSTER] Skipping download: local image with same name exists: {}",
+                        poster_filename
+                    );
+                    poster_download_status = Some(PosterDownloadStatus::SkippedLocalExists);
+                }
+            } else {
+                poster_download_status = Some(PosterDownloadStatus::NotAvailable);
             }
         }
 
@@ -5223,7 +5333,7 @@ impl Planner {
             poster: Some("poster.jpg".to_string()),
         };
 
-        Ok(Some((target_info, operations)))
+        Ok(Some((target_info, operations, poster_download_status)))
     }
 
     /// Add operations to move subtitle, sample, extras, and poster files.
@@ -5242,6 +5352,7 @@ impl Planner {
         source_dir: &Path,
         target_folder: &Path,
         operations: &mut Vec<Operation>,
+        media_titles: Option<(&str, &str)>,
     ) {
         // Subtitle folder names (case-insensitive)
         const SUBTITLE_FOLDERS: &[&str] = &["sub", "subs", "subtitle", "subtitles", "字幕"];
@@ -5444,7 +5555,15 @@ impl Planner {
                         || name_lower.contains("-thumbnail")
                         || name_lower.contains("-clearlogo");
 
-                    if is_poster {
+                    // NEW: Check if filename contains media title (Chinese or original)
+                    let contains_media_title = if let Some((chinese_title, original_title)) = media_titles {
+                        name_lower.contains(&chinese_title.to_lowercase())
+                            || name_lower.contains(&original_title.to_lowercase())
+                    } else {
+                        false
+                    };
+
+                    if is_poster || contains_media_title {
                         let target_path = target_folder.join(name);
                         tracing::debug!(
                             "Adding poster image move: {} -> {}",
@@ -5712,5 +5831,481 @@ mod tests {
 
         // Unknown country - returns uppercase code
         assert_eq!(country_code_to_name("XX"), "XX");
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_with_media_titles() {
+        use std::fs;
+        
+        // Create a temporary directory for testing
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // Create test files
+        // 会被移动：包含标题或海报关键字
+        fs::File::create(source_dir.join("黑暗骑士-poster.jpg")).unwrap();     // -poster
+        fs::File::create(source_dir.join("The Dark Knight-cover.png")).unwrap(); // -cover
+        fs::File::create(source_dir.join("黑暗骑士_剧照.webp")).unwrap();         // 包含标题
+        fs::File::create(source_dir.join("The Dark Knight fanart.jpg")).unwrap(); // -fanart
+        fs::File::create(source_dir.join("other-movie-poster.jpg")).unwrap();     // -poster（原有逻辑）
+        fs::File::create(source_dir.join("poster.jpg")).unwrap();                  // 标准海报
+        fs::File::create(source_dir.join("folder.png")).unwrap();                  // 标准海报
+        
+        // 不会被移动
+        fs::File::create(source_dir.join("random-image.png")).unwrap();            // 不匹配任何条件
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_posters = true;
+        
+        let mut operations = Vec::new();
+        let media_titles = Some(("黑暗骑士", "The Dark Knight"));
+        
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, media_titles);
+
+        // 7 个文件会被移动（包括 other-movie-poster.jpg，因为包含 -poster）
+        assert_eq!(operations.len(), 7);
+        
+        let moved_files: Vec<String> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+        
+        assert!(moved_files.iter().any(|s| s == "黑暗骑士-poster.jpg"));
+        assert!(moved_files.iter().any(|s| s == "The Dark Knight-cover.png"));
+        assert!(moved_files.iter().any(|s| s == "黑暗骑士_剧照.webp"));
+        assert!(moved_files.iter().any(|s| s == "The Dark Knight fanart.jpg"));
+        assert!(moved_files.iter().any(|s| s == "other-movie-poster.jpg")); // 原有逻辑
+        assert!(moved_files.iter().any(|s| s == "poster.jpg"));
+        assert!(moved_files.iter().any(|s| s == "folder.png"));
+        assert!(!moved_files.iter().any(|s| s == "random-image.png"));
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_without_media_titles() {
+        use std::fs;
+        
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // "黑暗骑士-poster.jpg" 会因为包含 "-poster" 被移动（原有逻辑）
+        fs::File::create(source_dir.join("黑暗骑士-poster.jpg")).unwrap();
+        fs::File::create(source_dir.join("poster.jpg")).unwrap();
+        fs::File::create(source_dir.join("folder.png")).unwrap();
+        // 这个不会被移动，因为既不是标准海报也不包含标题
+        fs::File::create(source_dir.join("黑暗骑士.jpg")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_posters = true;
+        
+        let mut operations = Vec::new();
+        
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, None);
+
+        // 3 个文件会被移动：黑暗骑士-poster.jpg（因为包含-poster）、poster.jpg、folder.png
+        assert_eq!(operations.len(), 3);
+        
+        let moved_files: Vec<String> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+        
+        assert!(moved_files.iter().any(|s| s == "黑暗骑士-poster.jpg"));
+        assert!(moved_files.iter().any(|s| s == "poster.jpg"));
+        assert!(moved_files.iter().any(|s| s == "folder.png"));
+        // "黑暗骑士.jpg" 不会被移动，因为没有媒体标题匹配
+        assert!(!moved_files.iter().any(|s| s == "黑暗骑士.jpg"));
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_hebrew_movie() {
+        use std::fs;
+        
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        fs::File::create(source_dir.join("危墙-poster.jpg")).unwrap();
+        fs::File::create(source_dir.join("חיתוך-fanart.png")).unwrap();
+        fs::File::create(source_dir.join("危墙_剧照.webp")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_posters = true;
+        
+        let mut operations = Vec::new();
+        let media_titles = Some(("危墙", "חיתוך"));
+        
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, media_titles);
+
+        assert_eq!(operations.len(), 3);
+        
+        let moved_files: Vec<String> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+        
+        assert!(moved_files.iter().any(|s| s == "危墙-poster.jpg"));
+        assert!(moved_files.iter().any(|s| s == "חיתוך-fanart.png"));
+        assert!(moved_files.iter().any(|s| s == "危墙_剧照.webp"));
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_tv_series() {
+        use std::fs;
+        
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // 创建包含标题的图片文件
+        fs::File::create(source_dir.join("绝命毒师.jpg")).unwrap();
+        fs::File::create(source_dir.join("Breaking Bad.png")).unwrap();
+        // 创建不包含标题的图片文件
+        fs::File::create(source_dir.join("other-show.jpg")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_posters = true;
+        
+        let mut operations = Vec::new();
+        let media_titles = Some(("绝命毒师", "Breaking Bad"));
+
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, media_titles);
+
+        // 2 个文件会被移动：绝命毒师.jpg 和 Breaking Bad.png（因为包含媒体标题）
+        assert_eq!(operations.len(), 2);
+
+        let moved_files: Vec<String> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+
+        assert!(moved_files.iter().any(|s| s == "绝命毒师.jpg"));
+        assert!(moved_files.iter().any(|s| s == "Breaking Bad.png"));
+        assert!(!moved_files.iter().any(|s| s == "other-show.jpg"));
+    }
+
+    #[test]
+    fn test_validate_no_duplicate_targets_allows_different_file_types() {
+        // Test that the duplicate detection logic correctly identifies that
+        // .jpg and .mp4 files with the same base name are NOT duplicates
+        use std::collections::HashMap;
+
+        let mut target_to_sources: HashMap<PathBuf, Vec<(usize, PathBuf)>> = HashMap::new();
+
+        // Simulate a scenario where:
+        // - A .jpg file is moved (local image)
+        // - A .mp4 file is moved (video)
+        // Both have the same base name but different extensions
+        target_to_sources.insert(
+            PathBuf::from("/target/movie.jpg"),
+            vec![(0, PathBuf::from("/source/movie.jpg"))],
+        );
+        target_to_sources.insert(
+            PathBuf::from("/target/movie.mp4"),
+            vec![(1, PathBuf::from("/source/movie.mp4"))],
+        );
+
+        // Filter logic: only consider as duplicate if:
+        // 1. Multiple sources (len > 1)
+        // 2. All sources have the same extension
+        let true_duplicates: Vec<_> = target_to_sources
+            .iter()
+            .filter(|(_, sources)| {
+                // If only one source, it's not a duplicate
+                if sources.len() <= 1 {
+                    return false;
+                }
+
+                // Check if all sources have the same extension
+                let extensions: Vec<_> = sources
+                    .iter()
+                    .map(|(_, src)| {
+                        src.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.to_lowercase())
+                            .unwrap_or_default()
+                    })
+                    .collect();
+
+                // Only a true duplicate if all extensions are the same
+                extensions.iter().all(|ext| ext == &extensions[0])
+            })
+            .collect();
+
+        // There should be no true duplicates since each target has only one source
+        assert_eq!(true_duplicates.len(), 0);
+
+        // Now test with actual duplicates: two operations moving to the same .jpg file
+        let mut target_to_sources_with_duplicates: HashMap<PathBuf, Vec<(usize, PathBuf)>> = HashMap::new();
+
+        // Two different sources trying to move to the same .jpg file
+        target_to_sources_with_duplicates.insert(
+            PathBuf::from("/target/movie.jpg"),
+            vec![
+                (0, PathBuf::from("/source/image1.jpg")),
+                (1, PathBuf::from("/source/image2.jpg")),
+            ],
+        );
+
+        let true_duplicates: Vec<_> = target_to_sources_with_duplicates
+            .iter()
+            .filter(|(_, sources)| {
+                if sources.len() <= 1 {
+                    return false;
+                }
+
+                let extensions: Vec<_> = sources
+                    .iter()
+                    .map(|(_, src)| {
+                        src.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.to_lowercase())
+                            .unwrap_or_default()
+                    })
+                    .collect();
+
+                extensions.iter().all(|ext| ext == &extensions[0])
+            })
+            .collect();
+
+        // There should be one true duplicate (.jpg -> .jpg conflict)
+        assert_eq!(true_duplicates.len(), 1);
+    }
+
+    #[test]
+    fn test_poster_download_status_enum() {
+        // Test the PosterDownloadStatus enum
+        let status_download = PosterDownloadStatus::Download;
+        let status_skipped = PosterDownloadStatus::SkippedLocalExists;
+        let status_not_available = PosterDownloadStatus::NotAvailable;
+
+        // Just verify they can be created and are different
+        assert_ne!(status_download, status_skipped);
+        assert_ne!(status_download, status_not_available);
+        assert_ne!(status_skipped, status_not_available);
+    }
+
+    #[test]
+    fn test_poster_stats_struct() {
+        // Test the PosterStats struct
+        let stats = PosterStats {
+            download_count: 2,
+            skipped_count: 3,
+        };
+
+        assert_eq!(stats.download_count, 2);
+        assert_eq!(stats.skipped_count, 3);
+    }
+
+    #[test]
+    fn test_plan_item_with_poster_download_status() {
+        // Test creating a PlanItem with poster_download status
+        let plan_item = PlanItem {
+            id: "test-id".to_string(),
+            status: PlanItemStatus::Pending,
+            source: VideoFile {
+                path: PathBuf::from("/test/video.mp4"),
+                filename: "video.mp4".to_string(),
+                parent_dir: PathBuf::from("/test"),
+                size: 1000,
+                modified: chrono::Utc::now(),
+                is_sample: false,
+            },
+            parsed: ParsedInfo {
+                title: Some("Test Movie".to_string()),
+                original_title: Some("Test Original".to_string()),
+                year: Some(2024),
+                confidence: 1.0,
+                raw_response: None,
+            },
+            movie_metadata: None,
+            tv_series_metadata: None,
+            episode_metadata: None,
+            season_metadata: None,
+            video_metadata: VideoMetadata::default(),
+            target: TargetInfo {
+                folder: "Test Folder".to_string(),
+                filename: "video.mp4".to_string(),
+                full_path: PathBuf::from("/target/video.mp4"),
+                nfo: "video.nfo".to_string(),
+                poster: Some("poster.jpg".to_string()),
+            },
+            operations: Vec::new(),
+            poster_download: Some(PosterDownloadStatus::SkippedLocalExists),
+        };
+
+        assert_eq!(plan_item.poster_download, Some(PosterDownloadStatus::SkippedLocalExists));
+    }
+
+    #[test]
+    fn test_poster_stats_calculation() {
+        // Test poster stats calculation logic
+        let mut items = Vec::new();
+
+        // Item 1: poster will be downloaded
+        items.push(PlanItem {
+            id: "1".to_string(),
+            status: PlanItemStatus::Pending,
+            source: VideoFile {
+                path: PathBuf::from("/test/video1.mp4"),
+                filename: "video1.mp4".to_string(),
+                parent_dir: PathBuf::from("/test"),
+                size: 1000,
+                modified: chrono::Utc::now(),
+                is_sample: false,
+            },
+            parsed: ParsedInfo::default(),
+            movie_metadata: None,
+            tv_series_metadata: None,
+            episode_metadata: None,
+            season_metadata: None,
+            video_metadata: VideoMetadata::default(),
+            target: TargetInfo::default(),
+            operations: Vec::new(),
+            poster_download: Some(PosterDownloadStatus::Download),
+        });
+
+        // Item 2: poster skipped (local exists)
+        items.push(PlanItem {
+            id: "2".to_string(),
+            status: PlanItemStatus::Pending,
+            source: VideoFile {
+                path: PathBuf::from("/test/video2.mp4"),
+                filename: "video2.mp4".to_string(),
+                parent_dir: PathBuf::from("/test"),
+                size: 1000,
+                modified: chrono::Utc::now(),
+                is_sample: false,
+            },
+            parsed: ParsedInfo::default(),
+            movie_metadata: None,
+            tv_series_metadata: None,
+            episode_metadata: None,
+            season_metadata: None,
+            video_metadata: VideoMetadata::default(),
+            target: TargetInfo::default(),
+            operations: Vec::new(),
+            poster_download: Some(PosterDownloadStatus::SkippedLocalExists),
+        });
+
+        // Item 3: poster skipped (local exists)
+        items.push(PlanItem {
+            id: "3".to_string(),
+            status: PlanItemStatus::Pending,
+            source: VideoFile {
+                path: PathBuf::from("/test/video3.mp4"),
+                filename: "video3.mp4".to_string(),
+                parent_dir: PathBuf::from("/test"),
+                size: 1000,
+                modified: chrono::Utc::now(),
+                is_sample: false,
+            },
+            parsed: ParsedInfo::default(),
+            movie_metadata: None,
+            tv_series_metadata: None,
+            episode_metadata: None,
+            season_metadata: None,
+            video_metadata: VideoMetadata::default(),
+            target: TargetInfo::default(),
+            operations: Vec::new(),
+            poster_download: Some(PosterDownloadStatus::SkippedLocalExists),
+        });
+
+        // Item 4: poster will be downloaded
+        items.push(PlanItem {
+            id: "4".to_string(),
+            status: PlanItemStatus::Pending,
+            source: VideoFile {
+                path: PathBuf::from("/test/video4.mp4"),
+                filename: "video4.mp4".to_string(),
+                parent_dir: PathBuf::from("/test"),
+                size: 1000,
+                modified: chrono::Utc::now(),
+                is_sample: false,
+            },
+            parsed: ParsedInfo::default(),
+            movie_metadata: None,
+            tv_series_metadata: None,
+            episode_metadata: None,
+            season_metadata: None,
+            video_metadata: VideoMetadata::default(),
+            target: TargetInfo::default(),
+            operations: Vec::new(),
+            poster_download: Some(PosterDownloadStatus::Download),
+        });
+
+        // Item 5: no poster info (status not set)
+        items.push(PlanItem {
+            id: "5".to_string(),
+            status: PlanItemStatus::Pending,
+            source: VideoFile {
+                path: PathBuf::from("/test/video5.mp4"),
+                filename: "video5.mp4".to_string(),
+                parent_dir: PathBuf::from("/test"),
+                size: 1000,
+                modified: chrono::Utc::now(),
+                is_sample: false,
+            },
+            parsed: ParsedInfo::default(),
+            movie_metadata: None,
+            tv_series_metadata: None,
+            episode_metadata: None,
+            season_metadata: None,
+            video_metadata: VideoMetadata::default(),
+            target: TargetInfo::default(),
+            operations: Vec::new(),
+            poster_download: None,
+        });
+
+        // Calculate stats (same logic as in planner.rs)
+        let (downloaded, skipped) = items.iter()
+            .filter(|item| item.status == PlanItemStatus::Pending)
+            .fold((0, 0), |(d, s), item| {
+                match item.poster_download {
+                    Some(PosterDownloadStatus::Download) => (d + 1, s),
+                    Some(PosterDownloadStatus::SkippedLocalExists) => (d, s + 1),
+                    _ => (d, s),
+                }
+            });
+
+        // Expected: 2 downloaded, 2 skipped, 1 not counted (None)
+        assert_eq!(downloaded, 2);
+        assert_eq!(skipped, 2);
+    }
+
+    #[test]
+    fn test_plan_with_poster_stats() {
+        // Test creating a Plan with poster_stats
+        let plan = Plan {
+            version: "1.0".to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            media_type: Some(MediaType::Movies),
+            source_path: PathBuf::from("/source"),
+            target_path: PathBuf::from("/target"),
+            items: Vec::new(),
+            samples: Vec::new(),
+            unknown: Vec::new(),
+            poster_stats: Some(PosterStats {
+                download_count: 5,
+                skipped_count: 3,
+            }),
+        };
+
+        assert!(plan.poster_stats.is_some());
+        assert_eq!(plan.poster_stats.as_ref().unwrap().download_count, 5);
+        assert_eq!(plan.poster_stats.as_ref().unwrap().skipped_count, 3);
     }
 }

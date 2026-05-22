@@ -115,5 +115,6 @@ fn create_test_plan_item(season_meta: Option<SeasonMetadata>) -> PlanItem {
             url: None,
             content_ref: None,
         }],
+        poster_download: None,
     }
 }
