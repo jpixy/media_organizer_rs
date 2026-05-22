@@ -222,6 +222,8 @@ impl Planner {
                 api_key: api_key.clone(),
                 language: config.tmdb.language.clone(),
                 use_bearer: api_key.starts_with("eyJ"),
+                proxy_enabled: config.network.proxy_enabled,
+                proxy: config.network.proxy.clone(),
             };
             Some(TmdbClient::new(tmdb_config))
         } else {

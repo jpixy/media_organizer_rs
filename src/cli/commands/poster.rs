@@ -28,6 +28,8 @@ pub async fn download_movie_posters(path: &Path, config: &Config) -> Result<()> 
         api_key: api_key.clone(),
         language: config.tmdb.language.clone(),
         use_bearer: false,
+        proxy_enabled: config.network.proxy_enabled,
+        proxy: config.network.proxy.clone(),
     };
     
     let mut downloaded_count = 0;
@@ -285,6 +287,8 @@ pub async fn download_tv_season_posters(path: &Path, config: &Config) -> Result<
         api_key: api_key.clone(),
         language: config.tmdb.language.clone(),
         use_bearer: false,
+        proxy_enabled: config.network.proxy_enabled,
+        proxy: config.network.proxy.clone(),
     };
     
     let mut downloaded_count = 0;

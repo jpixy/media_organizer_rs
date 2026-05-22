@@ -13,6 +13,9 @@ pub struct TmdbConfig {
     pub language: String,
     /// Whether to use Bearer token authentication (API v4 style)
     pub use_bearer: bool,
+    /// Proxy settings
+    pub proxy_enabled: bool,
+    pub proxy: Option<String>,
 }
 
 impl TmdbConfig {
@@ -28,11 +31,13 @@ impl TmdbConfig {
             api_key,
             language: "zh-CN".to_string(),
             use_bearer,
+            proxy_enabled: false,
+            proxy: None,
         })
     }
 
     /// Create config from loaded application config.
-    pub fn from_config(config: &crate::models::config::TmdbConfig) -> Result<Self> {
+    pub fn from_config(config: &crate::models::config::TmdbConfig, network_config: &crate::models::config::NetworkConfig) -> Result<Self> {
         let api_key = config.api_key.clone().ok_or(crate::Error::TmdbApiKeyMissing)?;
 
         // Bearer tokens start with "eyJ" (base64 encoded JWT header)
@@ -42,6 +47,8 @@ impl TmdbConfig {
             api_key,
             language: config.language.clone(),
             use_bearer,
+            proxy_enabled: network_config.proxy_enabled,
+            proxy: network_config.proxy.clone(),
         })
     }
 }
@@ -356,8 +363,25 @@ pub struct CrewMember {
 impl TmdbClient {
     /// Create a new TMDB client.
     pub fn new(config: TmdbConfig) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
+        let mut client_builder = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(60));
+
+        // Configure proxy if enabled
+        if config.proxy_enabled {
+            if let Some(ref proxy_url) = config.proxy {
+                match reqwest::Proxy::all(proxy_url) {
+                    Ok(proxy) => {
+                        client_builder = client_builder.proxy(proxy);
+                        tracing::info!("TMDB client using proxy: {}", proxy_url);
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to configure proxy {}: {}", proxy_url, e);
+                    }
+                }
+            }
+        }
+
+        let client = client_builder
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
         Self { config, client }
@@ -417,8 +441,8 @@ impl TmdbClient {
         Fut: std::future::Future<Output = std::result::Result<reqwest::Response, reqwest::Error>>,
         R: serde::de::DeserializeOwned,
     {
-        const MAX_RETRIES: u32 = 3;
-        const INITIAL_BACKOFF_MS: u64 = 500;
+        const MAX_RETRIES: u32 = 5;
+        const INITIAL_BACKOFF_MS: u64 = 1000;
 
         let mut last_error = None;
 
@@ -429,7 +453,7 @@ impl TmdbClient {
                         return resp.json().await.map_err(crate::Error::from);
                     }
                     let status = resp.status();
-                    if status.is_server_error() && attempt < MAX_RETRIES - 1 {
+                    if (status.is_server_error() || status.as_u16() == 429) && attempt < MAX_RETRIES - 1 {
                         let backoff = INITIAL_BACKOFF_MS * 2u64.pow(attempt);
                         tracing::warn!(
                             "TMDB server error {} (attempt {}/{}), retrying in {}ms...",

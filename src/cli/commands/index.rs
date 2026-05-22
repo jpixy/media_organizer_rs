@@ -1171,7 +1171,7 @@ async fn update_collections(config: &Config) -> Result<()> {
     let mut index = indexer::load_central_index()?;
 
     // Initialize TMDB client from config
-    let tmdb_config = TmdbConfig::from_config(&config.tmdb)?;
+    let tmdb_config = TmdbConfig::from_config(&config.tmdb, &config.network)?;
     let tmdb_client = std::sync::Arc::new(TmdbClient::new(tmdb_config));
 
     // Step 1: Find movies without collection_id but with tmdb_id
@@ -1720,7 +1720,7 @@ async fn update_tv(config: &Config) -> Result<()> {
     let mut index = indexer::load_central_index()?;
 
     // Initialize TMDB client from config
-    let tmdb_config = TmdbConfig::from_config(&config.tmdb)?;
+    let tmdb_config = TmdbConfig::from_config(&config.tmdb, &config.network)?;
     let tmdb_client = TmdbClient::new(tmdb_config);
 
     // Find TV shows that need updating (seasons == 0 means no TMDB data)
