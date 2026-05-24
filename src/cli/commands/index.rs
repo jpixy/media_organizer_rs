@@ -255,16 +255,16 @@ async fn search_index(
     );
 
     match format.as_str() {
-        "json" => print_search_json(&results),
-        "simple" => print_search_simple(&results, show_status),
-        _ => print_search_table(&results, show_status),
+        "json" => print_search_json(&results, &index.disks),
+        "simple" => print_search_simple(&results, &index.disks, show_status),
+        _ => print_search_table(&results, &index.disks),
     }
 
     Ok(())
 }
 
 /// Print search results as JSON.
-fn print_search_json(results: &indexer::SearchResults) {
+fn print_search_json(results: &indexer::SearchResults, disks: &std::collections::HashMap<String, VolumeGroupInfo>) {
     #[derive(serde::Serialize)]
     struct JsonOutput {
         movies: Vec<MovieJson>,
@@ -277,6 +277,7 @@ fn print_search_json(results: &indexer::SearchResults) {
         original_title: Option<String>,
         year: Option<u16>,
         disk: String,
+        path: String,
         country: Option<String>,
         tmdb_id: Option<u64>,
         imdb_id: Option<String>,
@@ -288,6 +289,7 @@ fn print_search_json(results: &indexer::SearchResults) {
         original_title: Option<String>,
         year: Option<u16>,
         disk: String,
+        path: String,
         country: Option<String>,
         episodes: u32,
         tmdb_id: Option<u64>,
@@ -303,6 +305,7 @@ fn print_search_json(results: &indexer::SearchResults) {
                 original_title: m.original_title.clone(),
                 year: m.year,
                 disk: m.disk.clone(),
+                path: get_movie_path(m, disks),
                 country: m.country.clone(),
                 tmdb_id: m.tmdb_id,
                 imdb_id: m.imdb_id.clone(),
@@ -316,6 +319,7 @@ fn print_search_json(results: &indexer::SearchResults) {
                 original_title: t.original_title.clone(),
                 year: t.year,
                 disk: t.disk.clone(),
+                path: get_tvshow_path(t, disks),
                 country: t.country.clone(),
                 episodes: t.episodes,
                 tmdb_id: t.tmdb_id,
@@ -328,7 +332,11 @@ fn print_search_json(results: &indexer::SearchResults) {
 }
 
 /// Print search results in simple format.
-fn print_search_simple(results: &indexer::SearchResults, show_status: bool) {
+fn print_search_simple(
+    results: &indexer::SearchResults,
+    disks: &std::collections::HashMap<String, VolumeGroupInfo>,
+    show_status: bool,
+) {
     if results.movies.is_empty() && results.tv_series.is_empty() {
         println!("No results found.");
         return;
@@ -344,13 +352,15 @@ fn print_search_simple(results: &indexer::SearchResults, show_status: bool) {
         } else {
             ""
         };
+        let path = get_movie_path(movie, disks);
         println!(
-            "[{}] {} ({}) - {}{}",
+            "[{}] {} ({}) - {}{}\n    {}",
             movie.disk,
             movie.title,
             movie.year.map(|y| y.to_string()).unwrap_or_default(),
             movie.country.as_deref().unwrap_or("??"),
-            status
+            status,
+            path.dimmed()
         );
     }
 
@@ -364,19 +374,50 @@ fn print_search_simple(results: &indexer::SearchResults, show_status: bool) {
         } else {
             ""
         };
+        let path = get_tvshow_path(tvshow, disks);
         println!(
-            "[{}] {} ({}) - {} episodes{}",
+            "[{}] {} ({}) - {} episodes{}\n    {}",
             tvshow.disk,
             tvshow.title,
             tvshow.year.map(|y| y.to_string()).unwrap_or_default(),
             tvshow.episodes,
-            status
+            status,
+            path.dimmed()
         );
     }
 }
 
+/// Get full path for a movie entry.
+fn get_movie_path(movie: &MovieEntry, disks: &std::collections::HashMap<String, VolumeGroupInfo>) -> String {
+    if let Some(disk_info) = disks.get(&movie.disk) {
+        if movie.relative_path.is_empty() {
+            disk_info.base_path.clone()
+        } else {
+            format!("{}/{}", disk_info.base_path.trim_end_matches('/'), movie.relative_path)
+        }
+    } else {
+        movie.relative_path.clone()
+    }
+}
+
+/// Get full path for a TV show entry.
+fn get_tvshow_path(tvshow: &TvSeriesEntry, disks: &std::collections::HashMap<String, VolumeGroupInfo>) -> String {
+    if let Some(disk_info) = disks.get(&tvshow.disk) {
+        if tvshow.relative_path.is_empty() {
+            disk_info.base_path.clone()
+        } else {
+            format!("{}/{}", disk_info.base_path.trim_end_matches('/'), tvshow.relative_path)
+        }
+    } else {
+        tvshow.relative_path.clone()
+    }
+}
+
 /// Print search results as table.
-fn print_search_table(results: &indexer::SearchResults, show_status: bool) {
+fn print_search_table(
+    results: &indexer::SearchResults,
+    disks: &std::collections::HashMap<String, VolumeGroupInfo>,
+) {
     if results.movies.is_empty() && results.tv_series.is_empty() {
         println!("{}", "No results found.".yellow());
         return;
@@ -389,39 +430,36 @@ fn print_search_table(results: &indexer::SearchResults, show_status: bool) {
     if !results.movies.is_empty() {
         println!("{}", format!("Movies ({}):", results.movies.len()).bold());
         println!(
-            " {:>4} | {:>4} | {:<40} | {:<12} | {}",
+            " {:>4} | {:>4} | {:<35} | {:<15} | {:<30}",
             "#",
             "Year",
             "Title",
-            "Disk",
-            if show_status { "Status" } else { "Country" }
+            "Volume",
+            "Path"
         );
-        println!("{}", "-".repeat(80));
+        println!("{}", "-".repeat(115));
 
         for (i, movie) in results.movies.iter().enumerate() {
-            let title = if movie.title.chars().count() > 38 {
-                format!("{}...", movie.title.chars().take(35).collect::<String>())
+            let title = if movie.title.chars().count() > 33 {
+                format!("{}...", movie.title.chars().take(30).collect::<String>())
             } else {
                 movie.title.clone()
             };
 
-            let last_col = if show_status {
-                if indexer::is_disk_online(&movie.disk) {
-                    "Online".green().to_string()
-                } else {
-                    "Offline".red().to_string()
-                }
+            let path = get_movie_path(movie, disks);
+            let path_short = if path.chars().count() > 45 {
+                format!("{}...", path.chars().take(42).collect::<String>())
             } else {
-                movie.country.clone().unwrap_or_else(|| "??".to_string())
+                path
             };
 
             println!(
-                " {:>4} | {:>4} | {:<40} | {:<12} | {}",
+                " {:>4} | {:>4} | {:<35} | {:<15} | {}",
                 i + 1,
                 movie.year.map(|y| y.to_string()).unwrap_or_default(),
                 title,
                 movie.disk,
-                last_col
+                path_short.dimmed()
             );
         }
         println!();
@@ -433,39 +471,36 @@ fn print_search_table(results: &indexer::SearchResults, show_status: bool) {
             format!("TV Shows ({}):", results.tv_series.len()).bold()
         );
         println!(
-            " {:>4} | {:>4} | {:<40} | {:<12} | {}",
+            " {:>4} | {:>4} | {:<35} | {:<15} | {:<30}",
             "#",
             "Year",
             "Title",
-            "Disk",
-            if show_status { "Status" } else { "Episodes" }
+            "Volume",
+            "Path"
         );
-        println!("{}", "-".repeat(80));
+        println!("{}", "-".repeat(115));
 
         for (i, tvshow) in results.tv_series.iter().enumerate() {
-            let title = if tvshow.title.chars().count() > 38 {
-                format!("{}...", tvshow.title.chars().take(35).collect::<String>())
+            let title = if tvshow.title.chars().count() > 33 {
+                format!("{}...", tvshow.title.chars().take(30).collect::<String>())
             } else {
                 tvshow.title.clone()
             };
 
-            let last_col = if show_status {
-                if indexer::is_disk_online(&tvshow.disk) {
-                    "Online".green().to_string()
-                } else {
-                    "Offline".red().to_string()
-                }
+            let path = get_tvshow_path(tvshow, disks);
+            let path_short = if path.chars().count() > 45 {
+                format!("{}...", path.chars().take(42).collect::<String>())
             } else {
-                tvshow.episodes.to_string()
+                path
             };
 
             println!(
-                " {:>4} | {:>4} | {:<40} | {:<12} | {}",
+                " {:>4} | {:>4} | {:<35} | {:<15} | {}",
                 i + 1,
                 tvshow.year.map(|y| y.to_string()).unwrap_or_default(),
                 title,
                 tvshow.disk,
-                last_col
+                path_short.dimmed()
             );
         }
         println!();

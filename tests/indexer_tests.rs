@@ -1414,3 +1414,318 @@ fn test_movie_entry_new_format_with_video_files() {
     assert_eq!(movie.video_files[0].file_name, "movie_1080p.mkv");
     assert_eq!(movie.video_files[1].resolution, Some("4K".to_string()));
 }
+
+/// Helper function to create a test movie with specific actors and directors
+fn create_test_movie_with_actors(
+    id: &str,
+    title: &str,
+    disk: &str,
+    tmdb_id: u64,
+    actors: Vec<&str>,
+    directors: Vec<&str>,
+) -> MovieEntry {
+    use media_organizer::models::index::VideoFileInfo;
+
+    MovieEntry {
+        id: id.to_string(),
+        disk: disk.to_string(),
+        disk_uuid: Some("test-uuid".to_string()),
+        relative_path: format!("{}/movie.nfo", title),
+        title: title.to_string(),
+        original_title: None,
+        year: Some(2024),
+        tmdb_id: Some(tmdb_id),
+        imdb_id: None,
+        collection_id: None,
+        collection_name: None,
+        collection_total_movies: None,
+        country: Some("US".to_string()),
+        genres: vec!["Action".to_string()],
+        actors: actors.into_iter().map(|s| s.to_string()).collect(),
+        directors: directors.into_iter().map(|s| s.to_string()).collect(),
+        runtime: Some(120),
+        rating: Some(7.5),
+        size_bytes: 1_000_000_000,
+        resolution: Some("1080p".to_string()),
+        video_files: vec![VideoFileInfo {
+            file_name: format!("{}.mkv", title),
+            file_path: format!("{}/{}.mkv", title, title),
+            size_bytes: 1_000_000_000,
+            resolution: Some("1080p".to_string()),
+            format: Some("mkv".to_string()),
+            codec: Some("h264".to_string()),
+        }],
+        indexed_at: chrono::Utc::now().to_rfc3339(),
+    }
+}
+
+/// Test: Search by actor name
+#[test]
+fn test_search_by_actor() {
+    let mut central = CentralIndex::default();
+
+    let movies = vec![
+        create_test_movie_with_actors(
+            "m1",
+            "The Godfather",
+            "TestDisk",
+            238,
+            vec!["Al Pacino", "Marlon Brando"],
+            vec!["Francis Ford Coppola"],
+        ),
+        create_test_movie_with_actors(
+            "m2",
+            "The Matrix",
+            "TestDisk",
+            603,
+            vec!["Keanu Reeves", "Laurence Fishburne"],
+            vec!["The Wachowskis"],
+        ),
+    ];
+    let disk = create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", movies);
+    merge_disk_into_central(&mut central, disk);
+
+    // Search by actor name (partial match)
+    let results = search(
+        &central,
+        None,
+        Some("Al Pacino"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results.movies.len(), 1);
+    assert_eq!(results.movies[0].title, "The Godfather");
+
+    // Search by another actor
+    let results2 = search(
+        &central,
+        None,
+        Some("Keanu"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results2.movies.len(), 1);
+    assert_eq!(results2.movies[0].title, "The Matrix");
+
+    // Search with partial name
+    let results3 = search(
+        &central,
+        None,
+        Some("Fishburne"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results3.movies.len(), 1);
+    assert_eq!(results3.movies[0].title, "The Matrix");
+}
+
+/// Test: Search by director name
+#[test]
+fn test_search_by_director() {
+    let mut central = CentralIndex::default();
+
+    let movies = vec![
+        create_test_movie_with_actors(
+            "m1",
+            "The Godfather",
+            "TestDisk",
+            238,
+            vec!["Al Pacino"],
+            vec!["Francis Ford Coppola"],
+        ),
+        create_test_movie_with_actors(
+            "m2",
+            "Inception",
+            "TestDisk",
+            27205,
+            vec!["Leonardo DiCaprio"],
+            vec!["Christopher Nolan"],
+        ),
+        create_test_movie_with_actors(
+            "m3",
+            "The Dark Knight",
+            "TestDisk",
+            155,
+            vec!["Christian Bale"],
+            vec!["Christopher Nolan"],
+        ),
+    ];
+    let disk = create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", movies);
+    merge_disk_into_central(&mut central, disk);
+
+    // Search by director name (exact match)
+    let results = search(
+        &central,
+        None,
+        None,
+        Some("Christopher Nolan"),
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results.movies.len(), 2);
+    assert!(results.movies.iter().any(|m| m.title == "Inception"));
+    assert!(results.movies.iter().any(|m| m.title == "The Dark Knight"));
+
+    // Search by partial director name
+    let results2 = search(
+        &central,
+        None,
+        None,
+        Some("Nolan"),
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results2.movies.len(), 2);
+
+    // Search by first name only
+    let results3 = search(
+        &central,
+        None,
+        None,
+        Some("Christopher"),
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results3.movies.len(), 2);
+}
+
+/// Test: Combined search by actor and title
+#[test]
+fn test_search_by_actor_and_title() {
+    let mut central = CentralIndex::default();
+
+    let movies = vec![
+        create_test_movie_with_actors(
+            "m1",
+            "The Godfather",
+            "TestDisk",
+            238,
+            vec!["Al Pacino"],
+            vec!["Francis Ford Coppola"],
+        ),
+        create_test_movie_with_actors(
+            "m2",
+            "The Godfather Part II",
+            "TestDisk",
+            240,
+            vec!["Al Pacino"],
+            vec!["Francis Ford Coppola"],
+        ),
+        create_test_movie_with_actors(
+            "m3",
+            "Scent of a Woman",
+            "TestDisk",
+            9542,
+            vec!["Al Pacino"],
+            vec!["Martin Brest"],
+        ),
+    ];
+    let disk = create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", movies);
+    merge_disk_into_central(&mut central, disk);
+
+    // Search by actor alone
+    let results = search(
+        &central,
+        None,
+        Some("Al Pacino"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results.movies.len(), 3);
+
+    // Search by actor AND title (combined filter)
+    let results2 = search(
+        &central,
+        Some("Godfather"),
+        Some("Al Pacino"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results2.movies.len(), 2);
+    assert!(results2.movies.iter().all(|m| m.title.contains("Godfather")));
+}
+
+/// Test: Search is case-insensitive for actor/director
+#[test]
+fn test_search_actor_director_case_insensitive() {
+    let mut central = CentralIndex::default();
+
+    let movies = vec![create_test_movie_with_actors(
+        "m1",
+        "The Matrix",
+        "TestDisk",
+        603,
+        vec!["KEANU REEVES"],
+        vec!["THE WACHOWSKIS"],
+    )];
+    let disk = create_movie_disk_index("TestDisk", "/mnt/TestDisk/Movies", movies);
+    merge_disk_into_central(&mut central, disk);
+
+    // Search with lowercase
+    let results = search(
+        &central,
+        None,
+        Some("keanu"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results.movies.len(), 1);
+    assert_eq!(results.movies[0].title, "The Matrix");
+
+    // Search director with lowercase
+    let results2 = search(
+        &central,
+        None,
+        None,
+        Some("wachowski"),
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(results2.movies.len(), 1);
+}

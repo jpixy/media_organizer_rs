@@ -384,8 +384,9 @@ fn parse_movie_nfo(
     video_files: Vec<VideoFileInfo>,
 ) -> Result<MovieEntry> {
     // Simple XML parsing using regex (for robustness with malformed XML)
+    // Use (?s) flag to make . match newlines for multi-line tags
     let get_tag = |tag: &str| -> Option<String> {
-        let pattern = format!(r"<{}>(.*?)</{}>", tag, tag);
+        let pattern = format!(r"(?s)<{}>(.*?)</{}>", tag, tag);
         regex::Regex::new(&pattern)
             .ok()?
             .captures(content)
@@ -394,7 +395,7 @@ fn parse_movie_nfo(
     };
 
     let get_all_tags = |tag: &str| -> Vec<String> {
-        let pattern = format!(r"<{}>(.*?)</{}>", tag, tag);
+        let pattern = format!(r"(?s)<{}>(.*?)</{}>", tag, tag);
         regex::Regex::new(&pattern)
             .map(|re| {
                 re.captures_iter(content)
@@ -523,8 +524,9 @@ fn parse_tv_series_nfo(
     size_bytes: u64,
     tvshow_dir: &Path,
 ) -> Result<TvSeriesEntry> {
+    // Use (?s) flag to make . match newlines for multi-line tags
     let get_tag = |tag: &str| -> Option<String> {
-        let pattern = format!(r"<{}>(.*?)</{}>", tag, tag);
+        let pattern = format!(r"(?s)<{}>(.*?)</{}>", tag, tag);
         regex::Regex::new(&pattern)
             .ok()?
             .captures(content)
@@ -533,7 +535,7 @@ fn parse_tv_series_nfo(
     };
 
     let get_all_tags = |tag: &str| -> Vec<String> {
-        let pattern = format!(r"<{}>(.*?)</{}>", tag, tag);
+        let pattern = format!(r"(?s)<{}>(.*?)</{}>", tag, tag);
         regex::Regex::new(&pattern)
             .map(|re| {
                 re.captures_iter(content)
