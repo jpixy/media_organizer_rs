@@ -81,45 +81,6 @@ pub enum Commands {
         action: IndexAction,
     },
 
-    /// Search the media collection
-    Search {
-        /// Search by title
-        #[arg(short = 't', long)]
-        title: Option<String>,
-
-        /// Search by actor name
-        #[arg(short = 'a', long)]
-        actor: Option<String>,
-
-        /// Search by director name
-        #[arg(short = 'd', long)]
-        director: Option<String>,
-
-        /// Search by collection/series name
-        #[arg(short = 'c', long)]
-        collection: Option<String>,
-
-        /// Search by year (e.g., 2024 or 2020-2024)
-        #[arg(short = 'y', long)]
-        year: Option<String>,
-
-        /// Search by genre
-        #[arg(short = 'g', long)]
-        genre: Option<String>,
-
-        /// Search by country code (e.g., US, CN, KR)
-        #[arg(long)]
-        country: Option<String>,
-
-        /// Show disk online/offline status
-        #[arg(long)]
-        show_status: bool,
-
-        /// Output format: table, simple, json
-        #[arg(long, default_value = "table")]
-        format: String,
-    },
-
     /// Export configuration and indexes
     Export {
         /// Output file path (default: auto-generated with timestamp)
@@ -358,19 +319,65 @@ pub enum IndexAction {
     },
 
     /// Rebuild indexes and recalculate all statistics
-    /// 
+    ///
     /// Recalculates collection and TV series statistics without re-scanning files.
     /// This is useful after making manual changes to NFO files.
-    /// 
+    ///
     /// Note: scan --force and --update commands automatically trigger this.
     /// You rarely need to run this manually.
-    /// 
+    ///
     /// Example:
     ///   mediaorganizer index rebuild
     Rebuild {
         /// Skip preflight checks
         #[arg(long)]
         skip_preflight: bool,
+    },
+
+    /// Search the media collection (using central index)
+    ///
+    /// Searches the pre-built central index for movies and TV shows.
+    /// Use "mediaorganizer index scan" first to build the index.
+    ///
+    /// Example:
+    ///   mediaorganizer index search --title "Inception"
+    ///   mediaorganizer index search --actor "Leonardo" --genre "Sci-Fi"
+    Search {
+        /// Search by title
+        #[arg(short = 't', long)]
+        title: Option<String>,
+
+        /// Search by actor name
+        #[arg(short = 'a', long)]
+        actor: Option<String>,
+
+        /// Search by director name
+        #[arg(short = 'd', long)]
+        director: Option<String>,
+
+        /// Search by collection/series name
+        #[arg(short = 'c', long)]
+        collection: Option<String>,
+
+        /// Search by year (e.g., 2024 or 2020-2024)
+        #[arg(short = 'y', long)]
+        year: Option<String>,
+
+        /// Search by genre
+        #[arg(short = 'g', long)]
+        genre: Option<String>,
+
+        /// Search by country code (e.g., US, CN, KR)
+        #[arg(long)]
+        country: Option<String>,
+
+        /// Show disk online/offline status
+        #[arg(long)]
+        show_status: bool,
+
+        /// Output format: table, simple, json
+        #[arg(long, default_value = "table")]
+        format: String,
     },
 }
 

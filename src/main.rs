@@ -5,7 +5,7 @@
 use clap::Parser;
 use media_organizer::cli::{
     args::{Cli, Commands, PlanType, PosterType, SessionsAction},
-    commands::{execute, export_import, index, plan, poster, rollback, search, sessions, verify},
+    commands::{execute, export_import, index, plan, poster, rollback, sessions, verify},
 };
 use media_organizer::models::config::load_config;
 use media_organizer::preflight;
@@ -74,31 +74,6 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Index { action } => {
             index::execute_index(action, &config).await?;
-        }
-
-        Commands::Search {
-            title,
-            actor,
-            director,
-            collection,
-            year,
-            genre,
-            country,
-            show_status,
-            format,
-        } => {
-            search::execute_search(
-                title,
-                actor,
-                director,
-                collection,
-                year,
-                genre,
-                country,
-                show_status,
-                format,
-            )
-            .await?;
         }
 
         Commands::Export {
