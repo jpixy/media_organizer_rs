@@ -256,6 +256,16 @@ pub enum IndexAction {
         /// - cross: Only show duplicates across different volume groups (most useful)
         #[arg(long, default_value = "cross")]
         volume_filter: String,
+
+        /// Only check for duplicates within the specified volume groups.
+        /// 
+        /// Comma-separated list of volume group names. Only duplicates that exist
+        /// within these specified volume groups will be shown.
+        /// 
+        /// Example:
+        ///   --volume-filter-groups Disk_Movies_01,Disk_Movies_03
+        #[arg(long, value_delimiter = ',', default_value = "")]
+        volume_filter_groups: Vec<String>,
     },
 
     /// Manage movie collections (franchise series)

@@ -28,8 +28,8 @@ pub async fn execute_index(action: IndexAction, config: &Config) -> Result<()> {
             volume_label,
             confirm,
         } => remove_volume(&volume_label, confirm).await,
-        IndexAction::Duplicates { media_type, format, volume_filter } => {
-            find_duplicates(&media_type, &format, &volume_filter).await
+        IndexAction::Duplicates { media_type, format, volume_filter, ref volume_filter_groups } => {
+            find_duplicates(&media_type, &format, &volume_filter, volume_filter_groups).await
         }
         IndexAction::Collections {
             filter,
@@ -854,29 +854,85 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     dp[a_chars.len()][b_chars.len()]
 }
 
-/// Check if a group of entries matches the volume filter criteria.
-fn matches_volume_filter(entries: &[DuplicateEntry], volume_filter: &str) -> bool {
-    match volume_filter {
-        "all" => true,
-        "same" => {
-            // All entries are on the same volume
-            if entries.is_empty() {
-                return false;
+/// Check if a duplicate group matches the volume filter criteria.
+fn matches_volume_filter(
+    entries: &[DuplicateEntry],
+    volume_filter: &str,
+    volume_filter_groups: &[String],
+) -> bool {
+    // First check volume_filter_groups - if specified (and not empty strings), only consider entries in those groups
+    // Filter out empty strings that may result from clap's default_value = ""
+    let non_empty_groups: Vec<_> = volume_filter_groups.iter()
+        .filter(|s| !s.is_empty())
+        .collect();
+    
+    if !non_empty_groups.is_empty() {
+        // Create a HashSet of &str for comparison
+        let groups_set: std::collections::HashSet<&str> = non_empty_groups.iter()
+            .map(|s| s.as_str())
+            .collect();
+        
+        // Check how many entries are in the specified groups
+        let entries_in_groups: Vec<_> = entries.iter()
+            .filter(|e| groups_set.contains(e.disk.as_str()))
+            .collect();
+        
+        // If no entries are in the specified groups, filter out
+        if entries_in_groups.is_empty() {
+            return false;
+        }
+        
+        // Check if ALL original entries are in the specified groups
+        // This is needed for "all" filter - we only show if ALL entries are in the groups
+        let all_entries_in_groups = entries.iter().all(|e| groups_set.contains(e.disk.as_str()));
+        
+        // Now apply volume_filter on the filtered entries
+        let entries = entries_in_groups.as_slice();
+        
+        // Apply volume_filter (all, same, cross) on the filtered entries
+        match volume_filter {
+            "all" => all_entries_in_groups,
+            "same" => {
+                if entries.is_empty() {
+                    return false;
+                }
+                let first_volume = &entries[0].disk;
+                entries.iter().all(|e| &e.disk == first_volume)
             }
-            let first_volume = &entries[0].disk;
-            entries.iter().all(|e| &e.disk == first_volume)
+            "cross" => {
+                // At least 2 entries in different groups
+                let volumes: std::collections::HashSet<_> = entries.iter().map(|e| &e.disk).collect();
+                volumes.len() > 1
+            }
+            _ => true,
         }
-        "cross" => {
-            // Entries span multiple volumes
-            let volumes: std::collections::HashSet<_> = entries.iter().map(|e| &e.disk).collect();
-            volumes.len() > 1
+    } else {
+        // No groups specified, use original logic
+        match volume_filter {
+            "all" => true,
+            "same" => {
+                if entries.is_empty() {
+                    return false;
+                }
+                let first_volume = &entries[0].disk;
+                entries.iter().all(|e| &e.disk == first_volume)
+            }
+            "cross" => {
+                let volumes: std::collections::HashSet<_> = entries.iter().map(|e| &e.disk).collect();
+                volumes.len() > 1
+            }
+            _ => true,
         }
-        _ => true,
     }
 }
 
 /// Find duplicates with enhanced matching logic.
-async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) -> Result<()> {
+async fn find_duplicates(
+    media_type: &str, 
+    format: &str, 
+    volume_filter: &str,
+    volume_filter_groups: &[String],
+) -> Result<()> {
     let index = indexer::load_central_index()?;
 
     let show_movies = media_type == "all" || media_type == "movies";
@@ -936,7 +992,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     .collect();
 
                 // Apply volume filter
-                if !matches_volume_filter(&entries, volume_filter) {
+                if !matches_volume_filter(&entries, volume_filter, volume_filter_groups) {
                     continue;
                 }
 
@@ -1006,7 +1062,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     .collect();
 
                 // Apply volume filter
-                if !matches_volume_filter(&entries, volume_filter) {
+                if !matches_volume_filter(&entries, volume_filter, volume_filter_groups) {
                     continue;
                 }
 
@@ -1176,7 +1232,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     .collect();
 
                 // Apply volume filter
-                if !matches_volume_filter(&entries, volume_filter) {
+                if !matches_volume_filter(&entries, volume_filter, volume_filter_groups) {
                     continue;
                 }
 
@@ -1227,7 +1283,7 @@ async fn find_duplicates(media_type: &str, format: &str, volume_filter: &str) ->
                     .collect();
 
                 // Apply volume filter
-                if !matches_volume_filter(&entries, volume_filter) {
+                if !matches_volume_filter(&entries, volume_filter, volume_filter_groups) {
                     continue;
                 }
 

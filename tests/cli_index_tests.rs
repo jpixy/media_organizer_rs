@@ -5,7 +5,9 @@
 //! - Year range parsing logic
 //! - Search result formatting (table, simple, json)
 
+use clap::Parser;
 use media_organizer::cli::args::IndexAction;
+use media_organizer::cli::args::Commands;
 use media_organizer::models::index::{MovieEntry, TvSeriesEntry};
 use media_organizer::core::indexer::SearchResults;
 
@@ -295,8 +297,6 @@ fn test_search_results_with_tv_series() {
 /// Test SearchResults with mixed content
 #[test]
 fn test_search_results_mixed() {
-    use media_organizer::models::index::VideoFileInfo;
-
     let movie = MovieEntry {
         id: "m1".to_string(),
         disk: "Disk1".to_string(),
@@ -353,4 +353,293 @@ fn test_search_results_mixed() {
     assert_eq!(results.tv_series.len(), 1);
     assert_eq!(results.movies[0].title, "Movie 1");
     assert_eq!(results.tv_series[0].title, "TV Show 1");
+}
+
+// ============================================================================
+// IndexAction::Duplicates Tests
+// ============================================================================
+
+/// Test IndexAction::Duplicates with default values
+#[test]
+fn test_index_action_duplicates_default() {
+    let duplicates = IndexAction::Duplicates {
+        media_type: "all".to_string(),
+        format: "table".to_string(),
+        volume_filter: "cross".to_string(),
+        volume_filter_groups: vec![],
+    };
+
+    match duplicates {
+        IndexAction::Duplicates {
+            media_type,
+            format,
+            volume_filter,
+            volume_filter_groups,
+        } => {
+            assert_eq!(media_type, "all");
+            assert_eq!(format, "table");
+            assert_eq!(volume_filter, "cross");
+            assert!(volume_filter_groups.is_empty());
+        }
+        _ => panic!("Expected IndexAction::Duplicates"),
+    }
+}
+
+/// Test IndexAction::Duplicates with volume_filter_groups
+#[test]
+fn test_index_action_duplicates_with_groups() {
+    let duplicates = IndexAction::Duplicates {
+        media_type: "movies".to_string(),
+        format: "json".to_string(),
+        volume_filter: "all".to_string(),
+        volume_filter_groups: vec!["Disk_Movies_01".to_string(), "Disk_Movies_03".to_string()],
+    };
+
+    match duplicates {
+        IndexAction::Duplicates {
+            media_type,
+            format,
+            volume_filter,
+            volume_filter_groups,
+        } => {
+            assert_eq!(media_type, "movies");
+            assert_eq!(format, "json");
+            assert_eq!(volume_filter, "all");
+            assert_eq!(volume_filter_groups.len(), 2);
+            assert_eq!(volume_filter_groups[0], "Disk_Movies_01");
+            assert_eq!(volume_filter_groups[1], "Disk_Movies_03");
+        }
+        _ => panic!("Expected IndexAction::Duplicates"),
+    }
+}
+
+/// Test IndexAction::Duplicates with single group
+#[test]
+fn test_index_action_duplicates_single_group() {
+    let duplicates = IndexAction::Duplicates {
+        media_type: "tv_series".to_string(),
+        format: "simple".to_string(),
+        volume_filter: "same".to_string(),
+        volume_filter_groups: vec!["Disk_Movies_05".to_string()],
+    };
+
+    match duplicates {
+        IndexAction::Duplicates {
+            media_type,
+            format,
+            volume_filter,
+            volume_filter_groups,
+        } => {
+            assert_eq!(media_type, "tv_series");
+            assert_eq!(format, "simple");
+            assert_eq!(volume_filter, "same");
+            assert_eq!(volume_filter_groups.len(), 1);
+            assert_eq!(volume_filter_groups[0], "Disk_Movies_05");
+        }
+        _ => panic!("Expected IndexAction::Duplicates"),
+    }
+}
+
+/// Test IndexAction::Duplicates with multiple groups
+#[test]
+fn test_index_action_duplicates_multiple_groups() {
+    let groups = vec![
+        "Disk_Movies_01".to_string(),
+        "Disk_Movies_02".to_string(),
+        "Disk_Movies_03".to_string(),
+        "Disk_Movies_04".to_string(),
+        "Disk_Movies_05".to_string(),
+    ];
+    
+    let duplicates = IndexAction::Duplicates {
+        media_type: "all".to_string(),
+        format: "table".to_string(),
+        volume_filter: "cross".to_string(),
+        volume_filter_groups: groups.clone(),
+    };
+
+    match duplicates {
+        IndexAction::Duplicates {
+            media_type: _,
+            format: _,
+            volume_filter: _,
+            volume_filter_groups,
+        } => {
+            assert_eq!(volume_filter_groups.len(), 5);
+            assert_eq!(volume_filter_groups, groups);
+        }
+        _ => panic!("Expected IndexAction::Duplicates"),
+    }
+}
+
+// ============================================================================
+// CLI Argument Parsing Tests for Duplicates
+// ============================================================================
+
+use media_organizer::cli::args::Cli;
+
+/// Test CLI parsing with --volume-filter-groups argument (single value)
+#[test]
+fn test_cli_parse_duplicates_volume_filter_groups_single() {
+    let args = vec![
+        "mediaorganizer", "index", "duplicates",
+        "--volume-filter-groups", "Disk_Movies_01",
+    ];
+    
+    let cli = Cli::try_parse_from(args).expect("Failed to parse");
+    
+    match &cli.command {
+        Commands::Index { action } => {
+            match action {
+                IndexAction::Duplicates {
+                    media_type,
+                    format: _,
+                    volume_filter,
+                    volume_filter_groups,
+                } => {
+                    assert_eq!(media_type, "all");
+                    assert_eq!(volume_filter, "cross");
+                    assert_eq!(volume_filter_groups.len(), 1);
+                    assert_eq!(volume_filter_groups[0], "Disk_Movies_01");
+                }
+                _ => panic!("Expected IndexAction::Duplicates"),
+            }
+        }
+        _ => panic!("Expected Commands::Index"),
+    }
+}
+
+/// Test CLI parsing with --volume-filter-groups argument (multiple values)
+#[test]
+fn test_cli_parse_duplicates_volume_filter_groups_multiple() {
+    let args = vec![
+        "mediaorganizer", "index", "duplicates",
+        "--volume-filter-groups", "Disk_Movies_01,Disk_Movies_03,Disk_Movies_05",
+    ];
+    
+    let cli = Cli::try_parse_from(args).expect("Failed to parse");
+    
+    match &cli.command {
+        Commands::Index { action } => {
+            match action {
+                IndexAction::Duplicates {
+                    media_type: _,
+                    format: _,
+                    volume_filter,
+                    volume_filter_groups,
+                } => {
+                    assert_eq!(volume_filter, "cross");
+                    assert_eq!(volume_filter_groups.len(), 3);
+                    assert_eq!(volume_filter_groups[0], "Disk_Movies_01");
+                    assert_eq!(volume_filter_groups[1], "Disk_Movies_03");
+                    assert_eq!(volume_filter_groups[2], "Disk_Movies_05");
+                }
+                _ => panic!("Expected IndexAction::Duplicates"),
+            }
+        }
+        _ => panic!("Expected Commands::Index"),
+    }
+}
+
+/// Test CLI parsing with --volume-filter-groups and --volume-filter combined
+#[test]
+fn test_cli_parse_duplicates_volume_filter_groups_with_filter() {
+    let args = vec![
+        "mediaorganizer", "index", "duplicates",
+        "--volume-filter", "all",
+        "--volume-filter-groups", "Disk_Movies_03,Disk_Movies_05",
+    ];
+    
+    let cli = Cli::try_parse_from(args).expect("Failed to parse");
+    
+    match &cli.command {
+        Commands::Index { action } => {
+            match action {
+                IndexAction::Duplicates {
+                    media_type: _,
+                    format: _,
+                    volume_filter,
+                    volume_filter_groups,
+                } => {
+                    assert_eq!(volume_filter, "all");
+                    assert_eq!(volume_filter_groups.len(), 2);
+                    assert_eq!(volume_filter_groups[0], "Disk_Movies_03");
+                    assert_eq!(volume_filter_groups[1], "Disk_Movies_05");
+                }
+                _ => panic!("Expected IndexAction::Duplicates"),
+            }
+        }
+        _ => panic!("Expected Commands::Index"),
+    }
+}
+
+/// Test CLI parsing with --volume-filter-groups and all options
+#[test]
+fn test_cli_parse_duplicates_volume_filter_groups_full() {
+    let args = vec![
+        "mediaorganizer", "index", "duplicates",
+        "--media-type", "movies",
+        "--format", "json",
+        "--volume-filter", "cross",
+        "--volume-filter-groups", "Disk_Movies_01,Disk_Movies_02,Disk_Movies_03",
+    ];
+    
+    let cli = Cli::try_parse_from(args).expect("Failed to parse");
+    
+    match &cli.command {
+        Commands::Index { action } => {
+            match action {
+                IndexAction::Duplicates {
+                    media_type,
+                    format,
+                    volume_filter,
+                    volume_filter_groups,
+                } => {
+                    assert_eq!(media_type, "movies");
+                    assert_eq!(format, "json");
+                    assert_eq!(volume_filter, "cross");
+                    assert_eq!(volume_filter_groups.len(), 3);
+                    assert_eq!(*volume_filter_groups, vec![
+                        "Disk_Movies_01".to_string(),
+                        "Disk_Movies_02".to_string(),
+                        "Disk_Movies_03".to_string(),
+                    ]);
+                }
+                _ => panic!("Expected IndexAction::Duplicates"),
+            }
+        }
+        _ => panic!("Expected Commands::Index"),
+    }
+}
+
+/// Test CLI parsing with empty --volume-filter-groups (default)
+/// 
+/// Note: clap's default_value = "" with value_delimiter = ',' returns vec![""]
+/// when not specified, so we check that instead of.is_empty().
+#[test]
+fn test_cli_parse_duplicates_volume_filter_groups_empty() {
+    let args = vec![
+        "mediaorganizer", "index", "duplicates",
+    ];
+    
+    let cli = Cli::try_parse_from(args).expect("Failed to parse");
+    
+    match &cli.command {
+        Commands::Index { action } => {
+            match action {
+                IndexAction::Duplicates {
+                    media_type: _,
+                    format: _,
+                    volume_filter: _,
+                    volume_filter_groups,
+                } => {
+                    // Clap returns vec![""] for default_value = "" with Vec<String>
+                    // Our code filters out empty strings, so this works correctly
+                    assert!(volume_filter_groups.len() == 1 && volume_filter_groups[0].is_empty() || volume_filter_groups.is_empty());
+                }
+                _ => panic!("Expected IndexAction::Duplicates"),
+            }
+        }
+        _ => panic!("Expected Commands::Index"),
+    }
 }
