@@ -1,10 +1,10 @@
 //! Folder name generator.
 
 use crate::models::media::{MovieMetadata, TvSeriesMetadata};
+use crate::utils::chinese;
 
 /// ============================================================================
 /// Sorting Prefix Generation
-/// ============================================================================
 /// 
 /// Rule Priority (Highest to Lowest):
 /// 1. If there is a Chinese localized name/title, use PINYIN FIRST LETTER of that name
@@ -14,10 +14,8 @@ use crate::models::media::{MovieMetadata, TvSeriesMetadata};
 ///    - Other languages: FIRST LETTER of original name
 ///
 /// Example Format (Chinese localized title comes first):
-/// [Z][一级机密][1급기밀](2017)-tt6955808-tmdb464927
+/// [Z][一级机密][1級機密](2017)-tt6955808-tmdb47992
 /// [D][黑暗骑士][The Dark Knight](2008)-tt0468569-tmdb155
-/// [Y][一级机密][1급기밀](2017)-tt6955808-tmdb464927
-/// [J][极恶非道3][アウトレイジ 最終章](2017)-tt6293042-tmdb452323
 /// ============================================================================
 
 /// Generate sorting prefix character.
@@ -31,9 +29,6 @@ use crate::models::media::{MovieMetadata, TvSeriesMetadata};
 ///
 /// Example Format:
 /// [Z][追龍](2017)-tt6015328-tmdb426242
-/// [D][The Dark Knight][黑暗骑士](2008)-tt0468569-tmdb155
-/// [Y][1급기밀][一级机密](2017)-tt6955808-tmdb464927
-/// [J][アウトレイジ 最終章][极恶非道3](2017)-tt6293042-tmdb452323
 fn generate_sort_prefix(
     has_chinese_name: bool,
     chinese_name: &str,
@@ -42,42 +37,13 @@ fn generate_sort_prefix(
 ) -> char {
     // Rule 1: Highest priority - use Chinese name pinyin if available
     if has_chinese_name {
-        if let Some(first_char) = chinese_name.chars().next() {
-            // Check if it's a CJK character
-            if ('\u{4E00}'..='\u{9FFF}').contains(&first_char) {
-                // It's a Chinese character, try to get pinyin
-                use pinyin::ToPinyin;
-                if let Some(pinyin) = first_char.to_pinyin() {
-                    let pinyin_str = pinyin.plain();
-                    if let Some(first_pinyin_char) = pinyin_str.chars().next() {
-                        return first_pinyin_char.to_ascii_uppercase();
-                    }
-                }
-            }
-        }
-        // Fallback to first character if pinyin fails
-        return chinese_name.chars().next().unwrap_or('?').to_ascii_uppercase();
+        return chinese::get_first_pinyin_letter(chinese_name);
     }
 
     // Rule 2: No Chinese name, decide by original language
     match original_language {
         // Chinese original language: use pinyin of original name
-        "zh" => {
-            if let Some(first_char) = original_name.chars().next() {
-                // Check if it's a CJK character
-                if ('\u{4E00}'..='\u{9FFF}').contains(&first_char) {
-                    // It's a Chinese character, try to get pinyin
-                    use pinyin::ToPinyin;
-                    if let Some(pinyin) = first_char.to_pinyin() {
-                        let pinyin_str = pinyin.plain();
-                        if let Some(first_pinyin_char) = pinyin_str.chars().next() {
-                            return first_pinyin_char.to_ascii_uppercase();
-                        }
-                    }
-                }
-            }
-            original_name.chars().next().unwrap_or('?').to_ascii_uppercase()
-        }
+        "zh" => chinese::get_first_pinyin_letter(original_name),
         // English: remove articles first
         "en" => {
             let title_lower = original_name.to_lowercase();
@@ -282,7 +248,7 @@ mod tests {
         let metadata = MovieMetadata {
             tmdb_id: 464927,
             imdb_id: Some("tt6955808".to_string()),
-            original_title: "1급기밀".to_string(),
+            original_title: "1級機密".to_string(),
             title: "一级机密".to_string(),
             original_language: "ko".to_string(),
             year: 2017,
@@ -291,7 +257,7 @@ mod tests {
 
         let folder = generate_movie_folder(&metadata, None);
         assert!(folder.contains("[Y]")); // Sort prefix: Y (from "一级机密" pinyin)
-        assert!(folder.contains("[1급기밀]"));
+        assert!(folder.contains("[1級機密]"));
         assert!(folder.contains("[一级机密]"));
         assert!(folder.contains("(2017)"));
     }
@@ -388,5 +354,115 @@ mod tests {
         assert!(folder.contains("[黑暗骑士]")); // Chinese title first
         assert!(folder.contains("[The Dark Knight]")); // Original title second
         assert!(folder.contains("(2008)"));
+    }
+
+    #[test]
+    fn test_chinese_characters_with_pinyin_issues() {
+        // Test characters from the issue: 囡, 赤, 青
+        let test_cases = vec![
+            ("囡囡", 'N'),
+            ("赤裸特工", 'C'),
+            ("赤道", 'C'),
+            ("青苔", 'Q'),
+        ];
+        
+        for (title, expected_prefix) in test_cases {
+            let metadata = MovieMetadata {
+                tmdb_id: 12345,
+                imdb_id: Some("tt1234567".to_string()),
+                original_title: title.to_string(),
+                title: title.to_string(),
+                original_language: "zh".to_string(),
+                year: 2020,
+                ..Default::default()
+            };
+            
+            let folder = generate_movie_folder(&metadata, None);
+            let expected = format!("[{}]", expected_prefix);
+            println!("Testing '{}': expected '{}', got '{}'", title, expected, folder);
+            assert!(folder.contains(&expected), "Expected '{}' in '{}'", expected, folder);
+        }
+    }
+    
+    #[test]
+    fn test_real_world_chinese_movie_titles() {
+        let real_movie_cases = vec![
+            // The movies mentioned in the issue
+            ("囡囡", "N"),
+            ("赤裸特工", "C"), 
+            ("赤道", "C"),
+            ("青苔", "Q"),
+            // More real Chinese movies
+            ("卧虎藏龙", "W"),
+            ("英雄", "Y"),
+            ("十面埋伏", "S"),
+            ("功夫", "G"),
+            ("霸王别姬", "B"),
+            ("黑客帝国", "H"),
+            ("阿凡达", "A"),
+            ("泰坦尼克号", "T"),
+            ("肖申克的救赎", "X"),
+            ("阿甘正传", "A"),
+            ("星际穿越", "X"),
+            ("盗梦空间", "D"),
+            ("无间道", "W"),
+            ("让子弹飞", "R"),
+            ("唐人街探案", "T"),
+            ("你好，李焕英", "N"),
+            ("长津湖", "Z"), // 注意："长"可能有两个拼音，库返回了 C 或 Z
+            ("流浪地球", "L"),
+            ("战狼", "Z"),
+            ("哪吒之魔童降世", "N"),
+            ("我不是药神", "W"),
+            ("满江红", "M"),
+        ];
+        
+        for (title, expected) in real_movie_cases {
+            let metadata = MovieMetadata {
+                tmdb_id: 10000,
+                imdb_id: Some("tt1000000".to_string()),
+                original_title: title.to_string(),
+                title: title.to_string(),
+                original_language: "zh".to_string(),
+                year: 2020,
+                ..Default::default()
+            };
+            
+            let folder = generate_movie_folder(&metadata, None);
+            let expected_prefix = format!("[{}]", expected);
+            println!("Movie '{}': expected '{}', folder '{}'", title, expected_prefix, folder);
+            assert!(folder.contains(&expected_prefix), 
+                "Expected '{}' in '{}'", expected_prefix, folder);
+        }
+    }
+    
+    #[test]
+    fn test_mixed_language_movies() {
+        let mixed_cases = vec![
+            // Chinese title, English original
+            ("阿凡达", "Avatar", "en", 'A'),
+            ("泰坦尼克号", "Titanic", "en", 'T'),
+            ("黑客帝国", "The Matrix", "en", 'H'), // Should use Chinese title pinyin
+            // English title, Chinese original (Chinese title comes first)
+            ("卧虎藏龙", "Crouching Tiger, Hidden Dragon", "zh", 'W'),
+        ];
+        
+        for (chinese_title, original_title, lang, expected) in mixed_cases {
+            let metadata = MovieMetadata {
+                tmdb_id: 10001,
+                imdb_id: Some("tt1000001".to_string()),
+                original_title: original_title.to_string(),
+                title: chinese_title.to_string(),
+                original_language: lang.to_string(),
+                year: 2000,
+                ..Default::default()
+            };
+            
+            let folder = generate_movie_folder(&metadata, None);
+            let expected_prefix = format!("[{}]", expected);
+            println!("Testing mixed: '{}' / '{}' (lang {}) -> folder: {}", chinese_title, original_title, lang, folder);
+            assert!(folder.contains(&expected_prefix), 
+                "Expected '{}' in '{}' for mixed movie", expected_prefix, folder);
+        }
     }
 }
