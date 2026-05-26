@@ -43,7 +43,7 @@ fn generate_sort_prefix(
     // Rule 2: No Chinese name, decide by original language
     match original_language {
         // Chinese original language: use pinyin of original name
-        "zh" => chinese::get_first_pinyin_letter(original_name),
+        "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK" => chinese::get_first_pinyin_letter(original_name),
         // English: remove articles first
         "en" => {
             let title_lower = original_name.to_lowercase();
@@ -71,7 +71,8 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
     let mut parts = Vec::new();
 
     // Add sorting prefix
-    let has_chinese = metadata.original_language == "zh" 
+    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
+    let has_chinese = is_chinese_lang 
         || normalize_title(&metadata.title) != normalize_title(&metadata.original_title);
     let sort_prefix = generate_sort_prefix(
         has_chinese,
@@ -82,7 +83,7 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
     parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication for Chinese movies
-    let is_chinese = metadata.original_language == "zh";
+    let is_chinese = is_chinese_lang;
     let titles_same = normalize_title(&metadata.original_title) == normalize_title(&metadata.title);
 
     if is_chinese || titles_same {
@@ -121,7 +122,8 @@ pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     let mut parts = Vec::new();
 
     // Add sorting prefix
-    let has_chinese = metadata.original_language == "zh" 
+    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
+    let has_chinese = is_chinese_lang 
         || normalize_title(&metadata.name) != normalize_title(&metadata.original_name);
     let sort_prefix = generate_sort_prefix(
         has_chinese,
@@ -132,7 +134,7 @@ pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication
-    let is_chinese = metadata.original_language == "zh";
+    let is_chinese = is_chinese_lang;
     let titles_same = normalize_title(&metadata.original_name) == normalize_title(&metadata.name);
 
     if is_chinese || titles_same {
