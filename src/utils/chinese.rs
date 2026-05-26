@@ -34,21 +34,28 @@ fn is_chinese_char(c: char) -> bool {
 }
 
 /// Get the first pinyin letter of a string, uppercase.
-/// If the first character is not Chinese or fails to get pinyin, falls back to uppercase first character.
+/// Skips leading non-Chinese characters (like quotes, spaces, etc.) to find the first Chinese character.
+/// If no Chinese character is found, falls back to uppercase first character.
 pub fn get_first_pinyin_letter(s: &str) -> char {
-    if let Some(first_char) = s.chars().next() {
-        if is_chinese_char(first_char) {
-            if let Some(pinyin) = first_char.to_pinyin() {
+    let mut first_non_chinese_char: Option<char> = None;
+    
+    for c in s.chars() {
+        if is_chinese_char(c) {
+            if let Some(pinyin) = c.to_pinyin() {
                 let pinyin_str = pinyin.plain();
                 if let Some(first_pinyin_char) = pinyin_str.chars().next() {
                     return first_pinyin_char.to_ascii_uppercase();
                 }
             }
+            // Fallback to the Chinese character itself uppercase
+            return c.to_ascii_uppercase();
+        } else if first_non_chinese_char.is_none() {
+            first_non_chinese_char = Some(c);
         }
-        // Fallback to first character uppercase
-        return first_char.to_ascii_uppercase();
     }
-    '?'
+    
+    // No Chinese character found, return first character uppercase or '?'
+    first_non_chinese_char.map(|c| c.to_ascii_uppercase()).unwrap_or('?')
 }
 
 /// Test various Chinese characters for pinyin conversion.
@@ -149,5 +156,41 @@ mod tests {
         // Test mixed content
         assert_eq!(get_first_pinyin_letter("阿凡达 Avatar"), 'A');
         assert_eq!(get_first_pinyin_letter("Avatar 阿凡达"), 'A');
+        
+        // Test strings with leading quotes or special characters
+        assert_eq!(get_first_pinyin_letter("\"吃吃\"的爱"), 'C');
+        assert_eq!(get_first_pinyin_letter("\"骗骗\"喜欢你"), 'P');
+        assert_eq!(get_first_pinyin_letter("'阿凡达'"), 'A');
+        assert_eq!(get_first_pinyin_letter("【英雄】"), 'Y');
+        assert_eq!(get_first_pinyin_letter("《泰坦尼克号》"), 'T');
+        assert_eq!(get_first_pinyin_letter("  卧虎藏龙"), 'W');
+        assert_eq!(get_first_pinyin_letter("-黑客帝国"), 'H');
+        
+        // Test various punctuation marks
+        assert_eq!(get_first_pinyin_letter("。英雄"), 'Y');
+        assert_eq!(get_first_pinyin_letter("，阿凡达"), 'A');
+        assert_eq!(get_first_pinyin_letter("！泰坦尼克号"), 'T');
+        assert_eq!(get_first_pinyin_letter("？卧虎藏龙"), 'W');
+        assert_eq!(get_first_pinyin_letter("、黑客帝国"), 'H');
+        assert_eq!(get_first_pinyin_letter("；三国"), 'S');
+        assert_eq!(get_first_pinyin_letter("：赤壁"), 'C');
+        assert_eq!(get_first_pinyin_letter("（英雄）"), 'Y');
+        assert_eq!(get_first_pinyin_letter("）阿凡达"), 'A');
+        assert_eq!(get_first_pinyin_letter("——泰坦尼克号"), 'T');
+        assert_eq!(get_first_pinyin_letter("……卧虎藏龙"), 'W');
+        assert_eq!(get_first_pinyin_letter("“英雄”"), 'Y');
+        assert_eq!(get_first_pinyin_letter("‘阿凡达’"), 'A');
+        assert_eq!(get_first_pinyin_letter("『泰坦尼克号』"), 'T');
+        assert_eq!(get_first_pinyin_letter("【卧虎藏龙】"), 'W');
+        assert_eq!(get_first_pinyin_letter("《黑客帝国》"), 'H');
+        assert_eq!(get_first_pinyin_letter("〈三国〉"), 'S');
+        assert_eq!(get_first_pinyin_letter("「赤壁」"), 'C');
+        assert_eq!(get_first_pinyin_letter("『英雄』"), 'Y');
+        
+        // Test multiple leading non-Chinese characters
+        assert_eq!(get_first_pinyin_letter("\"\"\"英雄"), 'Y');
+        assert_eq!(get_first_pinyin_letter("  -  阿凡达"), 'A');
+        assert_eq!(get_first_pinyin_letter("123英雄"), 'Y');
+        assert_eq!(get_first_pinyin_letter("!@#$%^&*()英雄"), 'Y');
     }
 }
