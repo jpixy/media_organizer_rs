@@ -13,6 +13,7 @@ use futures::future;
 struct FailedItem {
     folder_name: String,
     reason: String,
+    path: String,
 }
 
 /// Download posters for movies.
@@ -133,11 +134,12 @@ pub async fn download_movie_posters(path: &Path, config: &Config) -> Result<()> 
                 DownloadResult::Skipped => {
                     skipped_count += 1;
                 }
-                DownloadResult::Failed { folder_name, reason } => {
+                DownloadResult::Failed { folder_name, reason, path } => {
                     failed_count += 1;
                     failed_items.push(FailedItem {
                         folder_name,
                         reason,
+                        path,
                     });
                 }
             },
@@ -156,6 +158,7 @@ pub async fn download_movie_posters(path: &Path, config: &Config) -> Result<()> 
         println!("Failed items ({}):", failed_count);
         for item in &failed_items {
             println!("  - {}: {}", item.folder_name, item.reason);
+            println!("    Path: {}", item.path);
         }
     }
     
@@ -175,7 +178,7 @@ pub async fn download_movie_posters(path: &Path, config: &Config) -> Result<()> 
 enum DownloadResult {
     Downloaded(u64),
     Skipped,
-    Failed { folder_name: String, reason: String },
+    Failed { folder_name: String, reason: String, path: String },
 }
 
 /// Download a single movie poster.
@@ -209,6 +212,7 @@ async fn download_single_movie_poster(
             return DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: format!("Failed to fetch movie details: {}", e),
+                path: entry_path.display().to_string(),
             };
         }
     };
@@ -221,6 +225,7 @@ async fn download_single_movie_poster(
             return DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: "No poster available".to_string(),
+                path: entry_path.display().to_string(),
             };
         }
     };
@@ -238,6 +243,7 @@ async fn download_single_movie_poster(
             DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: format!("Download failed: {}", e),
+                path: entry_path.display().to_string(),
             }
         }
     }
@@ -295,7 +301,7 @@ pub async fn download_tv_season_posters(path: &Path, config: &Config) -> Result<
     let mut skipped_count = 0;
     let mut failed_count = 0;
     let mut total_size_bytes: u64 = 0;
-    let mut all_failed_items: Vec<(String, String)> = Vec::new();
+    let mut all_failed_items: Vec<FailedItem> = Vec::new();
     let start_time = Instant::now();
     
     if !path.exists() {
@@ -387,8 +393,9 @@ pub async fn download_tv_season_posters(path: &Path, config: &Config) -> Result<
     if !all_failed_items.is_empty() {
         println!();
         println!("Failed items ({}):", failed_count);
-        for (folder_name, reason) in &all_failed_items {
-            println!("  - {}: {}", folder_name, reason);
+        for item in &all_failed_items {
+            println!("  - {}: {}", item.folder_name, item.reason);
+            println!("    Path: {}", item.path);
         }
     }
     
@@ -412,7 +419,7 @@ struct TvShowResult {
     skipped: usize,
     failed: usize,
     total_size: u64,
-    failed_items: Vec<(String, String)>, // (folder_name, reason)
+    failed_items: Vec<FailedItem>,
 }
 
 /// Process all seasons for a single TV show.
@@ -431,7 +438,7 @@ async fn process_tv_show_seasons(
     let mut skipped = 0;
     let mut failed = 0;
     let mut total_size: u64 = 0;
-    let mut failed_items: Vec<(String, String)> = Vec::new();
+    let mut failed_items: Vec<FailedItem> = Vec::new();
     
     // Get show details to know how many seasons
     let show_details = match tmdb.get_tv_details(tmdb_id).await {
@@ -511,15 +518,23 @@ async fn process_tv_show_seasons(
                 DownloadResult::Skipped => {
                     skipped += 1;
                 }
-                DownloadResult::Failed { folder_name, reason } => {
+                DownloadResult::Failed { folder_name, reason, path } => {
                     failed += 1;
-                    failed_items.push((folder_name, reason));
+                    failed_items.push(FailedItem {
+                        folder_name,
+                        reason,
+                        path,
+                    });
                 }
             },
             Err(e) => {
                 tracing::warn!("Season task error for {}: {}", folder_name, e);
                 failed += 1;
-                failed_items.push((folder_name.to_string(), format!("Task error: {}", e)));
+                failed_items.push(FailedItem {
+                    folder_name: folder_name.to_string(),
+                    reason: format!("Task error: {}", e),
+                    path: entry_path.display().to_string(),
+                });
             }
         }
     }
@@ -552,6 +567,7 @@ async fn download_single_tv_season_poster(
             return DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: format!("Failed to create season directory: {}", e),
+                path: season_path.display().to_string(),
             };
         }
     }
@@ -577,6 +593,7 @@ async fn download_single_tv_season_poster(
             return DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: format!("Failed to fetch season details: {}", e),
+                path: season_path.display().to_string(),
             };
         }
     };
@@ -589,6 +606,7 @@ async fn download_single_tv_season_poster(
             return DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: "No poster available".to_string(),
+                path: season_path.display().to_string(),
             };
         }
     };
@@ -606,6 +624,7 @@ async fn download_single_tv_season_poster(
             DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: format!("Download failed: {}", e),
+                path: season_path.display().to_string(),
             }
         }
     }
