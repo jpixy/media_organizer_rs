@@ -21,46 +21,39 @@ use crate::utils::chinese;
 /// Generate sorting prefix character.
 /// 
 /// Rule Priority (Highest to Lowest):
-/// 1. If there is a Chinese localized name/title, use PINYIN FIRST LETTER of that name
-/// 2. If no Chinese name:
-///    - Chinese original language: PINYIN FIRST LETTER of original name
-///    - English original language: FIRST LETTER after removing articles (The/A/An)
-///    - Other languages: FIRST LETTER of original name
+/// 1. If title contains Chinese characters, use PINYIN FIRST LETTER of the first Chinese character
+/// 2. For English titles: FIRST LETTER after removing articles (The/A/An)
+/// 3. For other languages: FIRST LETTER of title
 ///
 /// Example Format:
 /// [Z][追龍](2017)-tt6015328-tmdb426242
+/// [H][横道世之介][横道世之介](2013)-tt2151915-tmdb200145
 fn generate_sort_prefix(
-    has_chinese_name: bool,
-    chinese_name: &str,
+    title: &str,
     original_language: &str,
-    original_name: &str,
 ) -> char {
-    // Rule 1: Highest priority - use Chinese name pinyin if available
-    if has_chinese_name {
-        return chinese::get_first_pinyin_letter(chinese_name);
+    // Rule 1: If title contains Chinese characters, use pinyin
+    if chinese::contains_chinese(title) {
+        return chinese::get_first_pinyin_letter(title);
     }
 
-    // Rule 2: No Chinese name, decide by original language
-    match original_language {
-        // Chinese original language: use pinyin of original name
-        "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK" => chinese::get_first_pinyin_letter(original_name),
-        // English: remove articles first
-        "en" => {
-            let title_lower = original_name.to_lowercase();
-            let effective_title = if title_lower.starts_with("the ") {
-                &original_name[4..]
-            } else if title_lower.starts_with("a ") {
-                &original_name[2..]
-            } else if title_lower.starts_with("an ") {
-                &original_name[3..]
-            } else {
-                original_name
-            };
-            effective_title.chars().next().unwrap_or('?').to_ascii_uppercase()
-        }
-        // Other languages: use first character directly
-        _ => original_name.chars().next().unwrap_or('?').to_ascii_uppercase(),
+    // Rule 2: English - remove articles first
+    if original_language == "en" {
+        let title_lower = title.to_lowercase();
+        let effective_title = if title_lower.starts_with("the ") {
+            &title[4..]
+        } else if title_lower.starts_with("a ") {
+            &title[2..]
+        } else if title_lower.starts_with("an ") {
+            &title[3..]
+        } else {
+            title
+        };
+        return effective_title.chars().next().unwrap_or('?').to_ascii_uppercase();
     }
+
+    // Rule 3: Other languages - use first character directly
+    title.chars().next().unwrap_or('?').to_ascii_uppercase()
 }
 
 /// Generate movie folder name.
@@ -70,19 +63,15 @@ fn generate_sort_prefix(
 pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) -> String {
     let mut parts = Vec::new();
 
-    // Add sorting prefix
-    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
-    let has_chinese = is_chinese_lang 
-        || normalize_title(&metadata.title) != normalize_title(&metadata.original_title);
+    // Add sorting prefix - always use title (which is the Chinese/localized title)
     let sort_prefix = generate_sort_prefix(
-        has_chinese,
         &metadata.title,
         &metadata.original_language,
-        &metadata.original_title,
     );
     parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication for Chinese movies
+    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
     let is_chinese = is_chinese_lang;
     let titles_same = normalize_title(&metadata.original_title) == normalize_title(&metadata.title);
 
@@ -121,19 +110,15 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
 pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     let mut parts = Vec::new();
 
-    // Add sorting prefix
-    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
-    let has_chinese = is_chinese_lang 
-        || normalize_title(&metadata.name) != normalize_title(&metadata.original_name);
+    // Add sorting prefix - always use name (which is the Chinese/localized name)
     let sort_prefix = generate_sort_prefix(
-        has_chinese,
         &metadata.name,
         &metadata.original_language,
-        &metadata.original_name,
     );
     parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication
+    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
     let is_chinese = is_chinese_lang;
     let titles_same = normalize_title(&metadata.original_name) == normalize_title(&metadata.name);
 
