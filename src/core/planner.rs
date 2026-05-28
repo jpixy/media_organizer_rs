@@ -5624,8 +5624,19 @@ impl Planner {
 
                     // NEW: Check if filename contains media title (Chinese or original)
                     let contains_media_title = if let Some((chinese_title, original_title)) = media_titles {
-                        name_lower.contains(&chinese_title.to_lowercase())
-                            || name_lower.contains(&original_title.to_lowercase())
+                        // Sanitize titles to match sanitized filenames (special chars -> _)
+                        let sanitize_for_match = |s: &str| {
+                            s.chars()
+                                .map(|c| match c {
+                                    '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+                                    _ => c,
+                                })
+                                .collect::<String>()
+                        };
+                        let sanitized_chinese = sanitize_for_match(chinese_title).to_lowercase();
+                        let sanitized_original = sanitize_for_match(original_title).to_lowercase();
+                        name_lower.contains(&sanitized_chinese)
+                            || name_lower.contains(&sanitized_original)
                     } else {
                         false
                     };
@@ -6062,6 +6073,50 @@ mod tests {
         assert!(moved_files.iter().any(|s| s == "绝命毒师.jpg"));
         assert!(moved_files.iter().any(|s| s == "Breaking Bad.png"));
         assert!(!moved_files.iter().any(|s| s == "other-show.jpg"));
+    }
+
+    #[test]
+    fn test_add_auxiliary_operations_with_special_chars_in_title() {
+        use std::fs;
+        
+        let temp_dir = tempfile::tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let target_dir = temp_dir.path().join("target");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // 电影标题包含冒号: "Kim Dotcom: Caught in the Web"
+        // 文件名中冒号被替换为下划线: "Kim Dotcom_ Caught in the Web"
+        fs::File::create(source_dir.join("[K][Kim Dotcom_ Caught in the Web](2017)-1920x1080.jpg")).unwrap();
+        fs::File::create(source_dir.join("Kim Dotcom_ Caught in the Web-poster.jpg")).unwrap();
+        
+        // 包含其他特殊字符的标题
+        fs::File::create(source_dir.join("Test*Movie.jpg")).unwrap();
+        fs::File::create(source_dir.join("Test?Question.jpg")).unwrap();
+
+        let mut planner = Planner::new().unwrap();
+        planner.config.move_posters = true;
+        
+        let mut operations = Vec::new();
+        // 原始标题包含特殊字符
+        let media_titles = Some(("Kim Dotcom: Caught in the Web", "Kim Dotcom: Caught in the Web"));
+        
+        planner.add_auxiliary_operations(&source_dir, &target_dir, &mut operations, media_titles);
+
+        // 2 个文件会被移动：包含 sanitize 后的标题
+        assert_eq!(operations.len(), 2);
+        
+        let moved_files: Vec<String> = operations
+            .iter()
+            .filter(|op| op.op == OperationType::Move)
+            .map(|op| op.to.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+        
+        assert!(moved_files.iter().any(|s| s == "[K][Kim Dotcom_ Caught in the Web](2017)-1920x1080.jpg"));
+        assert!(moved_files.iter().any(|s| s == "Kim Dotcom_ Caught in the Web-poster.jpg"));
+        // 不匹配的文件不会被移动
+        assert!(!moved_files.iter().any(|s| s == "Test*Movie.jpg"));
+        assert!(!moved_files.iter().any(|s| s == "Test?Question.jpg"));
     }
 
     #[test]
