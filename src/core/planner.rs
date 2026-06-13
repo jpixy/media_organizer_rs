@@ -12,6 +12,7 @@ use crate::core::metadata::{self, CandidateMetadata, DirectoryType};
 use crate::core::parser::{self, FilenameParser, ParsedFilename};
 use crate::core::scanner::scan_directory;
 use crate::generators::{filename as gen_filename, folder as gen_folder};
+use crate::services::guessit_parser::GuessItParser;
 use crate::models::media::{
     EpisodeMetadata, MediaType, MovieMetadata, SeasonMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
@@ -19,6 +20,7 @@ use crate::models::plan::{
     Operation, OperationType, ParsedInfo, Plan, PlanItem, PlanItemStatus, PosterDownloadStatus,
     PosterStats, SampleItem, TargetInfo, UnknownItem,
 };
+use crate::utils::chinese;
 use crate::services::ffprobe;
 use crate::services::tmdb::{Credits, MovieDetails, TmdbClient};
 use crate::Result;
@@ -1491,6 +1493,20 @@ impl Planner {
                     tmdb_id
                 );
 
+                // Get parent folder name for guessit parsing
+                let folder_name = video.parent_dir
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+
+                // Parse folder name using guessit to extract title information
+                let guessit_parser = GuessItParser::new();
+                let guessit_result = guessit_parser.parse_with_type(folder_name, Some("movie")).ok();
+                
+                // Extract titles from guessit result
+                let guessit_title = guessit_result.as_ref().and_then(|r| r.primary_title());
+                let guessit_alt_titles = guessit_result.as_ref().and_then(|r| r.alternative_title.clone());
+
                 // Fetch movie details directly using TMDB ID
                 let tmdb = match self.tmdb_client.as_ref() {
                     Some(client) => client,
@@ -1528,16 +1544,113 @@ impl Planner {
                 };
 
                 // Build movie metadata
+                // First, try to get Chinese title from various sources
+                let mut fallback_chinese_title: Option<String> = None;
+                
+                // Priority 1: Check if filename already has Chinese title
+                if let Some(title) = &info.title {
+                    if chinese::contains_chinese(title) {
+                        fallback_chinese_title = Some(title.clone());
+                        tracing::info!("[ORGANIZED] Found Chinese title in filename: {}", title);
+                    }
+                }
+                
+                // Priority 2: Check guessit alternative titles for Chinese
+                if fallback_chinese_title.is_none() {
+                    if let Some(alt_titles) = &guessit_alt_titles {
+                        for alt_title in alt_titles {
+                            if chinese::contains_chinese(alt_title) {
+                                fallback_chinese_title = Some(alt_title.to_string());
+                                tracing::info!("[ORGANIZED] Found Chinese title from guessit: {}", alt_title);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Priority 3: Search TMDB with guessit title to find Chinese translation
+                if fallback_chinese_title.is_none() {
+                    // Build list of search candidates from guessit and filename
+                    let mut search_candidates: Vec<String> = Vec::new();
+                    
+                    // Add guessit primary title
+                    if let Some(title) = &guessit_title {
+                        if !title.is_empty() {
+                            search_candidates.push(title.clone());
+                        }
+                    }
+                    
+                    // Add filename original title if different
+                    if let Some(title) = &info.original_title {
+                        if !search_candidates.contains(title) {
+                            search_candidates.push(title.clone());
+                        }
+                    }
+                    
+                    // Try each candidate with Chinese language to find localized title
+                    for candidate in search_candidates {
+                        if let Ok(search_results) = tmdb.search_movie_with_language(&candidate, Some(info.year), "zh-CN").await {
+                            for result in search_results {
+                                if result.id == tmdb_id && chinese::contains_chinese(&result.title) {
+                                    tracing::info!(
+                                        "[TMDB] Found Chinese title '{}' for '{}' via search",
+                                        result.title,
+                                        candidate
+                                    );
+                                    fallback_chinese_title = Some(result.title);
+                                    break;
+                                }
+                            }
+                            if fallback_chinese_title.is_some() {
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Priority 4: Use TMDB translations API to get Chinese title
+                if fallback_chinese_title.is_none() {
+                    tracing::info!("[TMDB] Trying translations API for tmdb{}", tmdb_id);
+                    match tmdb.get_movie_translations(tmdb_id).await {
+                        Ok(translations) => {
+                            tracing::info!("[TMDB] Got {} translations for tmdb{}", translations.translations.len(), tmdb_id);
+                            // Look for Chinese translation (zh or zh-CN)
+                            for translation in &translations.translations {
+                                tracing::debug!("[TMDB] Checking translation: {} / {} / '{}'", 
+                                    translation.iso_639_1, translation.english_name, translation.data.title);
+                                if translation.iso_639_1 == "zh" || translation.iso_639_1 == "zh-CN" {
+                                    let chinese_title = &translation.data.title;
+                                    tracing::info!("[TMDB] Found zh translation candidate: '{}'", chinese_title);
+                                    if !chinese_title.is_empty() && chinese::contains_chinese(chinese_title) {
+                                        tracing::info!(
+                                            "[TMDB] Found Chinese title '{}' from translations API",
+                                            chinese_title
+                                        );
+                                        fallback_chinese_title = Some(chinese_title.clone());
+                                        break;
+                                    } else {
+                                        tracing::warn!("[TMDB] zh translation title is empty or not Chinese: '{}'", chinese_title);
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("[TMDB] Failed to get translations for tmdb{}: {}", tmdb_id, e);
+                        }
+                    }
+                }
+                
                 let metadata = self.build_movie_metadata_from_details(
                     &details,
                     credits.as_ref(),
                     collection_total,
+                    fallback_chinese_title.as_deref(),
                 );
 
                 let parsed = ParsedFilename {
-                    original_title: info.original_title,
-                    title: info.title,
-                    year: Some(info.year),
+                    original_title: Some(metadata.original_title.clone()),
+                    title: Some(metadata.title.clone()),
+                    year: Some(metadata.year),
                     season: None,
                     episode: None,
                     confidence: 1.0,
@@ -1610,6 +1723,7 @@ impl Planner {
         details: &MovieDetails,
         credits: Option<&Credits>,
         collection_total_movies: Option<usize>,
+        fallback_chinese_title: Option<&str>,
     ) -> MovieMetadata {
         // Extract actor names and roles
         let (actors, actor_roles): (Vec<String>, Vec<String>) = credits
@@ -1691,10 +1805,39 @@ impl Planner {
             .as_ref()
             .map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p));
 
+        // Determine title - use TMDB title, but fallback to parsed Chinese title if TMDB doesn't have translation
+        let title: String = {
+            let tmdb_title = &details.title;
+            let tmdb_original = &details.original_title;
+            let titles_same = self.normalize_title(tmdb_title) == self.normalize_title(tmdb_original);
+            let title_has_chinese = chinese::contains_chinese(tmdb_title);
+            
+            // If TMDB has Chinese translation, use it
+            if !titles_same || title_has_chinese {
+                tmdb_title.clone()
+            } else if let Some(fallback) = fallback_chinese_title {
+                // Only use fallback if it actually contains Chinese characters
+                if chinese::contains_chinese(fallback) {
+                    // TMDB doesn't have Chinese translation, use parsed Chinese title from filename
+                    tracing::info!(
+                        "[TMDB] No Chinese translation for '{}', using fallback: '{}'",
+                        tmdb_title,
+                        fallback
+                    );
+                    fallback.to_string()
+                } else {
+                    // Fallback is also not Chinese, use TMDB title
+                    tmdb_title.clone()
+                }
+            } else {
+                tmdb_title.clone()
+            }
+        };
+
         MovieMetadata {
             tmdb_id: details.id,
             imdb_id: details.imdb_id.clone(),
-            title: details.title.clone(),
+            title,
             original_title: details.original_title.clone(),
             original_language: details.original_language.clone(),
             year: details
@@ -3540,7 +3683,7 @@ impl Planner {
         let tmdb_lookup = async {
             if let Some(id) = tmdb_id {
                 tracing::debug!("FILENAME-ID Trying TMDB ID: {}", id);
-                match self.get_movie_details(client, id).await {
+                match self.get_movie_details(client, id, None).await {
                     Ok(Some(movie)) => {
                         tracing::info!(
                             "FILENAME-ID Found movie via TMDB ID {}: {}",
@@ -3569,7 +3712,7 @@ impl Planner {
                 match client.find_movie_by_imdb_id(id).await {
                     Ok(Some(tmdb_id)) => {
                         tracing::info!("FILENAME-ID IMDB {} -> TMDB {}", id, tmdb_id);
-                        match self.get_movie_details(client, tmdb_id).await {
+                        match self.get_movie_details(client, tmdb_id, None).await {
                             Ok(Some(movie)) => {
                                 tracing::info!(
                                     "FILENAME-ID Found movie via IMDB ID {}: {}",
@@ -3755,7 +3898,7 @@ impl Planner {
                     match client.find_movie_by_imdb_id(imdb).await {
                         Ok(Some(tmdb_id)) => {
                             tracing::info!("TMDB found via IMDB ID {}: tmdb{}", imdb, tmdb_id);
-                            self.get_movie_details(client, tmdb_id).await.ok().flatten()
+                            self.get_movie_details(client, tmdb_id, chinese_title.as_deref()).await.ok().flatten()
                         }
                         Ok(None) => {
                             tracing::debug!("No TMDB match for IMDB ID: {}", imdb);
@@ -3813,7 +3956,7 @@ impl Planner {
         // Priority 1: Chinese title results (最高优先级 - 中文结果)
         if !chinese_results.is_empty() {
             let query = chinese_title.as_deref().unwrap_or("");
-            if let Some(best) = self.select_best_movie_match(&chinese_results, query) {
+            if let Some(best) = self.select_best_movie_match(&chinese_results, query, parsed.year) {
                 let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
                 tracing::debug!("Priority 1: Selected title='{}' tmdb_year={:?}", best.title, tmdb_year);
                 if self.is_reasonable_match_with_year(
@@ -3824,7 +3967,7 @@ impl Planner {
                     tmdb_year,
                 ) {
                     tracing::info!("TMDB found (Chinese match): {}", best.title);
-                    return self.get_movie_details(client, best.id).await;
+                    return self.get_movie_details(client, best.id, chinese_title.as_deref()).await;
                 }
             }
         }
@@ -3841,14 +3984,14 @@ impl Planner {
 
             if !common.is_empty() {
                 let query = english_title.as_deref().unwrap_or("");
-                if let Some(best) = self.select_best_movie_match_ref(&common, query) {
+                if let Some(best) = self.select_best_movie_match_ref(&common, query, parsed.year) {
                     tracing::info!(
                         "TMDB found (common match): {} - matches both '{}' and '{}'",
                         best.title,
                         chinese_title.as_deref().unwrap_or(""),
                         english_title.as_deref().unwrap_or("")
                     );
-                    return self.get_movie_details(client, best.id).await;
+                    return self.get_movie_details(client, best.id, chinese_title.as_deref()).await;
                 }
             }
         }
@@ -3856,7 +3999,7 @@ impl Planner {
         // Priority 3: English title results (国际电影 fallback)
         if !english_results.is_empty() {
             let query = english_title.as_deref().unwrap_or("");
-            if let Some(best) = self.select_best_movie_match(&english_results, query) {
+            if let Some(best) = self.select_best_movie_match(&english_results, query, parsed.year) {
                 let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
                 if self.is_reasonable_match_with_year(
                     query,
@@ -3866,7 +4009,7 @@ impl Planner {
                     tmdb_year,
                 ) {
                     tracing::info!("TMDB found (English match): {}", best.title);
-                    return self.get_movie_details(client, best.id).await;
+                    return self.get_movie_details(client, best.id, chinese_title.as_deref()).await;
                 }
             }
         }
@@ -3885,7 +4028,7 @@ impl Planner {
                     }
                 };
                 if !results.is_empty() {
-                    if let Some(best) = self.select_best_movie_match(&results, query) {
+                    if let Some(best) = self.select_best_movie_match(&results, query, parsed.year) {
                         let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
                         if self.is_reasonable_match_with_year(
                             query,
@@ -3895,7 +4038,7 @@ impl Planner {
                             tmdb_year,
                         ) {
                             tracing::info!("TMDB found (shortened query): {}", best.title);
-                            return self.get_movie_details(client, best.id).await;
+                            return self.get_movie_details(client, best.id, chinese_title.as_deref()).await;
                         }
                     }
                 }
@@ -3916,6 +4059,7 @@ impl Planner {
         &self,
         results: &[&'a crate::services::tmdb::MovieSearchItem],
         query_title: &str,
+        target_year: Option<u16>,
     ) -> Option<&'a crate::services::tmdb::MovieSearchItem> {
         use chrono::Datelike;
         let current_year = chrono::Utc::now().year() as u16;
@@ -3954,6 +4098,31 @@ impl Planner {
             {
                 score += 1000;
             }
+
+            // Year match bonus: prioritize matching the target year
+            // - Exact year match: +50000
+            // - Year diff = 1: +5000
+            // - Year diff = 2: +1000
+            // - Year diff > 2: no bonus
+            let year_match_bonus: i64 = if let Some(target) = target_year {
+                if year == target {
+                    50000
+                } else if year > 0 {
+                    let diff = (year as i32 - target as i32).abs();
+                    if diff == 1 {
+                        5000
+                    } else if diff == 2 {
+                        1000
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
+            score += year_match_bonus;
 
             scored_results.push((i, score, is_exact));
         }
@@ -4658,6 +4827,7 @@ impl Planner {
         &self,
         results: &'a [crate::services::tmdb::MovieSearchItem],
         query_title: &str,
+        target_year: Option<u16>,
     ) -> Option<&'a crate::services::tmdb::MovieSearchItem> {
         use chrono::Datelike;
         let current_year = chrono::Utc::now().year() as u16;
@@ -4695,14 +4865,39 @@ impl Planner {
             let vote_count = movie.vote_count.unwrap_or(0) as i64;
             let date_bonus: i64 = if year > 0 { 100 } else { 0 };
 
-            let score = exact_match_bonus + vote_count + date_bonus;
+            // Year match bonus: prioritize matching the target year
+            // - Exact year match: +50000
+            // - Year diff = 1: +5000
+            // - Year diff = 2: +1000
+            // - Year diff > 2: no bonus
+            let year_match_bonus: i64 = if let Some(target) = target_year {
+                if year == target {
+                    50000
+                } else if year > 0 {
+                    let diff = (year as i32 - target as i32).abs();
+                    if diff == 1 {
+                        5000
+                    } else if diff == 2 {
+                        1000
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
+
+            let score = exact_match_bonus + vote_count + date_bonus + year_match_bonus;
 
             tracing::debug!(
-                "Movie candidate: {} (year={}, votes={}, exact={}, score={})",
+                "Movie candidate: {} (year={}, votes={}, exact={}, year_match_bonus={}, total_score={})",
                 movie.title,
                 year,
                 vote_count,
                 exact_match,
+                year_match_bonus,
                 score
             );
 
@@ -4799,6 +4994,7 @@ impl Planner {
         &self,
         client: &TmdbClient,
         movie_id: u64,
+        fallback_chinese_title: Option<&str>,
     ) -> Result<Option<MovieMetadata>> {
         let details = client.get_movie_details(movie_id).await?;
 
@@ -4950,11 +5146,87 @@ impl Planner {
                 (None, None, None, None)
             };
 
+        // Determine title - use TMDB title, but fallback to parsed Chinese title if TMDB doesn't have translation
+        let mut title: String = {
+            let tmdb_title = &details.title;
+            let tmdb_original = &details.original_title;
+            let titles_same = self.normalize_title(tmdb_title) == self.normalize_title(tmdb_original);
+            let title_has_chinese = chinese::contains_chinese(tmdb_title);
+            
+            // If TMDB has Chinese translation, use it
+            if !titles_same || title_has_chinese {
+                tmdb_title.clone()
+            } else if let Some(fallback) = fallback_chinese_title {
+                // TMDB doesn't have Chinese translation, use parsed Chinese title from filename
+                tracing::info!(
+                    "[TMDB] No Chinese translation for '{}', using fallback: '{}'",
+                    tmdb_title,
+                    fallback
+                );
+                fallback.to_string()
+            } else {
+                tmdb_title.clone()
+            }
+        };
+        
+        // If title is still not Chinese, try translations API
+        if !chinese::contains_chinese(&title) {
+            tracing::info!("[TMDB] Title '{}' is not Chinese, trying translations API", title);
+            match client.get_movie_translations(movie_id).await {
+                Ok(translations) => {
+                    tracing::info!("[TMDB] Got {} translations for tmdb{}", translations.translations.len(), movie_id);
+                    
+                    // Collect all valid Chinese translations
+                    let chinese_candidates: Vec<(String, String)> = translations.translations
+                        .iter()
+                        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+                        .filter(|t| !t.data.title.is_empty() && chinese::contains_chinese(&t.data.title))
+                        .map(|t| (t.iso_3166_1.clone(), t.data.title.clone()))
+                        .collect();
+                    
+                    // Priority order: CN (Simplified) > SG (Simplified) > HK (Traditional) > TW (Traditional)
+                    let region_priority = ["CN", "SG", "HK", "TW"];
+                    
+                    // First pass: try in priority order
+                    for priority_region in &region_priority {
+                        if let Some((_region, chinese_title)) = chinese_candidates
+                            .iter()
+                            .find(|(r, _)| r == priority_region)
+                        {
+                            tracing::info!(
+                                "[TMDB] Found {} title '{}' ({} region, priority {})",
+                                if *priority_region == "CN" || *priority_region == "SG" { "Simplified Chinese" } else { "Traditional Chinese" },
+                                chinese_title, 
+                                priority_region,
+                                priority_region
+                            );
+                            title = chinese_title.clone();
+                            break;
+                        }
+                    }
+                    
+                    // Final fallback: use any available Chinese translation
+                    if !chinese::contains_chinese(&title) {
+                        if let Some((region, chinese_title)) = chinese_candidates.first() {
+                            tracing::info!(
+                                "[TMDB] Found Chinese title '{}' ({} region, final fallback)",
+                                chinese_title, region
+                            );
+                            title = chinese_title.clone();
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[TMDB] Failed to get translations for tmdb{}: {}", movie_id, e);
+                }
+            }
+        }
+
         Ok(Some(MovieMetadata {
             tmdb_id: details.id,
             imdb_id: details.imdb_id,
             original_title: details.original_title,
-            title: details.title,
+            title,
             original_language: details.original_language,
             year,
             release_date: details.release_date,
@@ -6544,5 +6816,230 @@ mod tests {
         assert!(moved_folders.iter().any(|s| s == "Breaking Bad OST"));
         assert!(moved_folders.iter().any(|s| s == "绝命毒师原声带"));
         assert!(moved_folders.iter().any(|s| s == "Soundtrack"));
+    }
+
+    // =============================================================================
+    // Tests for select_best_movie_match with year weighting
+    // =============================================================================
+
+    fn create_movie_search_item(
+        id: u64,
+        title: &str,
+        original_title: &str,
+        release_date: Option<&str>,
+        vote_count: u32,
+    ) -> crate::services::tmdb::MovieSearchItem {
+        crate::services::tmdb::MovieSearchItem {
+            id,
+            title: title.to_string(),
+            original_title: original_title.to_string(),
+            release_date: release_date.map(|s| s.to_string()),
+            overview: None,
+            poster_path: None,
+            vote_count: Some(vote_count),
+            vote_average: None,
+        }
+    }
+
+    #[test]
+    fn test_select_best_movie_match_exact_year_match() {
+        // Test: When searching for "Aladdin" with year 2019, should prefer 2019 version over 1992
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(812, "Aladdin", "Aladdin", Some("1992-11-25"), 5000),
+            create_movie_search_item(420817, "Aladdin", "Aladdin", Some("2019-05-22"), 3000),
+        ];
+
+        // Query with year 2019
+        let result = planner.select_best_movie_match(&movies, "Aladdin", Some(2019));
+
+        assert!(result.is_some());
+        // Should select 2019 version (id: 420817) due to exact year match
+        assert_eq!(result.unwrap().id, 420817);
+    }
+
+    #[test]
+    fn test_select_best_movie_match_year_diff_1() {
+        // Test: Year difference of 1 should get +5000 bonus
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(1, "Some Movie", "Some Movie", Some("2020-01-01"), 100),
+            create_movie_search_item(2, "Some Movie", "Some Movie", Some("2021-01-01"), 100),
+        ];
+
+        // Query with year 2021 - should prefer 2021 version (+5000 year bonus)
+        let result = planner.select_best_movie_match(&movies, "Some Movie", Some(2021));
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 2);
+    }
+
+    #[test]
+    fn test_select_best_movie_match_year_diff_2() {
+        // Test: Year difference of 2 should get +1000 bonus
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(1, "Some Movie", "Some Movie", Some("2019-01-01"), 100),
+            create_movie_search_item(2, "Some Movie", "Some Movie", Some("2021-01-01"), 100),
+        ];
+
+        // Query with year 2021 - should prefer 2021 version (+1000 year bonus)
+        let result = planner.select_best_movie_match(&movies, "Some Movie", Some(2021));
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 2);
+    }
+
+    #[test]
+    fn test_select_best_movie_match_no_year_preference() {
+        // Test: Without year info, should prefer higher votes
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(812, "Aladdin", "Aladdin", Some("1992-11-25"), 5000),
+            create_movie_search_item(420817, "Aladdin", "Aladdin", Some("2019-05-22"), 3000),
+        ];
+
+        // Query without year - should prefer higher votes
+        let result = planner.select_best_movie_match(&movies, "Aladdin", None);
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 812); // Higher votes
+    }
+
+    #[test]
+    fn test_select_best_movie_match_exact_title_match_takes_precedence() {
+        // Test: Exact title match should still take precedence over year bonus
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(1, "Different Movie", "Different Movie", Some("2019-01-01"), 100),
+            create_movie_search_item(2, "Aladdin", "Aladdin", Some("2020-01-01"), 100),
+        ];
+
+        // Query for "Aladdin" with year 2019 - should select exact title match despite year diff
+        let result = planner.select_best_movie_match(&movies, "Aladdin", Some(2019));
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 2); // Exact title match
+    }
+
+    #[test]
+    fn test_select_best_movie_match_year_diff_greater_than_2() {
+        // Test: Year difference > 2 should not get bonus, title match wins
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(1, "Aladdin", "Aladdin", Some("1990-01-01"), 100),
+            create_movie_search_item(2, "Aladdin", "Aladdin", Some("2020-01-01"), 100),
+        ];
+
+        // Query with year 2019 - neither matches exactly, 2020 is closer
+        let result = planner.select_best_movie_match(&movies, "Aladdin", Some(2019));
+
+        assert!(result.is_some());
+        // 2020 is 1 year away from 2019, 1990 is 29 years away
+        // So 2020 should win with +5000 bonus
+        assert_eq!(result.unwrap().id, 2);
+    }
+
+    #[test]
+    fn test_select_best_movie_match_empty_results() {
+        let planner = Planner::new().unwrap();
+        let movies: Vec<crate::services::tmdb::MovieSearchItem> = vec![];
+
+        let result = planner.select_best_movie_match(&movies, "Aladdin", Some(2019));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_select_best_movie_match_ref_exact_year_match() {
+        // Test select_best_movie_match_ref with year matching
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(812, "Aladdin", "Aladdin", Some("1992-11-25"), 5000),
+            create_movie_search_item(420817, "Aladdin", "Aladdin", Some("2019-05-22"), 3000),
+        ];
+
+        // Convert to references as the function expects
+        let movie_refs: Vec<&crate::services::tmdb::MovieSearchItem> = movies.iter().collect();
+
+        // Query with year 2019
+        let result = planner.select_best_movie_match_ref(&movie_refs, "Aladdin", Some(2019));
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 420817);
+    }
+
+    #[test]
+    fn test_select_best_movie_match_ref_year_diff_1() {
+        let planner = Planner::new().unwrap();
+
+        let movies = vec![
+            create_movie_search_item(1, "Movie", "Movie", Some("2020-01-01"), 100),
+            create_movie_search_item(2, "Movie", "Movie", Some("2021-01-01"), 100),
+        ];
+        let movie_refs: Vec<&crate::services::tmdb::MovieSearchItem> = movies.iter().collect();
+
+        // Query with year 2021
+        let result = planner.select_best_movie_match_ref(&movie_refs, "Movie", Some(2021));
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 2);
+    }
+
+    #[test]
+    fn test_select_best_movie_match_ref_empty_results() {
+        let planner = Planner::new().unwrap();
+        let movies: Vec<&crate::services::tmdb::MovieSearchItem> = vec![];
+
+        let result = planner.select_best_movie_match_ref(&movies, "Aladdin", Some(2019));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_aladdin_2019_vs_1992_real_scenario() {
+        // Real scenario from TMDB: Searching "阿拉丁" (Aladdin) with year 2019
+        // Should return 2019 version, not 1992
+        let planner = Planner::new().unwrap();
+
+        // TMDB search results for "阿拉丁" with year 2019
+        let movies = vec![
+            // 1992 animated version
+            create_movie_search_item(812, "阿拉丁", "Aladdin", Some("1992-11-25"), 4500),
+            // 2019 live-action version
+            create_movie_search_item(420817, "阿拉丁", "Aladdin", Some("2019-05-22"), 3500),
+            // Another 2019 movie with similar name
+            create_movie_search_item(602411, "阿拉丁与神灯", "Adventures of Aladdin", Some("2019-05-14"), 500),
+        ];
+
+        // Query with Chinese title and year 2019
+        let result = planner.select_best_movie_match(&movies, "阿拉丁", Some(2019));
+
+        assert!(result.is_some());
+        // Should select 2019 version due to exact year match (+50000)
+        assert_eq!(result.unwrap().id, 420817);
+    }
+
+    #[test]
+    fn test_spider_man_no_way_home_year_match() {
+        // Real scenario: Spider-Man: No Way Home 2021
+        let planner = Planner::new().unwrap();
+
+        // TMDB search results (simplified)
+        let movies = vec![
+            create_movie_search_item(634649, "Spider-Man: No Way Home", "Spider-Man: No Way Home", Some("2021-12-15"), 15000),
+            create_movie_search_item(453395, "Doctor Strange in the Multiverse of Madness", "Doctor Strange in the Multiverse of Madness", Some("2022-05-06"), 12000),
+        ];
+
+        // Query with exact title and year
+        let result = planner.select_best_movie_match(&movies, "Spider-Man: No Way Home", Some(2021));
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 634649);
     }
 }

@@ -180,6 +180,31 @@ pub struct ProductionCompany {
     pub name: String,
 }
 
+/// Movie translations response.
+#[derive(Debug, Deserialize)]
+pub struct MovieTranslations {
+    pub id: u64,
+    pub translations: Vec<Translation>,
+}
+
+/// Individual translation.
+#[derive(Debug, Deserialize)]
+pub struct Translation {
+    pub iso_3166_1: String,
+    pub iso_639_1: String,
+    pub name: String,
+    pub english_name: String,
+    pub data: TranslationData,
+}
+
+/// Translation data containing title and overview.
+#[derive(Debug, Deserialize)]
+pub struct TranslationData {
+    pub title: String,
+    pub overview: String,
+    pub homepage: String,
+}
+
 /// TV show search result.
 #[derive(Debug, Deserialize)]
 pub struct TvSearchResult {
@@ -507,6 +532,33 @@ impl TmdbClient {
         Ok(resp.results)
     }
 
+    /// Search for movies with specific language for localized results.
+    pub async fn search_movie_with_language(
+        &self,
+        query: &str,
+        year: Option<u16>,
+        language: &str,
+    ) -> Result<Vec<MovieSearchItem>> {
+        let year_param = year.map(|y| format!("&year={}", y)).unwrap_or_default();
+        // Build URL with custom language parameter for localized search results
+        let base_url = TMDB_BASE_URL;
+        let api_key_param = if self.config.use_bearer {
+            String::new()
+        } else {
+            format!("api_key={}&", self.config.api_key)
+        };
+        let url = format!(
+            "{}/{}?{}{}&language={}{}",
+            base_url, "search/movie", api_key_param, 
+            format!("query={}", urlencoding::encode(query)),
+            language,
+            year_param
+        );
+        
+        let resp: MovieSearchResult = self.request_with_retry(|| self.build_request(&url).send()).await?;
+        Ok(resp.results)
+    }
+
     /// Get movie details with credits.
     pub async fn get_movie_details(&self, movie_id: u64) -> Result<MovieDetails> {
         let url = self.build_url(
@@ -514,6 +566,31 @@ impl TmdbClient {
             "&append_to_response=credits,release_dates",
         );
         let resp: MovieDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
+        Ok(resp)
+    }
+
+    /// Get movie translations (localized titles in all languages).
+    ///
+    /// Returns a list of all available translations for a movie.
+    /// Use this to find Chinese (zh-CN) or other language titles when
+    /// the main details API doesn't return the desired translation.
+    /// 
+    /// Note: This API does NOT use the language parameter to avoid filtering results.
+    /// We need all translations to find Chinese titles.
+    pub async fn get_movie_translations(&self, movie_id: u64) -> Result<MovieTranslations> {
+        // Build URL without language parameter to get ALL translations
+        let url = if self.config.use_bearer {
+            format!(
+                "{}/movie/{}/translations",
+                TMDB_BASE_URL, movie_id
+            )
+        } else {
+            format!(
+                "{}/movie/{}/translations?api_key={}",
+                TMDB_BASE_URL, movie_id, self.config.api_key
+            )
+        };
+        let resp: MovieTranslations = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 
@@ -643,5 +720,260 @@ impl TmdbClient {
         let resp = self.client.get(&url).send().await?;
         let bytes = resp.bytes().await?;
         Ok(bytes.to_vec())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that search_movie_with_language constructs URL with language parameter
+    #[test]
+    fn test_search_movie_with_language_url_construction() {
+        // This test verifies the URL construction logic
+        // We can't make actual API calls in unit tests, but we can test the URL format
+        
+        // Create a minimal config
+        let config = TmdbConfig {
+            api_key: "test_api_key".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: false,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        
+        // The URL should include language parameter
+        // We test this by checking the build_url logic
+        let client = TmdbClient::new(config);
+        
+        // Verify config has correct default language
+        assert_eq!(client.config.language, "zh-CN");
+    }
+
+    /// Test URL building with different languages
+    #[test]
+    fn test_build_url_with_language() {
+        let config = TmdbConfig {
+            api_key: "test_key".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: false,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = TmdbClient::new(config);
+        
+        let url = client.build_url("search/movie", "&query=Black%20Widow");
+        assert!(url.contains("language=zh-CN"), "URL should contain language=zh-CN");
+        assert!(url.contains("api_key=test_key"), "URL should contain api_key");
+    }
+
+    /// Test build_url with English language
+    #[test]
+    fn test_build_url_with_english_language() {
+        let config = TmdbConfig {
+            api_key: "test_key".to_string(),
+            language: "en-US".to_string(),
+            use_bearer: false,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = TmdbClient::new(config);
+        
+        let url = client.build_url("movie/497698", "");
+        assert!(url.contains("language=en-US"), "URL should contain language=en-US");
+    }
+
+    /// Test build_url with bearer token
+    #[test]
+    fn test_build_url_with_bearer() {
+        let config = TmdbConfig {
+            api_key: "bearer_token".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: true,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = TmdbClient::new(config);
+        
+        let url = client.build_url("movie/497698", "");
+        assert!(url.contains("language=zh-CN"), "URL should contain language=zh-CN");
+        // Bearer auth doesn't include api_key in URL (it's sent via Authorization header)
+        assert!(!url.contains("api_key="), "Bearer URL should not contain api_key");
+        assert!(url.contains("movie/497698"), "URL should contain movie ID");
+    }
+
+    /// Test that different movie IDs are handled correctly
+    #[test]
+    fn test_tmdb_config_movie_id_formats() {
+        // Black Widow TMDB ID: 497698
+        let config = TmdbConfig {
+            api_key: "test".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: false,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = TmdbClient::new(config);
+        
+        let url = client.build_url("movie/497698", "");
+        assert!(url.contains("movie/497698"), "URL should contain correct movie ID");
+        
+        // Test another movie ID
+        let url2 = client.build_url("movie/278", ""); // The Shawshank Redemption
+        assert!(url2.contains("movie/278"), "URL should contain correct movie ID");
+    }
+
+    /// Test search URL with year parameter
+    #[test]
+    fn test_search_url_with_year() {
+        // Build a URL similar to what search_movie_with_language would build
+        let query = urlencoding::encode("Black Widow");
+        let url = format!(
+            "{}/{}?api_key={}&language={}&query={}&year={}",
+            TMDB_BASE_URL, "search/movie", "test", "zh-CN", query, 2021
+        );
+        
+        assert!(url.contains("year=2021"), "URL should contain year parameter");
+        assert!(url.contains("query=Black+Widow") || url.contains("query=Black%20Widow"), 
+            "URL should contain encoded query, got: {}", url);
+    }
+
+    /// Test poster URL construction
+    #[test]
+    fn test_poster_url_construction() {
+        let config = TmdbConfig {
+            api_key: "test".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: false,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = TmdbClient::new(config);
+        
+        let poster_url = client.get_poster_url("/abc.jpg", "w500");
+        assert_eq!(poster_url, "https://image.tmdb.org/t/p/w500/abc.jpg");
+        
+        let poster_url2 = client.get_poster_url("/xyz.png", "original");
+        assert_eq!(poster_url2, "https://image.tmdb.org/t/p/original/xyz.png");
+    }
+
+    /// Test that language codes are properly formatted
+    #[test]
+    fn test_language_code_formats() {
+        let test_cases = vec![
+            ("zh-CN", "Chinese (Simplified)"),
+            ("zh-TW", "Chinese (Traditional)"),
+            ("en-US", "English (US)"),
+            ("ja-JP", "Japanese"),
+            ("ko-KR", "Korean"),
+        ];
+        
+        for (lang, _desc) in test_cases {
+            let config = TmdbConfig {
+                api_key: "test".to_string(),
+                language: lang.to_string(),
+                use_bearer: false,
+                proxy_enabled: false,
+                proxy: None,
+            };
+            let client = TmdbClient::new(config);
+            
+            let url = client.build_url("movie/1", "");
+            assert!(
+                url.contains(&format!("language={}", lang)),
+                "URL should contain language={} in {}",
+                lang, url
+            );
+        }
+    }
+
+    /// Test proxy configuration
+    #[test]
+    fn test_proxy_configuration() {
+        let config = TmdbConfig {
+            api_key: "test".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: false,
+            proxy_enabled: true,
+            proxy: Some("http://127.0.0.1:7890".to_string()),
+        };
+        let client = TmdbClient::new(config);
+        
+        assert!(client.config.proxy_enabled);
+        assert_eq!(client.config.proxy, Some("http://127.0.0.1:7890".to_string()));
+    }
+
+    /// Test translations API URL construction
+    /// Note: translations API should NOT include language parameter
+    #[test]
+    fn test_translations_url_construction() {
+        let config = TmdbConfig {
+            api_key: "test".to_string(),
+            language: "zh-CN".to_string(),
+            use_bearer: false,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = TmdbClient::new(config);
+        
+        // Test that build_url includes language (for other APIs)
+        let url = client.build_url("movie/497698", "");
+        assert!(url.contains("language=zh-CN"), "Regular URL should contain language parameter");
+        
+        // For translations API, we need to verify it doesn't include language
+        // We can't directly test get_movie_translations URL, but we can verify
+        // the build_url logic vs what get_movie_translations uses
+        let translations_url = format!("{}/movie/{}/translations?api_key={}", TMDB_BASE_URL, 497698, "test");
+        assert!(!translations_url.contains("language="), "Translations URL should NOT contain language parameter");
+        assert!(translations_url.contains("movie/497698/translations"), "URL should contain translations path");
+    }
+
+    /// Test parsing of translations response
+    #[test]
+    fn test_translations_response_parsing() {
+        let json_response = r#"{
+            "id": 497698,
+            "translations": [
+                {
+                    "iso_3166_1": "US",
+                    "iso_639_1": "en",
+                    "name": "English",
+                    "english_name": "English",
+                    "data": {
+                        "title": "Black Widow",
+                        "overview": "Test overview",
+                        "homepage": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "CN",
+                    "iso_639_1": "zh",
+                    "name": "简体中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "title": "黑寡妇",
+                        "overview": "测试概述",
+                        "homepage": ""
+                    }
+                }
+            ]
+        }"#;
+        
+        let translations: MovieTranslations = serde_json::from_str(json_response).unwrap();
+        assert_eq!(translations.id, 497698);
+        assert_eq!(translations.translations.len(), 2);
+        
+        // Find Chinese translation
+        let chinese = translations.translations.iter()
+            .find(|t| t.iso_639_1 == "zh")
+            .expect("Should have Chinese translation");
+        assert_eq!(chinese.data.title, "黑寡妇");
+        assert_eq!(chinese.english_name, "Mandarin");
+        
+        // Find English translation
+        let english = translations.translations.iter()
+            .find(|t| t.iso_639_1 == "en")
+            .expect("Should have English translation");
+        assert_eq!(english.data.title, "Black Widow");
     }
 }

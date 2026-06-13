@@ -977,6 +977,76 @@ mod tests {
     // ========================================================================
 
     #[test]
+    fn test_parse_organized_movie_folder_category_prefix_dual_title() {
+        // Black Widow folder with category prefix [B] and dual English titles
+        let info = parse_organized_movie_folder("[B][Black Widow][Black Widow](2021)-tt3480822-tmdb497698").unwrap();
+        assert_eq!(info.original_title, Some("Black Widow".to_string()));
+        assert_eq!(info.title, Some("Black Widow".to_string())); // Both are English
+        assert_eq!(info.year, 2021);
+        assert_eq!(info.imdb_id, Some("tt3480822".to_string()));
+        assert_eq!(info.tmdb_id, 497698);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_with_category_prefix() {
+        // Single title with category prefix
+        let info = parse_organized_movie_folder("[B][Black Widow](2021)-tt3480822-tmdb497698").unwrap();
+        assert_eq!(info.original_title, Some("Black Widow".to_string()));
+        assert_eq!(info.title, None); // No second title
+        assert_eq!(info.year, 2021);
+        assert_eq!(info.imdb_id, Some("tt3480822".to_string()));
+        assert_eq!(info.tmdb_id, 497698);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_category_prefix_dual_title_chinese() {
+        // Category prefix + dual title with Chinese second title
+        let info = parse_organized_movie_folder("[B][Spider-Man][蜘蛛侠：英雄无归](2021)-tt10872600-tmdb634649").unwrap();
+        assert_eq!(info.original_title, Some("Spider-Man".to_string()));
+        assert_eq!(info.title, Some("蜘蛛侠：英雄无归".to_string()));
+        assert_eq!(info.year, 2021);
+        assert_eq!(info.tmdb_id, 634649);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_category_prefix_dual_title_both_english() {
+        // Category prefix + dual title with both English (the bug scenario)
+        let info = parse_organized_movie_folder("[B][Black Widow][Black Widow](2021)-tt3480822-tmdb497698").unwrap();
+        assert_eq!(info.original_title, Some("Black Widow".to_string()));
+        assert_eq!(info.title, Some("Black Widow".to_string())); // Both English
+        assert_eq!(info.year, 2021);
+        assert_eq!(info.tmdb_id, 497698);
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_different_category_codes() {
+        // Test different single-character category codes
+        let categories = vec!["B", "H", "S", "M", "D", "A", "C"];
+        
+        for cat in categories {
+            let folder = format!("[{}][Test Movie](2020)-tt1234567-tmdb123456", cat);
+            let info = parse_organized_movie_folder(&folder).unwrap();
+            assert_eq!(info.original_title, Some("Test Movie".to_string()));
+            assert_eq!(info.title, None);
+            assert_eq!(info.year, 2020);
+        }
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_uppercase_category() {
+        // Uppercase category code
+        let info = parse_organized_movie_folder("[B][Black Widow](2021)-tt3480822-tmdb497698").unwrap();
+        assert_eq!(info.original_title, Some("Black Widow".to_string()));
+    }
+
+    #[test]
+    fn test_parse_organized_movie_folder_lowercase_category() {
+        // Lowercase category code should also work
+        let info = parse_organized_movie_folder("[b][Black Widow](2021)-tt3480822-tmdb497698").unwrap();
+        assert_eq!(info.original_title, Some("Black Widow".to_string()));
+    }
+
+    #[test]
     fn test_parse_organized_movie_folder_dual() {
         let info = parse_organized_movie_folder("[Upgrade][升级](2018)-tt6499752-tmdb500664").unwrap();
         assert_eq!(info.original_title, Some("Upgrade".to_string()));
@@ -1886,7 +1956,43 @@ pub fn extract_smart_metadata(input: &str) -> SmartExtractedMetadata {
 /// - `[Upgrade][升级](2018)-tt6499752-tmdb500664`
 /// - `[焚城](2024)-tt29495090-tmdb1305642`
 pub fn parse_organized_movie_folder(dirname: &str) -> Option<OrganizedMovieFolderInfo> {
-    // Pattern 1: Dual title: [Original][Chinese](Year)-ttIMDB-tmdbID
+    // Pattern 0: Category prefix + Dual title: [C][Original][Chinese](Year)-ttIMDB-tmdbID
+    // Where C is a single character category code (e.g., [B], [H], [S])
+    let re_category_dual =
+        regex::Regex::new(r"^\[([A-Za-z])\]\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_category_dual.captures(dirname) {
+        let _category = caps.get(1)?.as_str();
+        let original_title = caps.get(2)?.as_str();
+        let title = caps.get(3)?.as_str();
+        return Some(OrganizedMovieFolderInfo {
+            original_title: Some(original_title.to_string()),
+            title: Some(title.to_string()),
+            year: caps.get(4)?.as_str().parse().ok()?,
+            imdb_id: Some(format!("tt{}", caps.get(5)?.as_str())),
+            tmdb_id: caps.get(6)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern 1: Category prefix + Single title: [C][Title](Year)-ttIMDB-tmdbID
+    // Where C is a single character category code (e.g., [B], [H], [S])
+    let re_category_single =
+        regex::Regex::new(r"^\[([A-Za-z])\]\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_category_single.captures(dirname) {
+        let _category = caps.get(1)?.as_str();
+        let title = caps.get(2)?.as_str();
+        // Category prefix is single char, so treat this as single title format
+        return Some(OrganizedMovieFolderInfo {
+            original_title: Some(title.to_string()),
+            title: None,
+            year: caps.get(3)?.as_str().parse().ok()?,
+            imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
+            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern 2: Dual title: [Original][Chinese](Year)-ttIMDB-tmdbID
     let re_dual =
         regex::Regex::new(r"^\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
 

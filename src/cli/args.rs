@@ -6,16 +6,18 @@ use std::path::PathBuf;
 /// Media Organizer - High-performance media file organizer with AI-powered filename parsing
 /// 
 /// Features:
-/// - AI-powered filename parsing using Ollama (optional)
-/// - TMDB metadata integration
-/// - Central indexing across multiple disks
-/// - Full rollback support for safe operations
-/// - Cross-disk search and duplicate detection
+///   - AI-powered filename parsing using Ollama (optional)
+///   - TMDB metadata integration
+///   - Central indexing across multiple disks
+///   - Full rollback support for safe operations
+///   - Cross-disk search and duplicate detection
 /// 
 /// Quick Start:
-///   mediaorganizer plan movies /path/to/movies -t /path/to/library
-///   mediaorganizer execute plan_*.json
-///   mediaorganizer index scan /path/to/library --media-type movies --volume-label MyDisk
+///   Plan movies:  mediaorganizer plan movies <SOURCE>
+///   Execute plan:  mediaorganizer execute <PLAN_FILE>
+///   Index:        mediaorganizer index scan <PATH> --media-type <TYPE>
+/// 
+/// Run `mediaorganizer <COMMAND> --help` for detailed usage.
 #[derive(Parser, Debug)]
 #[command(name = "mediaorganizer")]
 #[command(author, version, about = "Organize your movie and TV show collection with AI-powered parsing")]
@@ -35,12 +37,13 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Generate an organization plan
+    #[command(long_about = "Generate an organization plan for movies or TV series.\n\nUsage:\n  mediaorganizer plan movies <SOURCE>\n  mediaorganizer plan tv_series <SOURCE>")]
     Plan {
         #[command(subcommand)]
         media_type: PlanType,
     },
 
-    /// Execute a plan file
+    /// Execute a plan file (execute <PLAN_FILE>)
     Execute {
         /// Path to the plan.json file
         #[arg(value_name = "PLAN_FILE")]
@@ -51,7 +54,7 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
 
-    /// Rollback a previous execution
+    /// Rollback a previous execution (rollback <ROLLBACK_FILE>)
     Rollback {
         /// Path to the rollback.json file
         #[arg(value_name = "ROLLBACK_FILE")]
@@ -62,13 +65,13 @@ pub enum Commands {
         dry_run: bool,
     },
 
-    /// Manage sessions
+    /// Manage sessions (sessions list|show <SESSION_ID>)
     Sessions {
         #[command(subcommand)]
         action: SessionsAction,
     },
 
-    /// Verify video file integrity
+    /// Verify video file integrity (verify <PATH>)
     Verify {
         /// Path to verify
         #[arg(value_name = "PATH")]
@@ -112,7 +115,7 @@ pub enum Commands {
         auto_name: bool,
     },
 
-    /// Import configuration and indexes from backup
+    /// Import configuration and indexes from backup (import <BACKUP_FILE>)
     Import {
         /// Backup file path
         #[arg(value_name = "BACKUP_FILE")]
@@ -140,6 +143,7 @@ pub enum Commands {
     },
 
     /// Download posters for movies or TV series
+    #[command(long_about = "Download posters for movies or TV series.\n\nUsage:\n  mediaorganizer poster movies <PATH>\n  mediaorganizer poster tv_series <PATH>")]
     Poster {
         #[command(subcommand)]
         media_type: PosterType,
@@ -152,10 +156,6 @@ pub enum IndexAction {
     /// 
     /// Scans the specified directory for NFO files and builds a searchable index.
     /// Automatically rebuilds indexes and recalculates statistics after scanning.
-    /// 
-    /// Example:
-    ///   mediaorganizer index scan /mnt/library/movies --media-type movies --volume-label Disk_Movies_01
-    ///   mediaorganizer index scan /mnt/library/tv --media-type tv_series --volume-label Disk_TV_01 --force
     Scan {
         /// Directory to scan for media files
         #[arg(value_name = "PATH")]
@@ -192,10 +192,6 @@ pub enum IndexAction {
     /// List contents of a specific volume group
     /// 
     /// Lists all movies or TV shows in a specific volume group.
-    /// 
-    /// Example:
-    ///   mediaorganizer index list Disk_Movies_01
-    ///   mediaorganizer index list Disk_TV_01 --media-type tv_series
     List {
         /// Volume group label to list
         #[arg(value_name = "VOLUME")]
@@ -219,9 +215,6 @@ pub enum IndexAction {
     /// 
     /// Removes all entries associated with the specified volume group.
     /// Use --confirm to actually delete the data.
-    /// 
-    /// Example:
-    ///   mediaorganizer index remove OldDisk --confirm
     Remove {
         /// Volume group label to remove
         #[arg(value_name = "VOLUME")]
@@ -236,10 +229,6 @@ pub enum IndexAction {
     /// 
     /// Identifies duplicate media files across volume groups based on TMDB ID.
     /// Useful for finding redundant copies that can be safely deleted.
-    /// 
-    /// Example:
-    ///   mediaorganizer index duplicates
-    ///   mediaorganizer index duplicates --media-type movies --volume-filter cross
     Duplicates {
         /// Media type filter: movies, tv_series, or all (default: all)
         #[arg(long, default_value = "all")]
@@ -272,11 +261,6 @@ pub enum IndexAction {
     /// 
     /// Lists all movie collections and their completion status.
     /// Use --update to fetch collection information from TMDB.
-    /// 
-    /// Example:
-    ///   mediaorganizer index collections
-    ///   mediaorganizer index collections --filter complete
-    ///   mediaorganizer index collections --update
     Collections {
         /// Filter: complete, incomplete, or all (default: all)
         #[arg(long, default_value = "all")]
@@ -302,11 +286,6 @@ pub enum IndexAction {
     /// 
     /// Lists all TV shows and their completion status (how many seasons/episodes owned).
     /// Use --update to fetch TV show information from TMDB.
-    /// 
-    /// Example:
-    ///   mediaorganizer index tv
-    ///   mediaorganizer index tv --filter incomplete
-    ///   mediaorganizer index tv --update
     Tv {
         /// Filter: complete, incomplete, or all (default: all)
         #[arg(long, default_value = "all")]
@@ -335,9 +314,6 @@ pub enum IndexAction {
     ///
     /// Note: scan --force and --update commands automatically trigger this.
     /// You rarely need to run this manually.
-    ///
-    /// Example:
-    ///   mediaorganizer index rebuild
     Rebuild {
         /// Skip preflight checks
         #[arg(long)]
@@ -348,10 +324,6 @@ pub enum IndexAction {
     ///
     /// Searches the pre-built central index for movies and TV shows.
     /// Use "mediaorganizer index scan" first to build the index.
-    ///
-    /// Example:
-    ///   mediaorganizer index search --title "Inception"
-    ///   mediaorganizer index search --actor "Leonardo" --genre "Sci-Fi"
     Search {
         /// Search by title
         #[arg(short = 't', long)]
@@ -395,8 +367,14 @@ pub enum IndexAction {
 #[clap(rename_all = "snake_case")]
 pub enum PlanType {
     /// Plan for movies
+    /// 
+    /// Scans the source directory for movie files and generates an organization plan.
+    /// 
+    /// Example:
+    ///   mediaorganizer plan movies /path/to/movies
+    ///   mediaorganizer plan movies /path/to/movies -t /path/to/library -o plan.json
     Movies {
-        /// Source directory containing movies
+        /// Source directory containing movies (required)
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
 
@@ -410,8 +388,14 @@ pub enum PlanType {
     },
 
     /// Plan for TV shows
+    /// 
+    /// Scans the source directory for TV show files and generates an organization plan.
+    /// 
+    /// Example:
+    ///   mediaorganizer plan tv_series /path/to/tv_shows
+    ///   mediaorganizer plan tv_series /path/to/tv_shows -t /path/to/library -o plan.json
     TvSeries {
-        /// Source directory containing TV shows
+        /// Source directory containing TV shows (required)
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
 
@@ -436,7 +420,7 @@ pub enum PosterType {
     /// Example:
     ///   mediaorganizer poster movies /path/to/movies
     Movies {
-        /// Source directory containing movies
+        /// Directory containing movie folders (required)
         #[arg(value_name = "PATH")]
         path: PathBuf,
     },
@@ -449,7 +433,7 @@ pub enum PosterType {
     /// Example:
     ///   mediaorganizer poster tv_series /path/to/tv_series
     TvSeries {
-        /// Source directory containing TV series
+        /// Directory containing TV series folders (required)
         #[arg(value_name = "PATH")]
         path: PathBuf,
     },

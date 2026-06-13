@@ -74,12 +74,16 @@ pub fn generate_movie_folder(metadata: &MovieMetadata, edition: Option<&str>) ->
     let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
     let is_chinese = is_chinese_lang;
     let titles_same = normalize_title(&metadata.original_title) == normalize_title(&metadata.title);
+    
+    // Check if title contains Chinese characters
+    let title_has_chinese = chinese::contains_chinese(&metadata.title);
 
-    if is_chinese || titles_same {
-        // Only use one title for Chinese movies or when titles are the same
+    if is_chinese || (titles_same && title_has_chinese) {
+        // Only use one title for Chinese movies or when titles are the same AND title contains Chinese
         parts.push(format!("[{}]", sanitize_filename(&metadata.title)));
     } else {
         // Use both localized and original title (localized first)
+        // This handles the case where TMDB doesn't have Chinese translation
         parts.push(format!("[{}]", sanitize_filename(&metadata.title)));
         parts.push(format!("[{}]", sanitize_filename(&metadata.original_title)));
     }
