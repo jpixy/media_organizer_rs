@@ -447,3 +447,38 @@ fn test_movie_folder_without_chinese_translation() {
     assert!(folder.contains("[蜘蛛侠"), "Expected folder to contain Chinese title, got: {}", folder);
     assert!(folder.contains("[Spider-Man"), "Expected folder to contain English title, got: {}", folder);
 }
+
+/// Test folder generation for movies with unofficial Chinese translation in filename
+/// This is the "首都坠落.DC Down.(2023)" scenario
+/// The filename contains "首都坠落" (unofficial translation) and "DC Down" (English name)
+/// When Chinese search fails, the system should extract "DC Down" and search with it
+#[test]
+fn test_movie_folder_with_unofficial_chinese_translation() {
+    // This test simulates the scenario where:
+    // 1. Filename contains unofficial Chinese translation: "首都坠落.DC Down.(2023)"
+    // 2. Chinese search "首都坠落" fails on TMDB
+    // 3. System extracts "DC Down" and searches successfully
+    // 4. TMDB returns "DC Down" (ID: 1085543) with official Chinese title "华盛顿陷落"
+    
+    let metadata = MovieMetadata {
+        tmdb_id: 1085543,
+        imdb_id: Some("tt15309074".to_string()),
+        original_title: "DC Down".to_string(),
+        title: "华盛顿陷落".to_string(),  // Official TMDB Chinese title
+        original_language: "en".to_string(),
+        year: 2023,
+        ..Default::default()
+    };
+    
+    let folder = generate_movie_folder(&metadata, None);
+    
+    // Should use the official Chinese title "华盛顿陷落"
+    assert!(folder.starts_with("[H]"), 
+        "Expected DC Down with Chinese '华盛顿陷落' to start with [H], got: {}", folder);
+    assert!(folder.contains("[华盛顿陷落]"), 
+        "Expected folder to contain official Chinese title '华盛顿陷落', got: {}", folder);
+    assert!(folder.contains("[DC Down]"), 
+        "Expected folder to contain English title 'DC Down', got: {}", folder);
+    assert!(folder.contains("(2023)"), 
+        "Expected folder to contain year '(2023)', got: {}", folder);
+}

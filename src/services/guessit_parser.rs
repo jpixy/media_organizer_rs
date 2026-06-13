@@ -176,6 +176,54 @@ impl GuessItResult {
         None
     }
 
+    /// Extract English title from mixed Chinese-English title.
+    /// 
+    /// GuessIt may extract only the Chinese part when parsing filenames like:
+    /// "首都坠落.DC Down.(2023)"
+    /// 
+    /// This method attempts to extract the English portion using regex.
+    /// Returns None if no English words are found or if the title is purely Chinese.
+    pub fn extract_english_title(&self) -> Option<String> {
+        if let Some(ref title) = self.title {
+            // Use regex to extract English words
+            use regex::Regex;
+            let re = Regex::new(r"[A-Za-z][A-Za-z0-9\s]*").ok()?;
+            let matches: Vec<&str> = re.find_iter(title)
+                .map(|m| m.as_str())
+                .filter(|s| !s.is_empty())
+                .collect();
+            
+            if !matches.is_empty() {
+                let english_title = matches.join(" ");
+                // Only return if it looks like a meaningful English title (more than 1 char)
+                if english_title.len() > 1 {
+                    return Some(english_title);
+                }
+            }
+        }
+        None
+    }
+
+    /// Try to extract English title from filename when guessit fails to do so.
+    /// This is useful for non-standard naming formats like "中文名.英文名.(年份)"
+    pub fn extract_english_from_filename(filename: &str) -> Option<String> {
+        use regex::Regex;
+        let re = Regex::new(r"[A-Za-z][A-Za-z0-9\s]*").ok()?;
+        
+        let matches: Vec<&str> = re.find_iter(filename)
+            .map(|m| m.as_str())
+            .filter(|s| !s.is_empty())
+            .collect();
+        
+        if !matches.is_empty() {
+            let english = matches.join(" ");
+            if english.len() > 1 {
+                return Some(english);
+            }
+        }
+        None
+    }
+
     /// Get a confidence indicator based on which fields are populated.
     pub fn completeness_score(&self) -> f32 {
         let mut score = 0.0;

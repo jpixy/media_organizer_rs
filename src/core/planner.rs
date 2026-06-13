@@ -4045,6 +4045,65 @@ impl Planner {
             }
         }
 
+        // Fallback 2: Extract English words from filename when Chinese search failed
+        // and English title was not available or English search also failed
+        // This handles cases where filename contains unofficial Chinese translations
+        // Example: "首都坠落.DC Down.(2023)" - Chinese search fails, but English "DC Down" works
+        let should_try_fallback = chinese_results.is_empty() && (english_title.is_none() || english_results.is_empty());
+        
+        if should_try_fallback {
+            if let Some(ref parsed_title) = parsed.title {
+                if chinese::contains_chinese(parsed_title) {
+                    // Extract English phrases using regex
+                    // Pattern matches multi-word English phrases (likely movie titles)
+                    use regex::Regex;
+                    let re = Regex::new(r"[A-Za-z]+(?:\s+[A-Za-z]+)+").unwrap();
+                    let english_phrases: Vec<&str> = re.find_iter(parsed_title)
+                        .map(|m| m.as_str())
+                        .collect();
+                    
+                    if !english_phrases.is_empty() {
+                        // Try searching with English phrases
+                        let english_query = english_phrases.join(" ");
+                        tracing::info!(
+                            "[FALLBACK] Chinese search failed, trying extracted English words: '{}'",
+                            english_query
+                        );
+                        
+                        let results = match client.search_movie(&english_query, parsed.year).await {
+                            Ok(r) => r,
+                            Err(e) => {
+                                tracing::warn!(
+                                    "[FALLBACK] TMDB search failed for extracted query '{}': {}",
+                                    english_query, e
+                                );
+                                Vec::new()
+                            }
+                        };
+                        
+                        if !results.is_empty() {
+                            if let Some(best) = self.select_best_movie_match(&results, &english_query, parsed.year) {
+                                let tmdb_year = Self::extract_year_from_release_date(&best.release_date);
+                                if self.is_reasonable_match_with_year(
+                                    &english_query,
+                                    &best.title,
+                                    &best.original_title,
+                                    parsed.year,
+                                    tmdb_year,
+                                ) {
+                                    tracing::info!(
+                                        "[FALLBACK] TMDB found via extracted English words: {}",
+                                        best.title
+                                    );
+                                    return self.get_movie_details(client, best.id, None).await;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         tracing::warn!(
             "TMDB: No match found for chinese={:?}, english={:?}",
             chinese_title,

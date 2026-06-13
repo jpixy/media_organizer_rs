@@ -271,6 +271,30 @@ impl FilenameParser {
             }
         }
         
+        // If primary_title() only provided a Chinese title (no English part),
+        // try to extract the English title from guessit's alternative_title field.
+        // This handles cases like "首都坠落.DC Down.(2023)" where guessit correctly
+        // separates them into title="首都坠落" and alternative_title=["DC Down"].
+        if parsed.original_title.is_none() {
+            if let Some(ref alt_titles) = guessit_result.alternative_title {
+                for alt in alt_titles {
+                    let has_ascii = alt.chars().any(|c| c.is_ascii_alphabetic());
+                    let has_chinese = alt.chars().any(|c| c >= '\u{4e00}' && c <= '\u{9fff}');
+                    if has_ascii && !has_chinese {
+                        let clean_alt = alt.trim().to_string();
+                        if !clean_alt.is_empty() {
+                            parsed.original_title = Some(clean_alt);
+                            tracing::debug!(
+                                "[PARSE] Extracted English title from alternative_title: {:?}",
+                                parsed.original_title
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
         parsed.year = guessit_result.year;
         parsed.season = guessit_result.season;
         parsed.episode = guessit_result.episode;
