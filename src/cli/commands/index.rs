@@ -926,6 +926,56 @@ fn matches_volume_filter(
     }
 }
 
+/// Extract language code from a path like "DE_German/[C][...]" or "EN_English/..."
+/// Returns the language folder name (e.g., "DE_German", "EN_English") or "Unknown" if not found.
+fn extract_language_from_path(path: &str) -> String {
+    // The path format is typically: "LANG_CODE/[folder_name]"
+    // e.g., "DE_German/[C][从海底出击][Das Boot](1981)-tt0082096-tmdb387"
+    // Language codes follow pattern: XX_LanguageName (e.g., DE_German, EN_English, KO_Korean)
+    if let Some(first_part) = path.split('/').next() {
+        // Skip empty strings
+        if first_part.is_empty() {
+            return "Unknown".to_string();
+        }
+        // Check if it looks like a language code:
+        // - Contains underscore
+        // - First part before underscore is 2 uppercase letters (country code)
+        if first_part.contains('_') {
+            let parts: Vec<&str> = first_part.split('_').collect();
+            // Language code format: XX_LanguageName
+            // XX should be exactly 2 uppercase letters
+            if parts.len() >= 2 {
+                let country_code = parts[0];
+                if country_code.len() == 2 && country_code.chars().all(|c| c.is_uppercase()) {
+                    return first_part.to_string();
+                }
+            }
+        }
+    }
+    "Unknown".to_string()
+}
+
+/// Group duplicates by their language.
+fn group_duplicates_by_language<'a>(
+    duplicates: &'a [DuplicateGroup],
+) -> std::collections::HashMap<String, Vec<&'a DuplicateGroup>> {
+    let mut groups: std::collections::HashMap<String, Vec<&'a DuplicateGroup>> = 
+        std::collections::HashMap::new();
+    
+    for duplicate in duplicates {
+        // Extract language from the first entry's path
+        let language = if let Some(first_entry) = duplicate.entries.first() {
+            extract_language_from_path(&first_entry.path)
+        } else {
+            "Unknown".to_string()
+        };
+        
+        groups.entry(language).or_default().push(duplicate);
+    }
+    
+    groups
+}
+
 /// Find duplicates with enhanced matching logic.
 async fn find_duplicates(
     media_type: &str, 
@@ -1477,7 +1527,31 @@ async fn find_duplicates(
                     println!();
                 }
 
-                for group in &duplicates {
+                // Group duplicates by language
+                let language_groups = group_duplicates_by_language(&duplicates);
+                
+                // Sort languages for consistent output
+                let mut sorted_languages: Vec<(&String, &Vec<&DuplicateGroup>)> = language_groups.iter().collect();
+                sorted_languages.sort_by(|a, b| a.0.cmp(b.0));
+                
+                println!(
+                    "{} (grouped by language)\n",
+                    format!("Found {} duplicate groups", duplicates.len())
+                        .bold()
+                        .yellow()
+                );
+
+                for (language, groups) in sorted_languages {
+                    println!(
+                        "{}{} ({} {})",
+                        "[".bold(),
+                        language.bold().cyan(),
+                        format!("{}", groups.len()).bold(),
+                        if groups.len() == 1 { "group" } else { "groups" }
+                    );
+                    println!("{}", "-".repeat(72));
+                    
+                    for group in groups {
                     let year_str = group.year.map(|y| format!("({})", y)).unwrap_or_default();
                     let type_badge = match group.media_type.as_str() {
                         "movie" => "[MOVIE]".cyan(),
@@ -1532,6 +1606,8 @@ async fn find_duplicates(
                     }
                     println!();
                 }
+                println!();
+            }
 
                 // Summary
                 let total_wasted: u64 = duplicates
@@ -2389,4 +2465,349 @@ async fn list_tv(filter: &str, format: &str, hide_paths: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ============================================================================
+    // extract_language_from_path Tests
+    // ============================================================================
+
+    /// Test extracting language from standard format path
+    #[test]
+    fn test_extract_language_standard_format() {
+        let path = "DE_German/[C][从海底出击][Das Boot](1981)-tt0082096-tmdb387";
+        assert_eq!(extract_language_from_path(path), "DE_German");
+    }
+
+    /// Test extracting language from various language codes
+    #[test]
+    fn test_extract_language_various_codes() {
+        // English
+        assert_eq!(
+            extract_language_from_path("EN_English/[S][神奇动物在哪里][Fantastic Beasts](2016)-tt3183660-tmdb259316"),
+            "EN_English"
+        );
+        
+        // Korean
+        assert_eq!(
+            extract_language_from_path("KO_Korean/[J][江南1970][강남 1970](2015)-tt3698118-tmdb297721"),
+            "KO_Korean"
+        );
+        
+        // Chinese
+        assert_eq!(
+            extract_language_from_path("ZH_Chinese/[F][飞驰人生3](2026)-tt38035835-tmdb1462229"),
+            "ZH_Chinese"
+        );
+        
+        // Japanese
+        assert_eq!(
+            extract_language_from_path("JA_Japanese/[C][初恋](2006)-tt0809925-tmdb33984"),
+            "JA_Japanese"
+        );
+    }
+
+    /// Test extracting language from path without language code
+    #[test]
+    fn test_extract_language_no_language_code() {
+        // Path without language prefix
+        assert_eq!(
+            extract_language_from_path("movies/[Test Movie](2020)"),
+            "Unknown"
+        );
+        
+        // Path with lowercase (not a language code)
+        assert_eq!(
+            extract_language_from_path("random_folder/[Movie](2020)"),
+            "Unknown"
+        );
+    }
+
+    /// Test extracting language from empty path
+    #[test]
+    fn test_extract_language_empty_path() {
+        assert_eq!(extract_language_from_path(""), "Unknown");
+    }
+
+    /// Test extracting language from path with only language code
+    #[test]
+    fn test_extract_language_only_code() {
+        assert_eq!(extract_language_from_path("EN_English"), "EN_English");
+        assert_eq!(extract_language_from_path("DE_German"), "DE_German");
+    }
+
+    /// Test extracting language from path with multiple slashes
+    #[test]
+    fn test_extract_language_multiple_slashes() {
+        assert_eq!(
+            extract_language_from_path("EN_English/subfolder/[Movie](2020)"),
+            "EN_English"
+        );
+    }
+
+    /// Test extracting language from path with special characters
+    #[test]
+    fn test_extract_language_special_chars() {
+        // Path with spaces in movie name
+        assert_eq!(
+            extract_language_from_path("EN_English/[S][Movie Name With Spaces](2020)"),
+            "EN_English"
+        );
+        
+        // Path with Chinese characters
+        assert_eq!(
+            extract_language_from_path("ZH_Chinese/[中][中文电影名](2020)"),
+            "ZH_Chinese"
+        );
+    }
+
+    // ============================================================================
+    // group_duplicates_by_language Tests
+    // ============================================================================
+
+    /// Helper function to create a DuplicateGroup for testing
+    fn create_test_duplicate_group(
+        title: &str,
+        language_path: &str,
+        tmdb_id: u64,
+    ) -> DuplicateGroup {
+        DuplicateGroup {
+            tmdb_id,
+            title: title.to_string(),
+            year: Some(2020),
+            media_type: "movie".to_string(),
+            confidence: "high".to_string(),
+            entries: vec![DuplicateEntry {
+                disk: "TestDisk".to_string(),
+                disk_path: "/test/path".to_string(),
+                path: language_path.to_string(),
+                size_bytes: 1_000_000_000,
+                size_human: "1.00 GB".to_string(),
+                video_files: vec![],
+            }],
+            total_size_bytes: 1_000_000_000,
+            total_size_human: "1.00 GB".to_string(),
+            is_multi_version: false,
+        }
+    }
+
+    /// Test grouping empty duplicates list
+    #[test]
+    fn test_group_duplicates_empty() {
+        let duplicates: Vec<DuplicateGroup> = vec![];
+        let groups = group_duplicates_by_language(&duplicates);
+        assert!(groups.is_empty());
+    }
+
+    /// Test grouping single duplicate
+    #[test]
+    fn test_group_duplicates_single() {
+        let duplicates = vec![
+            create_test_duplicate_group(
+                "Test Movie",
+                "EN_English/[Test Movie](2020)",
+                12345
+            ),
+        ];
+        
+        let groups = group_duplicates_by_language(&duplicates);
+        assert_eq!(groups.len(), 1);
+        assert!(groups.contains_key("EN_English"));
+        assert_eq!(groups.get("EN_English").unwrap().len(), 1);
+    }
+
+    /// Test grouping duplicates with same language
+    #[test]
+    fn test_group_duplicates_same_language() {
+        let duplicates = vec![
+            create_test_duplicate_group(
+                "Movie 1",
+                "EN_English/[Movie 1](2020)",
+                1001
+            ),
+            create_test_duplicate_group(
+                "Movie 2",
+                "EN_English/[Movie 2](2021)",
+                1002
+            ),
+            create_test_duplicate_group(
+                "Movie 3",
+                "EN_English/[Movie 3](2022)",
+                1003
+            ),
+        ];
+        
+        let groups = group_duplicates_by_language(&duplicates);
+        assert_eq!(groups.len(), 1);
+        assert!(groups.contains_key("EN_English"));
+        assert_eq!(groups.get("EN_English").unwrap().len(), 3);
+    }
+
+    /// Test grouping duplicates with different languages
+    #[test]
+    fn test_group_duplicates_different_languages() {
+        let duplicates = vec![
+            create_test_duplicate_group(
+                "German Movie",
+                "DE_German/[German Movie](2020)",
+                1001
+            ),
+            create_test_duplicate_group(
+                "English Movie",
+                "EN_English/[English Movie](2021)",
+                1002
+            ),
+            create_test_duplicate_group(
+                "Korean Movie",
+                "KO_Korean/[Korean Movie](2022)",
+                1003
+            ),
+            create_test_duplicate_group(
+                "Chinese Movie",
+                "ZH_Chinese/[Chinese Movie](2023)",
+                1004
+            ),
+        ];
+        
+        let groups = group_duplicates_by_language(&duplicates);
+        assert_eq!(groups.len(), 4);
+        assert!(groups.contains_key("DE_German"));
+        assert!(groups.contains_key("EN_English"));
+        assert!(groups.contains_key("KO_Korean"));
+        assert!(groups.contains_key("ZH_Chinese"));
+        
+        // Each language should have exactly 1 group
+        assert_eq!(groups.get("DE_German").unwrap().len(), 1);
+        assert_eq!(groups.get("EN_English").unwrap().len(), 1);
+        assert_eq!(groups.get("KO_Korean").unwrap().len(), 1);
+        assert_eq!(groups.get("ZH_Chinese").unwrap().len(), 1);
+    }
+
+    /// Test grouping duplicates with mixed languages (some same, some different)
+    #[test]
+    fn test_group_duplicates_mixed_languages() {
+        let duplicates = vec![
+            create_test_duplicate_group(
+                "English Movie 1",
+                "EN_English/[English Movie 1](2020)",
+                1001
+            ),
+            create_test_duplicate_group(
+                "English Movie 2",
+                "EN_English/[English Movie 2](2021)",
+                1002
+            ),
+            create_test_duplicate_group(
+                "Korean Movie 1",
+                "KO_Korean/[Korean Movie 1](2022)",
+                1003
+            ),
+            create_test_duplicate_group(
+                "Korean Movie 2",
+                "KO_Korean/[Korean Movie 2](2023)",
+                1004
+            ),
+            create_test_duplicate_group(
+                "Chinese Movie",
+                "ZH_Chinese/[Chinese Movie](2024)",
+                1005
+            ),
+        ];
+        
+        let groups = group_duplicates_by_language(&duplicates);
+        assert_eq!(groups.len(), 3);
+        
+        // English should have 2 groups
+        assert_eq!(groups.get("EN_English").unwrap().len(), 2);
+        
+        // Korean should have 2 groups
+        assert_eq!(groups.get("KO_Korean").unwrap().len(), 2);
+        
+        // Chinese should have 1 group
+        assert_eq!(groups.get("ZH_Chinese").unwrap().len(), 1);
+    }
+
+    /// Test grouping duplicates with unknown language
+    #[test]
+    fn test_group_duplicates_unknown_language() {
+        let duplicates = vec![
+            create_test_duplicate_group(
+                "Unknown Movie",
+                "movies/[Unknown Movie](2020)",  // No language prefix
+                1001
+            ),
+        ];
+        
+        let groups = group_duplicates_by_language(&duplicates);
+        assert_eq!(groups.len(), 1);
+        assert!(groups.contains_key("Unknown"));
+        assert_eq!(groups.get("Unknown").unwrap().len(), 1);
+    }
+
+    /// Test grouping duplicates with multiple entries per group
+    #[test]
+    fn test_group_duplicates_multiple_entries() {
+        let group = DuplicateGroup {
+            tmdb_id: 1001,
+            title: "Multi Disk Movie".to_string(),
+            year: Some(2020),
+            media_type: "movie".to_string(),
+            confidence: "high".to_string(),
+            entries: vec![
+                DuplicateEntry {
+                    disk: "Disk1".to_string(),
+                    disk_path: "/disk1".to_string(),
+                    path: "EN_English/[Movie](2020)".to_string(),
+                    size_bytes: 1_000_000_000,
+                    size_human: "1.00 GB".to_string(),
+                    video_files: vec![],
+                },
+                DuplicateEntry {
+                    disk: "Disk2".to_string(),
+                    disk_path: "/disk2".to_string(),
+                    path: "EN_English/[Movie](2020)".to_string(),
+                    size_bytes: 2_000_000_000,
+                    size_human: "2.00 GB".to_string(),
+                    video_files: vec![],
+                },
+            ],
+            total_size_bytes: 3_000_000_000,
+            total_size_human: "3.00 GB".to_string(),
+            is_multi_version: false,
+        };
+        
+        let duplicates = vec![group];
+        let groups = group_duplicates_by_language(&duplicates);
+        
+        // Should still group by the first entry's language
+        assert_eq!(groups.len(), 1);
+        assert!(groups.contains_key("EN_English"));
+    }
+
+    /// Test grouping preserves duplicate group data
+    #[test]
+    fn test_group_duplicates_preserves_data() {
+        let original_group = create_test_duplicate_group(
+            "Test Movie",
+            "JA_Japanese/[Test Movie](2020)",
+            12345
+        );
+        
+        let duplicates = vec![original_group.clone()];
+        let groups = group_duplicates_by_language(&duplicates);
+        
+        let grouped = groups.get("JA_Japanese").unwrap();
+        assert_eq!(grouped.len(), 1);
+        
+        // Verify the group data is preserved
+        let retrieved_group = grouped[0];
+        assert_eq!(retrieved_group.tmdb_id, 12345);
+        assert_eq!(retrieved_group.title, "Test Movie");
+        assert_eq!(retrieved_group.year, Some(2020));
+        assert_eq!(retrieved_group.media_type, "movie");
+        assert_eq!(retrieved_group.confidence, "high");
+    }
 }
