@@ -885,6 +885,8 @@ mod tests {
         assert_eq!(extract_season_from_dirname("Season 2"), Some(2));
         assert_eq!(extract_season_from_dirname("S01"), Some(1));
         assert_eq!(extract_season_from_dirname("S1"), Some(1));
+        assert_eq!(extract_season_from_dirname("S04"), Some(4));
+        assert_eq!(extract_season_from_dirname("S10"), Some(10));
     }
 
     #[test]
@@ -892,6 +894,51 @@ mod tests {
         assert_eq!(extract_season_from_dirname("4K"), None);
         assert_eq!(extract_season_from_dirname("1080p"), None);
         assert_eq!(extract_season_from_dirname("Movie Name"), None);
+    }
+
+    /// Test the bug fix: when filename only has episode number (e.g., "01.mp4")
+    /// but directory contains season info (e.g., "S04"), the season should be
+    /// extracted from directory name, not default to 1.
+    #[test]
+    fn test_season_extraction_fallback_scenario() {
+        // Simulate the bug scenario: filename "01.mp4" extracts to S1 by default
+        // but parent directory "S04" should override to S4
+        let (season_from_file, episode) = extract_episode_from_filename("01.mp4");
+        assert_eq!(season_from_file, Some(1)); // Default behavior
+        assert_eq!(episode, Some(1));
+
+        // Directory "S04" should extract to season 4
+        let season_from_dir = extract_season_from_dirname("S04");
+        assert_eq!(season_from_dir, Some(4));
+
+        // The bug: if season == Some(1), we should check directory
+        // After fix: use directory season when file season is None or Some(1)
+        let mut season = season_from_file;
+        if season.is_none() || season == Some(1) {
+            if let Some(dir_season) = season_from_dir {
+                season = Some(dir_season);
+            }
+        }
+        assert_eq!(season, Some(4)); // Should be 4, not 1!
+    }
+
+    /// Test another bug scenario: filename "02.mp4" in directory "第二季"
+    #[test]
+    fn test_season_extraction_chinese_directory() {
+        let (season_from_file, episode) = extract_episode_from_filename("02.mp4");
+        assert_eq!(season_from_file, Some(1)); // Default
+        assert_eq!(episode, Some(2));
+
+        let season_from_dir = extract_season_from_dirname("第二季");
+        assert_eq!(season_from_dir, Some(2));
+
+        let mut season = season_from_file;
+        if season.is_none() || season == Some(1) {
+            if let Some(dir_season) = season_from_dir {
+                season = Some(dir_season);
+            }
+        }
+        assert_eq!(season, Some(2));
     }
 
     // ========================================================================

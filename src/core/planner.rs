@@ -2537,7 +2537,7 @@ impl Planner {
         // Step 1: Parse filename - use regex for TV shows with cache, AI otherwise
         let parsed = if media_type == MediaType::TvSeries && cached_show.is_some() {
             // FAST PATH: Extract episode number from filename using regex (no AI call)
-            let (season, episode) = parser::extract_episode_from_filename(&video.filename);
+            let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
             tracing::debug!(
                 "Regex extracted from {}: S{:?}E{:?}",
                 video.filename,
@@ -2548,6 +2548,23 @@ impl Planner {
             if episode.is_none() {
                 tracing::debug!("Could not extract episode number from: {}", video.filename);
                 return Ok(None);
+            }
+
+            // Try to extract season from parent directory name (e.g., "第一季", "Season 01", "S04")
+            if season.is_none() || season == Some(1) {
+                let parent_name = video
+                    .parent_dir
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+                if let Some(dir_season) = parser::extract_season_from_dirname(parent_name) {
+                    tracing::debug!(
+                        "Extracted season {} from directory: {}",
+                        dir_season,
+                        parent_name
+                    );
+                    season = Some(dir_season);
+                }
             }
 
             // Create a minimal parsed result with episode info
@@ -4794,6 +4811,82 @@ impl Planner {
     ) -> Result<(Option<TvSeriesMetadata>, Option<EpisodeMetadata>)> {
         let details = client.get_tv_details(tv_id).await?;
 
+        // Determine show name - use TMDB name, but try to get Chinese title from translations API
+        // or fallback to parsed Chinese title from filename
+        let mut show_name: String = details.name.clone();
+        let tmdb_name = &details.name;
+        let tmdb_original = &details.original_name;
+        let names_same = self.normalize_title(tmdb_name) == self.normalize_title(tmdb_original);
+        let name_has_chinese = chinese::contains_chinese(tmdb_name);
+
+        // If TMDB has Chinese translation, use it
+        if !names_same || name_has_chinese {
+            show_name = tmdb_name.clone();
+        } else if let Some(ref parsed_title) = parsed.title {
+            // TMDB doesn't have Chinese translation, use parsed Chinese title from filename
+            if chinese::contains_chinese(parsed_title) {
+                tracing::info!(
+                    "[TMDB] No Chinese translation for '{}', using fallback: '{}'",
+                    tmdb_name,
+                    parsed_title
+                );
+                show_name = parsed_title.clone();
+            }
+        }
+
+        // If show name is still not Chinese, try translations API
+        if !chinese::contains_chinese(&show_name) {
+            tracing::info!("[TMDB] Show name '{}' is not Chinese, trying translations API", show_name);
+            match client.get_tv_translations(tv_id).await {
+                Ok(translations) => {
+                    tracing::info!("[TMDB] Got {} translations for tv{}", translations.translations.len(), tv_id);
+                    
+                    // Collect all valid Chinese translations
+                    let chinese_candidates: Vec<(String, String)> = translations.translations
+                        .iter()
+                        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+                        .filter(|t| !t.data.title.is_empty() && chinese::contains_chinese(&t.data.title))
+                        .map(|t| (t.iso_3166_1.clone(), t.data.title.clone()))
+                        .collect();
+                    
+                    // Priority order: CN (Simplified) > SG (Simplified) > HK (Traditional) > TW (Traditional)
+                    let region_priority = ["CN", "SG", "HK", "TW"];
+                    
+                    // First pass: try in priority order
+                    for priority_region in &region_priority {
+                        if let Some((_region, chinese_title)) = chinese_candidates
+                            .iter()
+                            .find(|(r, _)| r == priority_region)
+                        {
+                            tracing::info!(
+                                "[TMDB] Found {} title '{}' ({} region, priority {})",
+                                if *priority_region == "CN" || *priority_region == "SG" { "Simplified Chinese" } else { "Traditional Chinese" },
+                                chinese_title, 
+                                priority_region,
+                                priority_region
+                            );
+                            show_name = chinese_title.clone();
+                            break;
+                        }
+                    }
+                    
+                    // Final fallback: use any available Chinese translation
+                    if !chinese::contains_chinese(&show_name) {
+                        if let Some((region, chinese_title)) = chinese_candidates.first() {
+                            tracing::info!(
+                                "[TMDB] Found Chinese title '{}' ({} region, final fallback)",
+                                chinese_title, region
+                            );
+                            show_name = chinese_title.clone();
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[TMDB] Failed to get translations for tv{}: {}", tv_id, e);
+                }
+            }
+        }
+
         // Extract year from first_air_date
         let year = details
             .first_air_date
@@ -4895,7 +4988,7 @@ impl Planner {
             tmdb_id: details.id,
             imdb_id: details.external_ids.and_then(|e| e.imdb_id),
             original_name: details.original_name,
-            name: details.name,
+            name: show_name,
             original_language: details.original_language,
             year,
             first_air_date: details.first_air_date,
@@ -5533,11 +5626,20 @@ impl Planner {
                 let folder = gen_folder::generate_tv_series_folder(show);
 
                 // Season folder: Season XX
-                let season_num = parsed.season.unwrap_or(1);
+                // Priority: episode.season_number > parsed.season > 1
+                let season_num = episode
+                    .as_ref()
+                    .map(|e| e.season_number)
+                    .or(parsed.season)
+                    .unwrap_or(1);
                 let season_folder_name = format!("Season {:02}", season_num);
 
                 // Episode filename
-                let ep_num = parsed.episode.unwrap_or(1);
+                let ep_num = episode
+                    .as_ref()
+                    .map(|e| e.episode_number)
+                    .or(parsed.episode)
+                    .unwrap_or(1);
                 let ep_meta = episode.clone().unwrap_or_else(|| EpisodeMetadata {
                     season_number: season_num,
                     episode_number: ep_num,
@@ -5683,7 +5785,13 @@ impl Planner {
                 // Create season NFO in season folder
                 if self.config.generate_nfo && self.config.generate_tv_season_nfo {
                     if season_folder.is_some() {
-                        let season_nfo_name = format!("[S][{}][{}]-season{:02}.nfo", show.name, show.original_name, parsed.season.unwrap_or(1));
+                        let (_, episode, _) = tv_series_metadata.as_ref().unwrap();
+                        let season_num = episode
+                            .as_ref()
+                            .map(|e| e.season_number)
+                            .or(parsed.season)
+                            .unwrap_or(1);
+                        let season_nfo_name = format!("[S][{}][{}]-season{:02}.nfo", show.name, show.original_name, season_num);
                         let season_nfo_path = target_folder.join(season_nfo_name);
                         operations.push(Operation {
                             op: OperationType::Create,
@@ -5724,8 +5832,13 @@ impl Planner {
                     MediaType::TvSeries => {
                         // Use [show.name]-seasonXX.jpg for TV series to ensure only one poster per season
                         // and keep consistent naming with season NFO
-                        let (show, _, _) = tv_series_metadata.as_ref().unwrap();
-                        format!("[{}]-season{:02}.jpg", show.name, parsed.season.unwrap_or(1))
+                        let (show, episode, _) = tv_series_metadata.as_ref().unwrap();
+                        let season_num = episode
+                            .as_ref()
+                            .map(|e| e.season_number)
+                            .or(parsed.season)
+                            .unwrap_or(1);
+                        format!("[{}]-season{:02}.jpg", show.name, season_num)
                     }
                 };
                 let poster_path = poster_folder.join(&poster_filename);

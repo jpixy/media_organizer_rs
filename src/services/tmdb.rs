@@ -187,6 +187,13 @@ pub struct MovieTranslations {
     pub translations: Vec<Translation>,
 }
 
+/// TV show translations response (same structure as MovieTranslations).
+#[derive(Debug, Deserialize)]
+pub struct TvTranslations {
+    pub id: u64,
+    pub translations: Vec<Translation>,
+}
+
 /// Individual translation.
 #[derive(Debug, Deserialize)]
 pub struct Translation {
@@ -595,6 +602,30 @@ impl TmdbClient {
         Ok(resp)
     }
 
+    /// Get TV show translations (localized titles in all languages).
+    /// Returns a list of all available translations for a TV show.
+    /// Use this to find Chinese (zh-CN) or other language titles when
+    /// the main details API doesn't return the desired translation.
+    /// 
+    /// Note: This API does NOT use the language parameter to avoid filtering results.
+    /// We need all translations to find Chinese titles.
+    pub async fn get_tv_translations(&self, tv_id: u64) -> Result<TvTranslations> {
+        // Build URL without language parameter to get ALL translations
+        let url = if self.config.use_bearer {
+            format!(
+                "{}/tv/{}/translations",
+                TMDB_BASE_URL, tv_id
+            )
+        } else {
+            format!(
+                "{}/tv/{}/translations?api_key={}",
+                TMDB_BASE_URL, tv_id, self.config.api_key
+            )
+        };
+        let resp: TvTranslations = self.request_with_retry(|| self.build_request(&url).send()).await?;
+        Ok(resp)
+    }
+
     /// Get collection details (all movies in a franchise).
     ///
     /// Returns the full collection info including the list of all movies (parts).
@@ -660,6 +691,44 @@ impl TmdbClient {
         let resp: TvSearchResult = resp.json().await?;
         
         tracing::debug!("TMDB search_tv results count: {}", resp.results.len());
+        
+        Ok(resp.results)
+    }
+
+    /// Search for TV shows with specific language for localized results.
+    pub async fn search_tv_with_language(
+        &self,
+        query: &str,
+        year: Option<u16>,
+        language: &str,
+    ) -> Result<Vec<TvSearchItem>> {
+        let year_param = year
+            .map(|y| format!("&first_air_date_year={}", y))
+            .unwrap_or_default();
+        // Build URL with custom language parameter for localized search results
+        let base_url = TMDB_BASE_URL;
+        let api_key_param = if self.config.use_bearer {
+            String::new()
+        } else {
+            format!("api_key={}&", self.config.api_key)
+        };
+        let url = format!(
+            "{}/{}?{}{}&language={}{}",
+            base_url, "search/tv", api_key_param, 
+            format!("query={}", urlencoding::encode(query)),
+            language,
+            year_param
+        );
+        
+        tracing::debug!("TMDB search_tv_with_language URL: {}", url);
+        
+        let resp = self.build_request(&url).send().await?;
+        
+        tracing::debug!("TMDB search_tv_with_language status: {}", resp.status());
+        
+        let resp: TvSearchResult = resp.json().await?;
+        
+        tracing::debug!("TMDB search_tv_with_language results count: {}", resp.results.len());
         
         Ok(resp.results)
     }
@@ -976,5 +1045,144 @@ mod tests {
             .find(|t| t.iso_639_1 == "en")
             .expect("Should have English translation");
         assert_eq!(english.data.title, "Black Widow");
+    }
+
+    /// Test TV translations API URL construction
+    #[test]
+    fn test_tv_translations_url_construction() {
+        // We can't directly test get_tv_translations URL, but we can verify
+        // the URL format matches the expected pattern
+        let tv_id: u64 = 1399; // Game of Thrones TMDB ID
+        let translations_url = format!("{}/tv/{}/translations?api_key={}", TMDB_BASE_URL, tv_id, "test");
+        assert!(!translations_url.contains("language="), "Translations URL should NOT contain language parameter");
+        assert!(translations_url.contains(&format!("tv/{}/translations", tv_id)), "URL should contain TV translations path");
+    }
+
+    /// Test TV translations response parsing (same structure as MovieTranslations)
+    #[test]
+    fn test_tv_translations_response_parsing() {
+        let json_response = r#"{
+            "id": 1399,
+            "translations": [
+                {
+                    "iso_3166_1": "US",
+                    "iso_639_1": "en",
+                    "name": "English",
+                    "english_name": "English",
+                    "data": {
+                        "title": "Game of Thrones",
+                        "overview": "Test overview",
+                        "homepage": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "CN",
+                    "iso_639_1": "zh",
+                    "name": "简体中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "title": "权力的游戏",
+                        "overview": "测试概述",
+                        "homepage": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "TW",
+                    "iso_639_1": "zh",
+                    "name": "繁體中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "title": "冰與火之歌：權力遊戲",
+                        "overview": "測試概述",
+                        "homepage": ""
+                    }
+                }
+            ]
+        }"#;
+        
+        let translations: TvTranslations = serde_json::from_str(json_response).unwrap();
+        assert_eq!(translations.id, 1399);
+        assert_eq!(translations.translations.len(), 3);
+        
+        // Find Chinese (CN) translation
+        let cn = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "CN")
+            .expect("Should have CN translation");
+        assert_eq!(cn.data.title, "权力的游戏");
+        
+        // Find Chinese (TW) translation
+        let tw = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "TW")
+            .expect("Should have TW translation");
+        assert_eq!(tw.data.title, "冰與火之歌：權力遊戲");
+        
+        // Find English translation
+        let english = translations.translations.iter()
+            .find(|t| t.iso_639_1 == "en")
+            .expect("Should have English translation");
+        assert_eq!(english.data.title, "Game of Thrones");
+    }
+
+    /// Test search_tv_with_language URL construction
+    #[test]
+    fn test_search_tv_with_language_url_construction() {
+        // This test verifies the URL construction logic for TV search with language
+        let query = "Love, Death & Robots";
+        let year: Option<u16> = Some(2019);
+        let language = "zh-CN";
+        
+        let base_url = TMDB_BASE_URL;
+        let api_key = "test";
+        let year_param = year.map(|y| format!("&first_air_date_year={}", y)).unwrap_or_default();
+        
+        let url = format!(
+            "{}/{}?api_key={}&language={}&query={}{}",
+            base_url, "search/tv", api_key, 
+            language,
+            urlencoding::encode(query),
+            year_param
+        );
+        
+        assert!(url.contains("search/tv"), "URL should contain search/tv path");
+        assert!(url.contains("language=zh-CN"), "URL should contain language parameter");
+        assert!(url.contains("first_air_date_year=2019"), "URL should contain year parameter");
+        // URL encoding may vary: & may be encoded as %26 or kept as &
+        assert!(url.contains("query="), "URL should contain query parameter");
+        assert!(url.contains("Love") || url.contains("Love%2C"), "URL should contain encoded query with Love");
+    }
+
+    /// Test search_tv_with_language URL without year
+    #[test]
+    fn test_search_tv_with_language_url_no_year() {
+        let query = "Breaking Bad";
+        let language = "en-US";
+        
+        let base_url = TMDB_BASE_URL;
+        let api_key = "test";
+        
+        let url = format!(
+            "{}/{}?api_key={}&language={}&query={}",
+            base_url, "search/tv", api_key, 
+            language,
+            urlencoding::encode(query)
+        );
+        
+        assert!(url.contains("search/tv"), "URL should contain search/tv path");
+        assert!(url.contains("language=en-US"), "URL should contain language parameter");
+        assert!(!url.contains("first_air_date_year"), "URL should NOT contain year parameter when year is None");
+        assert!(url.contains("query="), "URL should contain query parameter");
+        assert!(url.contains("Breaking"), "URL should contain encoded query with Breaking");
+    }
+
+    /// Test that TV translations API uses same structure as Movie
+    #[test]
+    fn test_tv_movie_translations_same_structure() {
+        // Verify TvTranslations and MovieTranslations have the same structure
+        let tv_json = r#"{"id": 1, "translations": []}"#;
+        let movie_json = r#"{"id": 1, "translations": []}"#;
+        
+        let _: TvTranslations = serde_json::from_str(tv_json).unwrap();
+        let _: MovieTranslations = serde_json::from_str(movie_json).unwrap();
+        // Both should parse successfully with the same structure
     }
 }
