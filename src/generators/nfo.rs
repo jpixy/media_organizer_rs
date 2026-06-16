@@ -310,6 +310,32 @@ pub fn generate_episode_nfo(show: &TvSeriesMetadata, episode: &EpisodeMetadata) 
         nfo.push_str(&format!("  <plot>{}</plot>\n", escape_xml(overview)));
     }
 
+    // Directors (from crew)
+    for crew_member in &episode.crew {
+        if crew_member.job.eq_ignore_ascii_case("Director") {
+            nfo.push_str(&format!("  <director>{}</director>\n", escape_xml(&crew_member.name)));
+        }
+    }
+
+    // Writers (from crew)
+    for crew_member in &episode.crew {
+        if crew_member.job.eq_ignore_ascii_case("Writer") || 
+           crew_member.job.eq_ignore_ascii_case("Story") ||
+           crew_member.job.eq_ignore_ascii_case("Teleplay") {
+            nfo.push_str(&format!("  <credits>{}</credits>\n", escape_xml(&crew_member.name)));
+        }
+    }
+
+    // Actors
+    for actor in &episode.cast {
+        nfo.push_str("  <actor>\n");
+        nfo.push_str(&format!("    <name>{}</name>\n", escape_xml(&actor.name)));
+        if let Some(ref role) = actor.role {
+            nfo.push_str(&format!("    <role>{}</role>\n", escape_xml(role)));
+        }
+        nfo.push_str("  </actor>\n");
+    }
+
     nfo.push_str("</episodedetails>\n");
     nfo
 }
@@ -382,6 +408,7 @@ fn escape_xml(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::media::{Actor, CrewMember};
 
     #[test]
     fn test_generate_movie_nfo() {
@@ -403,5 +430,151 @@ mod tests {
         assert!(nfo.contains("<year>2009</year>"));
         assert!(nfo.contains("tmdb"));
         assert!(nfo.contains("tt0499549"));
+    }
+
+    #[test]
+    fn test_generate_tv_series_nfo() {
+        let show = TvSeriesMetadata {
+            tmdb_id: 1399,
+            imdb_id: Some("tt0944947".to_string()),
+            name: "权力的游戏".to_string(),
+            original_name: "Game of Thrones".to_string(),
+            year: 2011,
+            overview: Some("维斯特洛大陆的故事".to_string()),
+            creators: vec!["David Benioff".to_string(), "D.B. Weiss".to_string()],
+            actors: vec![
+                Actor {
+                    name: "Kit Harington".to_string(),
+                    role: Some("Jon Snow".to_string()),
+                    order: Some(0),
+                },
+                Actor {
+                    name: "Emilia Clarke".to_string(),
+                    role: Some("Daenerys Targaryen".to_string()),
+                    order: Some(1),
+                },
+            ],
+            ..Default::default()
+        };
+
+        let nfo = generate_tv_series_nfo(&show);
+        assert!(nfo.contains("<title>权力的游戏</title>"));
+        assert!(nfo.contains("<originaltitle>Game of Thrones</originaltitle>"));
+        assert!(nfo.contains("<year>2011</year>"));
+        assert!(nfo.contains("<actor>"));
+        assert!(nfo.contains("<name>Kit Harington</name>"));
+        assert!(nfo.contains("<role>Jon Snow</role>"));
+        assert!(nfo.contains("<credits>David Benioff</credits>"));
+    }
+
+    #[test]
+    fn test_generate_season_nfo() {
+        let show = TvSeriesMetadata {
+            tmdb_id: 1399,
+            name: "权力的游戏".to_string(),
+            original_name: "Game of Thrones".to_string(),
+            ..Default::default()
+        };
+
+        let season = SeasonMetadata {
+            season_number: 1,
+            name: "Season 1".to_string(),
+            overview: Some("第一季的故事".to_string()),
+            air_date: Some("2011-04-17".to_string()),
+            episode_count: 10,
+            ..Default::default()
+        };
+
+        let nfo = generate_season_nfo(&show, &season);
+        assert!(nfo.contains("<seasonnumber>1</seasonnumber>"));
+        assert!(nfo.contains("<title>Season 1</title>"));
+        assert!(nfo.contains("<showtitle>权力的游戏</showtitle>"));
+        assert!(nfo.contains("<plot>第一季的故事</plot>"));
+        assert!(nfo.contains("<aired>2011-04-17</aired>"));
+        assert!(nfo.contains("<episodecount>10</episodecount>"));
+    }
+
+    #[test]
+    fn test_generate_episode_nfo_with_cast_and_crew() {
+        let show = TvSeriesMetadata {
+            tmdb_id: 1399,
+            name: "权力的游戏".to_string(),
+            original_name: "Game of Thrones".to_string(),
+            ..Default::default()
+        };
+
+        let episode = EpisodeMetadata {
+            season_number: 1,
+            episode_number: 1,
+            name: "Winter Is Coming".to_string(),
+            original_name: Some("Winter Is Coming".to_string()),
+            air_date: Some("2011-04-17".to_string()),
+            overview: Some("故事的开始".to_string()),
+            cast: vec![
+                Actor {
+                    name: "Kit Harington".to_string(),
+                    role: Some("Jon Snow".to_string()),
+                    order: Some(0),
+                },
+                Actor {
+                    name: "Sean Bean".to_string(),
+                    role: Some("Ned Stark".to_string()),
+                    order: Some(1),
+                },
+            ],
+            crew: vec![
+                CrewMember {
+                    name: "Tim Van Patten".to_string(),
+                    job: "Director".to_string(),
+                    department: "Directing".to_string(),
+                },
+                CrewMember {
+                    name: "David Benioff".to_string(),
+                    job: "Writer".to_string(),
+                    department: "Writing".to_string(),
+                },
+            ],
+        };
+
+        let nfo = generate_episode_nfo(&show, &episode);
+        assert!(nfo.contains("<title>Winter Is Coming</title>"));
+        assert!(nfo.contains("<showtitle>权力的游戏</showtitle>"));
+        assert!(nfo.contains("<season>1</season>"));
+        assert!(nfo.contains("<episode>1</episode>"));
+        assert!(nfo.contains("<plot>故事的开始</plot>"));
+        assert!(nfo.contains("<director>Tim Van Patten</director>"));
+        assert!(nfo.contains("<credits>David Benioff</credits>"));
+        assert!(nfo.contains("<actor>"));
+        assert!(nfo.contains("<name>Kit Harington</name>"));
+        assert!(nfo.contains("<role>Jon Snow</role>"));
+        assert!(nfo.contains("<name>Sean Bean</name>"));
+        assert!(nfo.contains("<role>Ned Stark</role>"));
+    }
+
+    #[test]
+    fn test_generate_episode_nfo_empty_cast_crew() {
+        let show = TvSeriesMetadata {
+            tmdb_id: 1399,
+            name: "权力的游戏".to_string(),
+            original_name: "Game of Thrones".to_string(),
+            ..Default::default()
+        };
+
+        let episode = EpisodeMetadata {
+            season_number: 1,
+            episode_number: 1,
+            name: "Winter Is Coming".to_string(),
+            original_name: None,
+            air_date: None,
+            overview: None,
+            cast: Vec::new(),
+            crew: Vec::new(),
+        };
+
+        let nfo = generate_episode_nfo(&show, &episode);
+        assert!(nfo.contains("<title>Winter Is Coming</title>"));
+        assert!(!nfo.contains("<director>"));
+        assert!(!nfo.contains("<credits>"));
+        assert!(!nfo.contains("<actor>"));
     }
 }

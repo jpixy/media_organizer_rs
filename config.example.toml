@@ -17,6 +17,8 @@ generate_nfo = true
 # 是否生成电影 NFO 文件。默认: true
 generate_movie_nfo = true
 # 是否生成 TV 剧集 NFO 文件。默认: true
+generate_tv_show_nfo = true
+# 是否生成 TV 集 NFO 文件。默认: true
 generate_tv_episode_nfo = true
 # 是否生成 TV 季 NFO 文件。默认: true
 generate_tv_season_nfo = true

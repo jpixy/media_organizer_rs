@@ -641,11 +641,15 @@ impl Executor {
                     Some(MediaType::TvSeries) => {
                         // Check if this is tvshow.nfo (show-level), seasonXX.nfo (season-level), or episode.nfo
                         let file_name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-                        let is_tv_series_nfo = file_name == "tvshow.nfo";
+                        // Support multiple tvshow NFO naming formats:
+                        // - tvshow.nfo (old format)
+                        // - [S][名称][原名]-tvshow.nfo (new format)
+                        let is_tv_series_nfo = file_name == "tvshow.nfo" || file_name.ends_with("-tvshow.nfo");
                         // Support multiple season NFO naming formats:
                         // - seasonXX.nfo (old format)
                         // - [season]-seasonXX.nfo (intermediate format)
-                        // - [TV名称]-seasonXX.nfo (new format)
+                        // - [TV名称]-seasonXX.nfo (old new format)
+                        // - [S][名称][原名]-seasonXX.nfo (new format)
                         let is_season_nfo = (file_name.starts_with("season") || 
                                              file_name.starts_with("[season]-") ||
                                              (file_name.contains("-season") && file_name.ends_with(".nfo"))) 

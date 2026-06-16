@@ -14,7 +14,7 @@ use crate::core::scanner::scan_directory;
 use crate::generators::{filename as gen_filename, folder as gen_folder};
 use crate::services::guessit_parser::GuessItParser;
 use crate::models::media::{
-    EpisodeMetadata, MediaType, MovieMetadata, SeasonMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
+    Actor, CrewMember, EpisodeMetadata, MediaType, MovieMetadata, SeasonMetadata, TvSeriesMetadata, VideoFile, VideoMetadata,
 };
 use crate::models::plan::{
     Operation, OperationType, ParsedInfo, Plan, PlanItem, PlanItemStatus, PosterDownloadStatus,
@@ -153,6 +153,8 @@ pub struct PlannerConfig {
     pub generate_nfo: bool,
     /// Whether to generate movie NFO files.
     pub generate_movie_nfo: bool,
+    /// Whether to generate TV show NFO files.
+    pub generate_tv_show_nfo: bool,
     /// Whether to generate TV episode NFO files.
     pub generate_tv_episode_nfo: bool,
     /// Whether to generate TV season NFO files.
@@ -179,6 +181,7 @@ impl Default for PlannerConfig {
             poster_size: "w500".to_string(),
             generate_nfo: true,
             generate_movie_nfo: true,
+            generate_tv_show_nfo: true,
             generate_tv_episode_nfo: true,
             generate_tv_season_nfo: true,
             ai_enabled: false, // AI disabled by default per requirements
@@ -246,6 +249,7 @@ impl Planner {
                 poster_size: config.organize.poster_size.clone(),
                 generate_nfo: config.organize.generate_nfo,
                 generate_movie_nfo: config.organize.generate_movie_nfo,
+                generate_tv_show_nfo: config.organize.generate_tv_show_nfo,
                 generate_tv_episode_nfo: config.organize.generate_tv_episode_nfo,
                 generate_tv_season_nfo: config.organize.generate_tv_season_nfo,
                 move_subtitles: config.organize.move_subtitles,
@@ -753,6 +757,24 @@ impl Planner {
                                     season_number: ep_details.season_number,
                                     air_date: ep_details.air_date.clone(),
                                     overview: ep_details.overview.clone(),
+                                    cast: ep_details
+                                        .credits
+                                        .as_ref()
+                                        .and_then(|c| Some(c.cast.iter().take(10).map(|a| Actor {
+                                            name: a.name.clone(),
+                                            role: a.character.clone(),
+                                            order: a.order,
+                                        }).collect()))
+                                        .unwrap_or_default(),
+                                    crew: ep_details
+                                        .credits
+                                        .as_ref()
+                                        .and_then(|c| Some(c.crew.iter().map(|cr| CrewMember {
+                                            name: cr.name.clone(),
+                                            job: cr.job.clone(),
+                                            department: cr.department.clone(),
+                                        }).collect()))
+                                        .unwrap_or_default(),
                                 })
                             } else {
                                 None
@@ -2379,6 +2401,8 @@ impl Planner {
                         original_name: None,
                         air_date: ep_info.air_date.clone(),
                         overview: ep_info.overview.clone(),
+                        cast: Vec::new(),
+                        crew: Vec::new(),
                     });
                 }
             }
@@ -2407,6 +2431,8 @@ impl Planner {
                             original_name: None,
                             air_date: ep_info.air_date.clone(),
                             overview: ep_info.overview.clone(),
+                            cast: Vec::new(),
+                            crew: Vec::new(),
                         });
 
                     // Update cache
@@ -2431,6 +2457,8 @@ impl Planner {
             original_name: None,
             air_date: None,
             overview: None,
+            cast: Vec::new(),
+            crew: Vec::new(),
         })
     }
 
@@ -2597,6 +2625,24 @@ impl Planner {
                                     original_name: None,
                                     air_date: ep_details.air_date,
                                     overview: ep_details.overview,
+                                    cast: ep_details
+                                        .credits
+                                        .as_ref()
+                                        .and_then(|c| Some(c.cast.iter().take(10).map(|a| Actor {
+                                            name: a.name.clone(),
+                                            role: a.character.clone(),
+                                            order: a.order,
+                                        }).collect()))
+                                        .unwrap_or_default(),
+                                    crew: ep_details
+                                        .credits
+                                        .as_ref()
+                                        .and_then(|c| Some(c.crew.iter().map(|cr| CrewMember {
+                                            name: cr.name.clone(),
+                                            job: cr.job.clone(),
+                                            department: cr.department.clone(),
+                                        }).collect()))
+                                        .unwrap_or_default(),
                                 }),
                                 Err(_) => Some(EpisodeMetadata {
                                     season_number: season,
@@ -2605,6 +2651,8 @@ impl Planner {
                                     original_name: None,
                                     air_date: None,
                                     overview: None,
+                                    cast: Vec::new(),
+                                    crew: Vec::new(),
                                 }),
                             }
                         } else {
@@ -2615,6 +2663,8 @@ impl Planner {
                                 original_name: None,
                                 air_date: None,
                                 overview: None,
+                                cast: Vec::new(),
+                                crew: Vec::new(),
                             })
                         };
                         (episode_meta, season_meta)
@@ -2711,6 +2761,24 @@ impl Planner {
                                             original_name: None,
                                             air_date: ep_details.air_date,
                                             overview: ep_details.overview,
+                                            cast: ep_details
+                                                .credits
+                                                .as_ref()
+                                                .and_then(|c| Some(c.cast.iter().take(10).map(|a| Actor {
+                                                    name: a.name.clone(),
+                                                    role: a.character.clone(),
+                                                    order: a.order,
+                                                }).collect()))
+                                                .unwrap_or_default(),
+                                            crew: ep_details
+                                                .credits
+                                                .as_ref()
+                                                .and_then(|c| Some(c.crew.iter().map(|cr| CrewMember {
+                                                    name: cr.name.clone(),
+                                                    job: cr.job.clone(),
+                                                    department: cr.department.clone(),
+                                                }).collect()))
+                                                .unwrap_or_default(),
                                         });
                                     }
                                     Err(e) => {
@@ -2727,6 +2795,8 @@ impl Planner {
                                             original_name: None,
                                             air_date: None,
                                             overview: None,
+                                            cast: Vec::new(),
+                                            crew: Vec::new(),
                                         });
                                     }
                                 }
@@ -4859,6 +4929,24 @@ impl Planner {
                     original_name: None,
                     air_date: ep_details.air_date,
                     overview: ep_details.overview,
+                    cast: ep_details
+                        .credits
+                        .as_ref()
+                        .and_then(|c| Some(c.cast.iter().take(10).map(|a| Actor {
+                            name: a.name.clone(),
+                            role: a.character.clone(),
+                            order: a.order,
+                        }).collect()))
+                        .unwrap_or_default(),
+                    crew: ep_details
+                        .credits
+                        .as_ref()
+                        .and_then(|c| Some(c.crew.iter().map(|cr| CrewMember {
+                            name: cr.name.clone(),
+                            job: cr.job.clone(),
+                            department: cr.department.clone(),
+                        }).collect()))
+                        .unwrap_or_default(),
                 }),
                 Err(_) => Some(EpisodeMetadata {
                     season_number: season,
@@ -4867,6 +4955,8 @@ impl Planner {
                     original_name: None,
                     air_date: None,
                     overview: None,
+                    cast: Vec::new(),
+                    crew: Vec::new(),
                 }),
             }
         } else {
@@ -5455,6 +5545,8 @@ impl Planner {
                     original_name: None,
                     air_date: None,
                     overview: None,
+                    cast: Vec::new(),
+                    crew: Vec::new(),
                 });
                 let filename = gen_filename::generate_episode_filename(
                     show,
@@ -5562,6 +5654,21 @@ impl Planner {
                 }
             }
             MediaType::TvSeries => {
+                let (show, _, _) = tv_series_metadata.as_ref().unwrap();
+                
+                // Create TV show NFO in show root folder
+                if self.config.generate_nfo && self.config.generate_tv_show_nfo {
+                    let tvshow_nfo_name = format!("[S][{}][{}]-tvshow.nfo", show.name, show.original_name);
+                    let tvshow_nfo_path = show_folder.join(tvshow_nfo_name);
+                    operations.push(Operation {
+                        op: OperationType::Create,
+                        from: None,
+                        to: tvshow_nfo_path,
+                        url: None,
+                        content_ref: Some("nfo".to_string()),
+                    });
+                }
+
                 // Create episode NFO
                 if self.config.generate_nfo && self.config.generate_tv_episode_nfo {
                     operations.push(Operation {
@@ -5576,8 +5683,7 @@ impl Planner {
                 // Create season NFO in season folder
                 if self.config.generate_nfo && self.config.generate_tv_season_nfo {
                     if season_folder.is_some() {
-                        let (show, _, _) = tv_series_metadata.as_ref().unwrap();
-                        let season_nfo_name = format!("[{}]-season{:02}.nfo", show.name, parsed.season.unwrap_or(1));
+                        let season_nfo_name = format!("[S][{}][{}]-season{:02}.nfo", show.name, show.original_name, parsed.season.unwrap_or(1));
                         let season_nfo_path = target_folder.join(season_nfo_name);
                         operations.push(Operation {
                             op: OperationType::Create,

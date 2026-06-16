@@ -33,6 +33,17 @@ pub struct Actor {
     pub order: Option<u32>,
 }
 
+/// Crew member (director, writer, etc.).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CrewMember {
+    /// Crew member name.
+    pub name: String,
+    /// Job title (e.g., "Director", "Writer").
+    pub job: String,
+    /// Department (e.g., "Directing", "Writing").
+    pub department: String,
+}
+
 /// Video file information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoFile {
@@ -194,6 +205,10 @@ pub struct EpisodeMetadata {
     pub air_date: Option<String>,
     /// Overview.
     pub overview: Option<String>,
+    /// Cast members.
+    pub cast: Vec<Actor>,
+    /// Crew members (directors, writers, etc.).
+    pub crew: Vec<CrewMember>,
 }
 
 /// TMDB metadata for a TV season.

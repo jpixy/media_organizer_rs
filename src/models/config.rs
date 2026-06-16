@@ -333,6 +333,9 @@ pub struct OrganizeConfig {
     /// Whether to generate movie NFO files. Default: true.
     #[serde(default = "default_generate_movie_nfo")]
     pub generate_movie_nfo: bool,
+    /// Whether to generate TV show NFO files. Default: true.
+    #[serde(default = "default_generate_tv_show_nfo")]
+    pub generate_tv_show_nfo: bool,
     /// Whether to generate TV episode NFO files. Default: true.
     #[serde(default = "default_generate_tv_episode_nfo")]
     pub generate_tv_episode_nfo: bool,
@@ -372,6 +375,10 @@ fn default_generate_movie_nfo() -> bool {
     true
 }
 
+fn default_generate_tv_show_nfo() -> bool {
+    true
+}
+
 fn default_generate_tv_episode_nfo() -> bool {
     true
 }
@@ -391,6 +398,7 @@ impl Default for OrganizeConfig {
             poster_size: default_poster_size(),
             generate_nfo: default_generate_nfo(),
             generate_movie_nfo: default_generate_movie_nfo(),
+            generate_tv_show_nfo: default_generate_tv_show_nfo(),
             generate_tv_episode_nfo: default_generate_tv_episode_nfo(),
             generate_tv_season_nfo: default_generate_tv_season_nfo(),
             move_subtitles: default_true(),

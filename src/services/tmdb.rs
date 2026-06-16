@@ -358,6 +358,7 @@ pub struct EpisodeDetails {
     pub season_number: u16,
     pub air_date: Option<String>,
     pub still_path: Option<String>,
+    pub credits: Option<Credits>,
 }
 
 /// Movie/TV credits.
@@ -684,7 +685,7 @@ impl TmdbClient {
         Ok(resp)
     }
 
-    /// Get episode details.
+    /// Get episode details with credits.
     pub async fn get_episode_details(
         &self,
         tv_id: u64,
@@ -696,7 +697,7 @@ impl TmdbClient {
                 "tv/{}/season/{}/episode/{}",
                 tv_id, season_number, episode_number
             ),
-            "",
+            "&append_to_response=credits",
         );
         let resp: EpisodeDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
