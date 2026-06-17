@@ -5781,6 +5781,7 @@ impl Planner {
                 // Get season metadata for folder generation
                 let season_folder_name = if let Some(season_meta) = season {
                     let sort_prefix = gen_folder::generate_sort_prefix(&show.name, &show.original_language);
+                    // Use season's air_date only (no fallback)
                     gen_folder::generate_season_folder(
                         season_meta.season_number,
                         &season_meta.name,
@@ -5789,6 +5790,7 @@ impl Planner {
                         &show.original_name,
                         show.imdb_id.as_deref(),
                         season_meta.tmdb_id,
+                        season_meta.air_date.as_deref(),
                     )
                 } else {
                     format!("Season {:02}", season_num)
