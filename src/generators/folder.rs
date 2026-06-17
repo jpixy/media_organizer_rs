@@ -28,7 +28,7 @@ use crate::utils::chinese;
 /// Example Format:
 /// [Z][追龍](2017)-tt6015328-tmdb426242
 /// [H][横道世之介][横道世之介](2013)-tt2151915-tmdb200145
-fn generate_sort_prefix(
+pub fn generate_sort_prefix(
     title: &str,
     original_language: &str,
 ) -> char {
@@ -150,9 +150,47 @@ pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
 
 /// Generate season folder name.
 ///
-/// Format: `S${seasonNr2}.${showYear}`
-pub fn generate_season_folder(season_number: u16, year: u16) -> String {
-    format!("S{:02}.{}", season_number, year)
+/// Format: `[S04][Season 04]-[A][爱死亡与机器人][Love, Death & Robots]-tt9561862-tmdb86831`
+pub fn generate_season_folder(
+    season_number: u16, 
+    _season_name: &str, 
+    sort_prefix: &str,
+    show_name: &str,
+    original_name: &str,
+    imdb_id: Option<&str>, 
+    tmdb_id: u64
+) -> String {
+    // Part 1: Season prefix and name (no separator)
+    // Always use "Season XX" format regardless of localization
+    let season_part = format!("[S{:02}][Season {:02}]", season_number, season_number);
+
+    // Part 2: Show title part
+    let mut title_parts = Vec::new();
+    
+    // Add sort prefix [A]
+    title_parts.push(format!("[{}]", sort_prefix));
+    
+    // Add show names
+    if normalize_title(show_name) != normalize_title(original_name) {
+        title_parts.push(format!("[{}]", sanitize_filename(show_name)));
+        title_parts.push(format!("[{}]", sanitize_filename(original_name)));
+    } else {
+        title_parts.push(format!("[{}]", sanitize_filename(show_name)));
+    }
+    
+    // Part 3: IDs
+    let mut id_parts = Vec::new();
+    
+    // Add IMDB ID tt9561862
+    if let Some(imdb) = imdb_id {
+        id_parts.push(imdb.to_string());
+    }
+
+    // Add TMDB ID tmdb86831
+    id_parts.push(format!("tmdb{}", tmdb_id));
+    
+    // Combine: [S04][Season 04]-[A][爱死亡与机器人][Love, Death & Robots]-tt9561862-tmdb86831
+    format!("{}-{}-{}", season_part, title_parts.join(""), id_parts.join("-"))
 }
 
 /// Sanitize a string for use in filenames.
@@ -455,5 +493,62 @@ mod tests {
             assert!(folder.contains(&expected_prefix), 
                 "Expected '{}' in '{}' for mixed movie", expected_prefix, folder);
         }
+    }
+
+    #[test]
+    fn test_generate_season_folder_basic() {
+        // Test basic season folder generation
+        // Format: [S04][Season 04]-[A][爱死亡与机器人][Love, Death & Robots]-tt9561862-tmdb450504
+        let folder = generate_season_folder(4, "Season 04", "A", "爱死亡与机器人", "Love, Death & Robots", Some("tt9561862"), 450504);
+        assert_eq!(folder, "[S04][Season 04]-[A][爱死亡与机器人][Love, Death & Robots]-tt9561862-tmdb450504");
+    }
+
+    #[test]
+    fn test_generate_season_folder_without_imdb() {
+        // Test season folder without IMDB ID
+        let folder = generate_season_folder(1, "Season 1", "T", "The Terminal List", "The Terminal List", None, 118866);
+        assert_eq!(folder, "[S01][Season 01]-[T][The Terminal List]-tmdb118866");
+    }
+
+    #[test]
+    fn test_generate_season_folder_chinese_name() {
+        // Test season folder with Chinese name - season name is always in English format
+        let folder = generate_season_folder(2, "第 2 季", "M", "漫长的季节", "漫长的季节", Some("tt123456"), 191339);
+        assert_eq!(folder, "[S02][Season 02]-[M][漫长的季节]-tt123456-tmdb191339");
+    }
+
+    #[test]
+    fn test_generate_season_folder_special_chars() {
+        // Test season folder - season name parameter is ignored, always uses "Season XX" format
+        let folder = generate_season_folder(3, "Season: 3", "S", "Silicon Valley", "Silicon Valley", Some("tt2575988"), 288278);
+        assert_eq!(folder, "[S03][Season 03]-[S][Silicon Valley]-tt2575988-tmdb288278");
+    }
+
+    #[test]
+    fn test_generate_season_folder_different_seasons_same_show() {
+        // Test that different seasons of the same show have different TMDB IDs
+        // This simulates the "Love, Death & Robots" case where each season has different TMDB season ID
+        
+        // Season 1
+        let s1 = generate_season_folder(1, "Volume 1", "A", "爱死亡与机器人", "Love, Death & Robots", Some("tt9561862"), 118866);
+        assert!(s1.contains("tmdb118866"));
+        
+        // Season 2
+        let s2 = generate_season_folder(2, "Volume 2", "A", "爱死亡与机器人", "Love, Death & Robots", Some("tt9561862"), 191339);
+        assert!(s2.contains("tmdb191339"));
+        
+        // Season 3
+        let s3 = generate_season_folder(3, "Volume 3", "A", "爱死亡与机器人", "Love, Death & Robots", Some("tt9561862"), 288278);
+        assert!(s3.contains("tmdb288278"));
+        
+        // Season 4
+        let s4 = generate_season_folder(4, "Volume 4", "A", "爱死亡与机器人", "Love, Death & Robots", Some("tt9561862"), 450504);
+        assert!(s4.contains("tmdb450504"));
+        
+        // Verify all TMDB IDs are different
+        assert_ne!(s1, s2);
+        assert_ne!(s2, s3);
+        assert_ne!(s3, s4);
+        assert_ne!(s1, s4);
     }
 }

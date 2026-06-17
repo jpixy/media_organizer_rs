@@ -482,6 +482,7 @@ mod tests {
             overview: Some("第一季的故事".to_string()),
             air_date: Some("2011-04-17".to_string()),
             episode_count: 10,
+            tmdb_id: 123456,
             ..Default::default()
         };
 

@@ -857,6 +857,7 @@ impl Planner {
                                     air_date: season_details.air_date,
                                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                     episode_count: season_details.episodes.len() as u16,
+                                    tmdb_id: season_details.id,
                                 })
                             } else {
                                 None
@@ -1290,6 +1291,7 @@ impl Planner {
                                 air_date: season_details.air_date,
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                 episode_count: season_details.episodes.len() as u16,
+                                tmdb_id: season_details.id,
                             }),
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
@@ -1343,6 +1345,7 @@ impl Planner {
                                 air_date: season_details.air_date,
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                 episode_count: season_details.episodes.len() as u16,
+                                tmdb_id: season_details.id,
                             }),
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
@@ -1524,6 +1527,7 @@ impl Planner {
                             air_date: season_details.air_date,
                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                             episode_count: season_details.episodes.len() as u16,
+                            tmdb_id: season_details.id,
                         }),
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for {}: {}", info.season, show_meta.name, e);
@@ -2047,6 +2051,7 @@ impl Planner {
                 air_date: season_details.air_date,
                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                 episode_count: season_details.episodes.len() as u16,
+                tmdb_id: season_details.id,
             }),
             Err(e) => {
                 tracing::warn!("[ORGANIZED-FOLDER] Failed to get season {} details for tmdb{}: {}", season, folder_info.tmdb_id, e);
@@ -2185,6 +2190,7 @@ impl Planner {
                             air_date: season_details.air_date,
                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                             episode_count: season_details.episodes.len() as u16,
+                            tmdb_id: season_details.id,
                         }),
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for tmdb{}: {}", season_num, folder_info.tmdb_id, e);
@@ -2194,7 +2200,8 @@ impl Planner {
                     
                     // Generate season NFO operation
                     if season_meta.is_some() && self.config.generate_nfo && self.config.generate_tv_season_nfo {
-                            let season_nfo_name = format!("[{}]-season{:02}.nfo", folder_info.title, season_num);
+                            let sort_prefix = gen_folder::generate_sort_prefix(&show_meta.name, &show_meta.original_language);
+                            let season_nfo_name = format!("[{}][{}][{}]-season{:02}.nfo", sort_prefix, show_meta.name, show_meta.original_name, season_num);
                             let season_nfo_path = season_path.join(&season_nfo_name);
                             
                             // Create directory if it doesn't exist
@@ -2737,6 +2744,7 @@ impl Planner {
                                     air_date: season_details.air_date,
                                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                     episode_count: season_details.episodes.len() as u16,
+                                    tmdb_id: season_details.id,
                                 });
                             }
                             
@@ -2859,6 +2867,7 @@ impl Planner {
                                 air_date: season_details.air_date,
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                 episode_count: season_details.episodes.len() as u16,
+                                tmdb_id: season_details.id,
                             });
                         }
                     }
@@ -2897,6 +2906,7 @@ impl Planner {
                                             air_date: season_details.air_date,
                                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                             episode_count: season_details.episodes.len() as u16,
+                                            tmdb_id: season_details.id,
                                         });
                                     }
                                 }
@@ -5753,21 +5763,36 @@ impl Planner {
                 (folder, filename, nfo, None)
             }
             MediaType::TvSeries => {
-                let (show, episode, _season) = tv_series_metadata
+                let (show, episode, season) = tv_series_metadata
                     .as_ref()
                     .ok_or_else(|| crate::Error::other("Missing TV show metadata"))?;
 
                 // TV show folder: ShowName (Year)
                 let folder = gen_folder::generate_tv_series_folder(show);
 
-                // Season folder: Season XX
+                // Season folder: [S04][Season 04]-[tt9561862]-[tmdb118866]
                 // Priority: episode.season_number > parsed.season > 1
                 let season_num = episode
                     .as_ref()
                     .map(|e| e.season_number)
                     .or(parsed.season)
                     .unwrap_or(1);
-                let season_folder_name = format!("Season {:02}", season_num);
+                
+                // Get season metadata for folder generation
+                let season_folder_name = if let Some(season_meta) = season {
+                    let sort_prefix = gen_folder::generate_sort_prefix(&show.name, &show.original_language);
+                    gen_folder::generate_season_folder(
+                        season_meta.season_number,
+                        &season_meta.name,
+                        &sort_prefix.to_string(),
+                        &show.name,
+                        &show.original_name,
+                        show.imdb_id.as_deref(),
+                        season_meta.tmdb_id,
+                    )
+                } else {
+                    format!("Season {:02}", season_num)
+                };
 
                 // Episode filename
                 let ep_num = episode
@@ -5895,7 +5920,8 @@ impl Planner {
                 
                 // Create TV show NFO in show root folder
                 if self.config.generate_nfo && self.config.generate_tv_show_nfo {
-                    let tvshow_nfo_name = format!("[S][{}][{}]-tvshow.nfo", show.name, show.original_name);
+                    let sort_prefix = gen_folder::generate_sort_prefix(&show.name, &show.original_language);
+                    let tvshow_nfo_name = format!("[{}][{}][{}]-tvshow.nfo", sort_prefix, show.name, show.original_name);
                     let tvshow_nfo_path = show_folder.join(tvshow_nfo_name);
                     operations.push(Operation {
                         op: OperationType::Create,
@@ -5926,7 +5952,8 @@ impl Planner {
                             .map(|e| e.season_number)
                             .or(parsed.season)
                             .unwrap_or(1);
-                        let season_nfo_name = format!("[S][{}][{}]-season{:02}.nfo", show.name, show.original_name, season_num);
+                        let sort_prefix = gen_folder::generate_sort_prefix(&show.name, &show.original_language);
+                        let season_nfo_name = format!("[{}][{}][{}]-season{:02}.nfo", sort_prefix, show.name, show.original_name, season_num);
                         let season_nfo_path = target_folder.join(season_nfo_name);
                         operations.push(Operation {
                             op: OperationType::Create,

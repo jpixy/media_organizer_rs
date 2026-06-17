@@ -226,4 +226,6 @@ pub struct SeasonMetadata {
     pub poster_url: Option<String>,
     /// Number of episodes.
     pub episode_count: u16,
+    /// TMDB Season ID.
+    pub tmdb_id: u64,
 }

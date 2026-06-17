@@ -13,6 +13,7 @@ fn test_season_metadata_structure() {
         air_date: Some("2023-01-01".to_string()),
         poster_url: Some("https://example.com/poster.jpg".to_string()),
         episode_count: 10,
+        tmdb_id: 123456,
     };
     
     assert_eq!(season_meta.season_number, 1);
@@ -35,6 +36,7 @@ fn test_plan_item_with_season_metadata() {
         air_date: None,
         poster_url: None,
         episode_count: 13,
+        tmdb_id: 123457,
     }));
     
     assert!(plan_item.season_metadata.is_some());
@@ -65,6 +67,7 @@ fn test_season_metadata_with_none_values() {
         air_date: None,
         poster_url: None,
         episode_count: 8,
+        tmdb_id: 123458,
     };
     
     assert_eq!(season_meta.season_number, 3);

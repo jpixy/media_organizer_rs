@@ -244,7 +244,7 @@ pub fn generate_movie_filename_with_disc(
 
 /// Generate TV episode filename.
 ///
-/// New Format: `[${sortPrefix}][${showTitle}][${showOriginalTitle}]-S${seasonNr2}E${episodeNr2}-[${originalTitle}]-[${title}]-${format}-${codec}-${bitDepth}bit-${audioCodec}-${audioChannels}`
+/// New Format: `S${seasonNr2}E${episodeNr2}-[${title}]-[${sortPrefix}][${showTitle}][${showOriginalTitle}]-${format}-${codec}-${bitDepth}bit-${audioCodec}-${audioChannels}`
 /// Sort Prefix Generation Rules: See `generate_sort_prefix` documentation
 pub fn generate_episode_filename(
     show: &TvSeriesMetadata,
@@ -254,7 +254,16 @@ pub fn generate_episode_filename(
 ) -> String {
     let mut parts = Vec::new();
 
-    // Add sorting prefix
+    // Season and episode number FIRST: S04E02
+    parts.push(format!(
+        "S{:02}E{:02}",
+        episode.season_number, episode.episode_number
+    ));
+
+    // Episode title: -[与微型物的近距离接触]
+    parts.push(format!("-[{}]", sanitize_filename(&episode.name)));
+
+    // Show title part: -[A][爱死亡与机器人][Love, Death & Robots]
     let has_chinese = show.original_language == "zh" 
         || normalize_title(&show.name) != normalize_title(&show.original_name);
     let sort_prefix = generate_sort_prefix(
@@ -263,33 +272,20 @@ pub fn generate_episode_filename(
         &show.original_language,
         &show.original_name,
     );
-    parts.push(format!("[{}]", sort_prefix));
-
-    // Show title
+    
+    let mut title_part = format!("[{}]", sort_prefix);
+    
     let is_chinese = show.original_language == "zh";
     let titles_same = normalize_title(&show.original_name) == normalize_title(&show.name);
 
     if is_chinese || titles_same {
-        parts.push(format!("[{}]", sanitize_filename(&show.name)));
+        title_part.push_str(&format!("[{}]", sanitize_filename(&show.name)));
     } else {
         // Use both localized and original title (localized first)
-        parts.push(format!("[{}]", sanitize_filename(&show.name)));
-        parts.push(format!("[{}]", sanitize_filename(&show.original_name)));
+        title_part.push_str(&format!("[{}][{}]", sanitize_filename(&show.name), sanitize_filename(&show.original_name)));
     }
-
-    // Season and episode number
-    parts.push(format!(
-        "-S{:02}E{:02}",
-        episode.season_number, episode.episode_number
-    ));
-
-    // Episode title
-    if let Some(ref orig_name) = episode.original_name {
-        if orig_name != &episode.name {
-            parts.push(format!("-[{}]", sanitize_filename(orig_name)));
-        }
-    }
-    parts.push(format!("-[{}]", sanitize_filename(&episode.name)));
+    
+    parts.push(format!("-{}", title_part));
 
     // Video info with actual resolution (skip if Unknown)
     parts.push(format!("-{}", format_resolution(video)));
@@ -431,5 +427,92 @@ mod tests {
 
         // Ensure different filenames for different discs
         assert_ne!(filename2, filename3);
+    }
+
+    #[test]
+    fn test_generate_episode_filename_new_format() {
+        // Test new episode filename format: S04E02-[与微型物的近距离接触]-[A][爱死亡与机器人][Love, Death & Robots]-1920x1080(1080p)-h264-8bit-eac3-5.1.mkv
+        let show = TvSeriesMetadata {
+            name: "爱死亡与机器人".to_string(),
+            original_name: "Love, Death & Robots".to_string(),
+            original_language: "en".to_string(),
+            year: 2019,
+            imdb_id: Some("tt9561862".to_string()),
+            tmdb_id: 86831,
+            ..Default::default()
+        };
+
+        let episode = EpisodeMetadata {
+            season_number: 4,
+            episode_number: 2,
+            name: "与微型物的近距离接触".to_string(),
+            original_name: Some("Jibaro".to_string()),
+            ..Default::default()
+        };
+
+        let video = VideoMetadata {
+            width: 1920,
+            height: 1080,
+            resolution: "1080p".to_string(),
+            format: "BluRay".to_string(),
+            video_codec: "h264".to_string(),
+            bit_depth: 8,
+            audio_codec: "eac3".to_string(),
+            audio_channels: "5.1".to_string(),
+        };
+
+        let filename = generate_episode_filename(&show, &episode, &video, "mkv");
+        
+        // Verify format: S04E02-[title]-[A][爱死亡与机器人][Love, Death & Robots]-resolution-format-codec-bitdepth-audio.mkv
+        assert!(filename.starts_with("S04E02-"), "Should start with S04E02-, got: {}", filename);
+        assert!(filename.contains("-[与微型物的近距离接触]-"), "Should contain episode title, got: {}", filename);
+        assert!(filename.contains("[A]"), "Should contain sort prefix, got: {}", filename);
+        assert!(filename.contains("[爱死亡与机器人]"), "Should contain Chinese name, got: {}", filename);
+        assert!(filename.contains("[Love, Death & Robots]"), "Should contain original name, got: {}", filename);
+        assert!(filename.contains("1920x1080(1080p)"), "Should contain resolution, got: {}", filename);
+        assert!(filename.contains("-h264-"), "Should contain codec, got: {}", filename);
+        assert!(filename.ends_with(".mkv"), "Should end with .mkv, got: {}", filename);
+    }
+
+    #[test]
+    fn test_generate_episode_filename_english_only() {
+        // Test episode with English only title (same show and episode name)
+        let show = TvSeriesMetadata {
+            name: "The Terminal List".to_string(),
+            original_name: "The Terminal List".to_string(),
+            original_language: "en".to_string(),
+            year: 2022,
+            imdb_id: Some("tt11743610".to_string()),
+            tmdb_id: 120911,
+            ..Default::default()
+        };
+
+        let episode = EpisodeMetadata {
+            season_number: 1,
+            episode_number: 1,
+            name: "Order".to_string(),
+            original_name: Some("Order".to_string()),
+            ..Default::default()
+        };
+
+        let video = VideoMetadata {
+            width: 1920,
+            height: 1080,
+            resolution: "1080p".to_string(),
+            format: "WEB-DL".to_string(),
+            video_codec: "h265".to_string(),
+            bit_depth: 10,
+            audio_codec: "aac".to_string(),
+            audio_channels: "2.0".to_string(),
+        };
+
+        let filename = generate_episode_filename(&show, &episode, &video, "mp4");
+        
+        // For English only, should NOT duplicate the same name
+        assert!(filename.starts_with("S01E01-"), "Should start with S01E01-, got: {}", filename);
+        assert!(filename.contains("-[Order]-"), "Should contain episode title, got: {}", filename);
+        assert!(filename.contains("[T]"), "Should contain sort prefix T, got: {}", filename);
+        assert!(filename.contains("[The Terminal List]"), "Should contain show name, got: {}", filename);
+        assert!(filename.ends_with(".mp4"), "Should end with .mp4, got: {}", filename);
     }
 }
