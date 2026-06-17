@@ -941,6 +941,52 @@ mod tests {
         assert_eq!(season, Some(2));
     }
 
+    /// Test extract_title_from_dirname function
+    #[test]
+    fn test_extract_title_from_dirname() {
+        // Test case 1: Full directory name with Chinese title followed by season info
+        assert_eq!(
+            extract_title_from_dirname("终极名单 第一季 The Terminal List Season 1 (2022)"),
+            Some("终极名单".to_string())
+        );
+        
+        // Test case 2: Chinese title followed by season number
+        assert_eq!(
+            extract_title_from_dirname("爱死亡与机器人 S04"),
+            Some("爱死亡与机器人".to_string())
+        );
+        
+        // Test case 3: Chinese title with year
+        assert_eq!(
+            extract_title_from_dirname("流浪地球 2 (2023)"),
+            Some("流浪地球".to_string())
+        );
+        
+        // Test case 4: Pure English title should return None
+        assert_eq!(
+            extract_title_from_dirname("The Terminal List Season 1 (2022)"),
+            None
+        );
+        
+        // Test case 5: Empty string
+        assert_eq!(extract_title_from_dirname(""), None);
+        
+        // Test case 6: Single Chinese character (should not be considered a title)
+        assert_eq!(extract_title_from_dirname("第 第一季"), None);
+        
+        // Test case 7: Multiple Chinese words in title
+        assert_eq!(
+            extract_title_from_dirname("我的朋友安德烈 (2024)"),
+            Some("我的朋友安德烈".to_string())
+        );
+        
+        // Test case 8: Directory name with tt ID suffix (actual user scenario)
+        assert_eq!(
+            extract_title_from_dirname("终极名单 第一季 The Terminal List Season 1 (2022) tt11743610"),
+            Some("终极名单".to_string())
+        );
+    }
+
     // ========================================================================
     // is_organized_filename 测试
     // ========================================================================
@@ -2381,6 +2427,36 @@ pub fn extract_season_from_dirname(dirname: &str) -> Option<u16> {
         }
     }
 
+    None
+}
+
+/// Extract Chinese title from directory name.
+/// This is used as a fallback when TMDB doesn't have Chinese translation.
+/// 
+/// Patterns supported:
+/// - "终极名单 第一季 The Terminal List Season 1 (2022)" -> "终极名单"
+/// - "爱死亡与机器人 S04" -> "爱死亡与机器人"
+/// - "The Terminal List Season 1" -> None (no Chinese)
+pub fn extract_title_from_dirname(dirname: &str) -> Option<String> {
+    let name = dirname.trim();
+    
+    // Find the first Chinese character sequence that looks like a title
+    // Titles typically come at the beginning of the directory name
+    // before season info or English title
+    
+    // Match Chinese characters at the beginning, before any season indicators
+    // Require at least 2 Chinese characters for a valid title
+    if let Some(captures) = regex::Regex::new(r"^([\u4e00-\u9fa5]{2,}(?:[\u4e00-\u9fa5\s]+)*?)\s*(?:第[\u4e00-\u9fa50-9]+季|S\d+|Season|[\(\[]\d{4}[\)\]])").ok()?.captures(name) {
+        let title = captures.get(1)?.as_str().trim().to_string();
+        return Some(title);
+    }
+    
+    // Simpler pattern: just get the leading Chinese part
+    if let Some(captures) = regex::Regex::new(r"^([\u4e00-\u9fa5]{2,}(?:[\u4e00-\u9fa5]+)*)").ok()?.captures(name) {
+        let title = captures.get(1)?.as_str().trim().to_string();
+        return Some(title);
+    }
+    
     None
 }
 

@@ -95,23 +95,42 @@ async fn plan_media(
     println!();
 
     // Ensure target directory exists before saving plan
+    // If target directory is read-only, skip creating it and save plan to sessions only
     if !target_path.exists() {
-        std::fs::create_dir_all(&target_path)?;
+        if let Err(e) = std::fs::create_dir_all(&target_path) {
+            tracing::warn!("Cannot create target directory (may be read-only): {}", e);
+            // Continue anyway - we'll save to sessions directory
+        }
     }
 
     // Determine output path (prefer target directory)
+    // If target directory doesn't exist or is read-only, use sessions directory
     let output_path = match output {
         Some(o) => o.to_path_buf(),
-        None => planner::default_plan_path(source, Some(&target_path)),
+        None => {
+            if target_path.exists() && std::fs::metadata(&target_path).map(|m| !m.permissions().readonly()).unwrap_or(false) {
+                planner::default_plan_path(source, Some(&target_path))
+            } else {
+                // Target is read-only, save to sessions directory
+                planner::default_plan_path(source, None)
+            }
+        }
     };
 
-    // Save plan
-    planner::save_plan(&plan, &output_path)?;
-    println!(
-        "{} {}",
-        "[OK] Plan saved to:".bold().green(),
-        output_path.display()
-    );
+    // Save plan (may fail if output_path is read-only)
+    match planner::save_plan(&plan, &output_path) {
+        Ok(_) => {
+            println!(
+                "{} {}",
+                "[OK] Plan saved to:".bold().green(),
+                output_path.display()
+            );
+        }
+        Err(e) => {
+            tracing::warn!("Cannot save plan to output path (may be read-only): {}", e);
+            // Continue anyway - we'll save to sessions directory
+        }
+    }
 
     // Save to sessions
     match planner::save_to_sessions(&plan) {

@@ -745,8 +745,76 @@ impl Planner {
                         );
 
                         if let Ok(show_details) = show_result {
-                            let show_metadata =
+                            let mut show_metadata =
                                 self.build_tv_series_metadata_from_details(&show_details);
+
+                            // PATH-ID mode: Apply Chinese title extraction logic
+                            // Try to get Chinese title from directory name or TMDB translations
+                            if !chinese::contains_chinese(&show_metadata.name) {
+                                // First, try to extract Chinese title from directory name
+                                let mut chinese_title_from_dir: Option<String> = None;
+                                let mut current_path = Some(video.parent_dir.as_path());
+                                for _ in 0..3 {
+                                    if let Some(path) = current_path {
+                                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                            if let Some(title) = parser::extract_title_from_dirname(name) {
+                                                chinese_title_from_dir = Some(title);
+                                                break;
+                                            }
+                                        }
+                                        current_path = path.parent();
+                                    } else {
+                                        break;
+                                    }
+                                }
+
+                                // If found Chinese title in directory, use it
+                                if let Some(chinese_title) = chinese_title_from_dir {
+                                    tracing::info!(
+                                        "[PATH-ID] Using Chinese title from directory: '{}'",
+                                        chinese_title
+                                    );
+                                    show_metadata.name = chinese_title;
+                                } else {
+                                    // Try TMDB translations API
+                                    if let Ok(translations) = client.get_tv_translations(tmdb_id).await {
+                                        let chinese_candidates: Vec<(String, String)> = translations.translations
+                                            .iter()
+                                            .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+                                            .filter(|t| !t.data.title.is_empty() && chinese::contains_chinese(&t.data.title))
+                                            .map(|t| (t.iso_3166_1.clone(), t.data.title.clone()))
+                                            .collect();
+
+                                        let region_priority = ["CN", "SG", "HK", "TW"];
+                                        for priority_region in &region_priority {
+                                            if let Some((_region, chinese_title)) = chinese_candidates
+                                                .iter()
+                                                .find(|(r, _)| r == priority_region)
+                                            {
+                                                tracing::info!(
+                                                    "[PATH-ID] Found Chinese title '{}' from TMDB translations ({} region)",
+                                                    chinese_title,
+                                                    priority_region
+                                                );
+                                                show_metadata.name = chinese_title.clone();
+                                                break;
+                                            }
+                                        }
+
+                                        // Final fallback: use any available Chinese translation
+                                        if !chinese::contains_chinese(&show_metadata.name) {
+                                            if let Some((region, chinese_title)) = chinese_candidates.first() {
+                                                tracing::info!(
+                                                    "[PATH-ID] Found Chinese title '{}' from TMDB translations ({} region, fallback)",
+                                                    chinese_title,
+                                                    region
+                                                );
+                                                show_metadata.name = chinese_title.clone();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             // Get episode metadata from TMDB (already fetched in parallel)
                             let episode_metadata = if let Ok(ep_details) = episode_result {
@@ -2567,9 +2635,35 @@ impl Planner {
                 }
             }
 
+            // Try to extract Chinese title from parent directory name for fallback
+            // e.g., "终极名单 第一季 The Terminal List Season 1 (2022)" -> "终极名单"
+            // Search up the directory tree to find a directory with Chinese title
+            let mut parsed_title: Option<String> = None;
+            let mut current_path = Some(video.parent_dir.as_path());
+            
+            // Traverse up to 3 levels to find a directory with Chinese title
+            for _ in 0..3 {
+                if let Some(path) = current_path {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if let Some(title) = parser::extract_title_from_dirname(name) {
+                            parsed_title = Some(title);
+                            break;
+                        }
+                    }
+                    current_path = path.parent();
+                } else {
+                    break;
+                }
+            }
+            
+            tracing::debug!(
+                "[FAST PATH] Extracted Chinese title from path: {:?}",
+                parsed_title
+            );
+
             // Create a minimal parsed result with episode info
             ParsedFilename {
-                title: cached_show.as_ref().map(|(s, _)| s.name.clone()),
+                title: parsed_title.or_else(|| cached_show.as_ref().map(|(s, _)| s.name.clone())),
                 original_title: cached_show.as_ref().map(|(s, _)| s.original_name.clone()),
                 year: cached_show.as_ref().map(|(s, _)| s.year),
                 season,
@@ -2614,13 +2708,28 @@ impl Planner {
                         parsed.season,
                         parsed.episode
                     );
+                    
+                    // If we extracted a Chinese title from directory name and cached name is not Chinese,
+                    // update the show name to use the Chinese title
+                    let mut show_meta = cached_show_meta.clone();
+                    if let Some(ref extracted_title) = parsed.title {
+                        if chinese::contains_chinese(extracted_title) && !chinese::contains_chinese(&show_meta.name) {
+                            tracing::info!(
+                                "[FAST PATH] Updating show name to Chinese: '{}' -> '{}'",
+                                show_meta.name,
+                                extracted_title
+                            );
+                            show_meta.name = extracted_title.clone();
+                        }
+                    }
+                    
                     // Get episode info for this specific file using regex-extracted numbers
                     let (episode, season_metadata) = if let (Some(season), Some(ep)) = (parsed.season, parsed.episode)
                     {
                         let mut season_meta: Option<SeasonMetadata> = None;
                         let episode_meta = if let Some(client) = &self.tmdb_client {
                             // Try to get season details first
-                            if let Ok(season_details) = client.get_season_details(cached_show_meta.tmdb_id, season).await {
+                            if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
                                 season_meta = Some(SeasonMetadata {
                                     season_number: season_details.season_number,
                                     name: season_details.name,
@@ -2632,7 +2741,7 @@ impl Planner {
                             }
                             
                             match client
-                                .get_episode_details(cached_show_meta.tmdb_id, season, ep)
+                                .get_episode_details(show_meta.tmdb_id, season, ep)
                                 .await
                             {
                                 Ok(ep_details) => Some(EpisodeMetadata {
@@ -2688,13 +2797,39 @@ impl Planner {
                     } else {
                         (None, None)
                     };
-                    (None, Some((cached_show_meta.clone(), episode, season_metadata)))
+                    (None, Some((show_meta, episode, season_metadata)))
                 } else {
                     // No cache, query TMDB with folder name as fallback
                     // Try to get meaningful folder name (skip quality descriptors)
                     let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
+                    
+                    // Extract Chinese title from folder name as fallback
+                    let mut parsed_with_chinese = parsed.clone();
+                    if parsed_with_chinese.title.as_ref().map_or(true, |t| !chinese::contains_chinese(t)) {
+                        // If parsed title doesn't have Chinese, try to extract from folder name
+                        // Search up the directory tree to find a directory with Chinese title
+                        let mut current_path = Some(video.parent_dir.as_path());
+                        for _ in 0..3 {
+                            if let Some(path) = current_path {
+                                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                    if let Some(chinese_title) = parser::extract_title_from_dirname(name) {
+                                        tracing::info!(
+                                            "[NORMAL PATH] Extracted Chinese title from folder: '{}'",
+                                            chinese_title
+                                        );
+                                        parsed_with_chinese.title = Some(chinese_title);
+                                        break;
+                                    }
+                                }
+                                current_path = path.parent();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    
                     let (show, mut episode) = self
-                        .query_tmdb_tv_series_with_folder(&parsed, folder_name.as_deref())
+                        .query_tmdb_tv_series_with_folder(&parsed_with_chinese, folder_name.as_deref())
                         .await?;
                     if show.is_none() {
                         tracing::debug!("No TMDB match for TV show: {}", video.filename);
@@ -6324,13 +6459,23 @@ pub fn default_plan_path(source: &Path, target: Option<&Path>) -> PathBuf {
 
 /// Get the sessions directory.
 pub fn sessions_dir() -> Result<PathBuf> {
+    // Try home directory first
     let home = dirs::home_dir().ok_or_else(|| crate::Error::other("Cannot find home directory"))?;
-    let dir = home
+    let home_sessions = home
         .join(".config")
         .join("media_organizer")
         .join("sessions");
-    fs::create_dir_all(&dir)?;
-    Ok(dir)
+    
+    // Check if home directory is writable
+    if fs::create_dir_all(&home_sessions).is_ok() {
+        return Ok(home_sessions);
+    }
+    
+    // Fallback to current working directory
+    let cwd = std::env::current_dir().map_err(|e| crate::Error::other(format!("Cannot get current directory: {}", e)))?;
+    let cwd_sessions = cwd.join(".media_organizer_sessions");
+    fs::create_dir_all(&cwd_sessions)?;
+    Ok(cwd_sessions)
 }
 
 /// Save plan to sessions directory.
