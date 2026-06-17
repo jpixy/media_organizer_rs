@@ -6463,7 +6463,7 @@ pub fn sessions_dir() -> Result<PathBuf> {
     let home = dirs::home_dir().ok_or_else(|| crate::Error::other("Cannot find home directory"))?;
     let home_sessions = home
         .join(".config")
-        .join("media_organizer")
+        .join("mediaorganizer")
         .join("sessions");
     
     // Check if home directory is writable
@@ -6473,7 +6473,7 @@ pub fn sessions_dir() -> Result<PathBuf> {
     
     // Fallback to current working directory
     let cwd = std::env::current_dir().map_err(|e| crate::Error::other(format!("Cannot get current directory: {}", e)))?;
-    let cwd_sessions = cwd.join(".media_organizer_sessions");
+    let cwd_sessions = cwd.join(".mediaorganizer_sessions");
     fs::create_dir_all(&cwd_sessions)?;
     Ok(cwd_sessions)
 }

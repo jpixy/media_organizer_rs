@@ -49,7 +49,7 @@ pub fn calculate_directory_hash(path: &Path) -> Result<String> {
 fn config_dir() -> Result<PathBuf> {
     let config = dirs::config_dir()
         .context("Failed to get config directory")?
-        .join("media_organizer");
+        .join("mediaorganizer");
     Ok(config)
 }
 

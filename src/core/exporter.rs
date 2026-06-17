@@ -61,7 +61,7 @@ pub struct ImportPreview {
 fn config_dir() -> Result<PathBuf> {
     let config = dirs::config_dir()
         .context("Failed to get config directory")?
-        .join("media_organizer");
+        .join("mediaorganizer");
     Ok(config)
 }
 
@@ -350,7 +350,7 @@ pub fn import_from_file(backup_path: &Path, options: &ImportOptions) -> Result<I
     // Backup existing config if requested
     if options.backup_first {
         let backup_dir = config_path.with_file_name(format!(
-            "media_organizer.backup.{}",
+            "mediaorganizer.backup.{}",
             chrono::Utc::now().format("%Y%m%d_%H%M%S")
         ));
         if config_path.exists() {
@@ -471,7 +471,7 @@ pub struct ImportResult {
 /// Generate auto filename with timestamp.
 pub fn auto_filename() -> String {
     format!(
-        "media_organizer_backup_{}.zip",
+        "mediaorganizer_backup_{}.zip",
         chrono::Utc::now().format("%Y%m%d_%H%M%S")
     )
 }
