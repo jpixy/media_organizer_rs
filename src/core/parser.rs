@@ -950,10 +950,28 @@ mod tests {
             Some("终极名单".to_string())
         );
         
+        // Test case 1a: Directory name with trailing space (actual user scenario)
+        assert_eq!(
+            extract_title_from_dirname("终极名单 第一季 The Terminal List Season 1 (2022) "),
+            Some("终极名单".to_string())
+        );
+        
         // Test case 2: Chinese title followed by season number
         assert_eq!(
             extract_title_from_dirname("爱死亡与机器人 S04"),
             Some("爱死亡与机器人".to_string())
+        );
+        
+        // Test case 2a: Chinese title with comma and season info (actual user scenario)
+        assert_eq!(
+            extract_title_from_dirname("爱，死亡和机器人 第四季 Love, Death & Robots Season 4 (2025)"),
+            Some("爱，死亡和机器人".to_string())
+        );
+        
+        // Test case 2b: Directory name with trailing space (actual user scenario)
+        assert_eq!(
+            extract_title_from_dirname("爱，死亡和机器人 第四季 Love, Death & Robots Season 4 (2025) "),
+            Some("爱，死亡和机器人".to_string())
         );
         
         // Test case 3: Chinese title with year
@@ -1871,7 +1889,10 @@ pub struct OrganizedMovieInfo {
 /// Information extracted from an organized TV show folder name.
 #[derive(Debug, Clone)]
 pub struct OrganizedTvSeriesFolderInfo {
+    /// Primary title (usually Chinese/localized title)
     pub title: String,
+    /// Original/English title (if available)
+    pub original_title: Option<String>,
     pub year: Option<u16>,
     pub imdb_id: Option<String>,
     pub tmdb_id: u64,
@@ -1940,15 +1961,22 @@ impl SmartExtractedMetadata {
 
     /// Get the original title
     pub fn original_title(&self) -> Option<String> {
-        // Find the first non-Chinese title
-        if let Some(original_title) = self.titles.iter().find(|t| !contains_chinese(t)) {
-            return Some(original_title.trim().to_string());
+        // Find the longest non-Chinese title (to avoid short codes like "A")
+        let non_chinese_titles: Vec<&String> = self.titles.iter()
+            .filter(|t| !contains_chinese(t))
+            .collect();
+        
+        if non_chinese_titles.is_empty() {
+            // If all are Chinese, just take the first one
+            return self.titles.first()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
         }
-        // If all are Chinese, just take the first one
-        self.titles
-            .first()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
+        
+        // Return the longest non-Chinese title (to avoid short codes)
+        non_chinese_titles.iter()
+            .max_by_key(|t| t.len())
+            .map(|t| t.trim().to_string())
     }
 }
 
@@ -2234,6 +2262,37 @@ pub fn is_organized_tv_series_folder(dirname: &str) -> bool {
 /// - `[러브 미][爱我](2025)-tt35451747-tmdb275989`
 /// - `[러브 미][ ]-tt35451747-tmdb275989` (empty Chinese title)
 pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeriesFolderInfo> {
+    // Pattern 0: Season folder with dual title and year: [S04][Season 04]-[Title1][Title2](Year)-ttIMDB-tmdbID
+    // This pattern is for season folders that have season info prefix
+    // e.g., [S04][Season 04]-[L][Love, Death & Robots](2025)-tt9561862-tmdb450504
+    let re_season_dual_with_year_imdb =
+        regex::Regex::new(r"^\[S\d+\]\[Season \d+\]-\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_season_dual_with_year_imdb.captures(dirname) {
+        // title1 is usually a short code (like "L"), title2 is the full title
+        let title1 = caps.get(1)?.as_str().to_string();
+        let title2 = caps.get(2)?.as_str().to_string();
+        // Prefer title2 (full title) over title1 (short code)
+        let title = if title2.len() > title1.len() {
+            title2.clone()
+        } else {
+            title1.clone()
+        };
+        // title1 might be the original English title (short code like "L")
+        let original_title = if contains_chinese(&title1) {
+            None
+        } else {
+            Some(title1)
+        };
+        return Some(OrganizedTvSeriesFolderInfo {
+            title,
+            original_title,
+            year: caps.get(3)?.as_str().parse().ok(),
+            imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
+            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+        });
+    }
+
     // Pattern 1: Dual title with year and IMDB: [Original][Chinese](Year)-ttIMDB-tmdbID
     let re_dual_with_year_imdb =
         regex::Regex::new(r"^\[([^\]]+)\]\[([^\]]*)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
@@ -2246,8 +2305,15 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
         } else {
             chinese
         };
+        // original is the first title (usually English)
+        let original_title = if original.is_empty() || contains_chinese(&original) {
+            None
+        } else {
+            Some(original)
+        };
         return Some(OrganizedTvSeriesFolderInfo {
             title,
+            original_title,
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
             tmdb_id: caps.get(5)?.as_str().parse().ok()?,
@@ -2266,8 +2332,14 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
         } else {
             chinese
         };
+        let original_title = if original.is_empty() || contains_chinese(&original) {
+            None
+        } else {
+            Some(original)
+        };
         return Some(OrganizedTvSeriesFolderInfo {
             title,
+            original_title,
             year: None,
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
             tmdb_id: caps.get(4)?.as_str().parse().ok()?,
@@ -2280,6 +2352,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
     if let Some(caps) = re_with_imdb.captures(dirname) {
         return Some(OrganizedTvSeriesFolderInfo {
             title: caps.get(1)?.as_str().to_string(),
+            original_title: None, // Single title, unknown if it's original or translated
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
             tmdb_id: caps.get(4)?.as_str().parse().ok()?,
@@ -2292,6 +2365,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
     if let Some(caps) = re_no_imdb.captures(dirname) {
         return Some(OrganizedTvSeriesFolderInfo {
             title: caps.get(1)?.as_str().to_string(),
+            original_title: None, // Single title, unknown if it's original or translated
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: None,
             tmdb_id: caps.get(3)?.as_str().parse().ok()?,
@@ -2327,6 +2401,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
 
         return Some(OrganizedTvSeriesFolderInfo {
             title,
+            original_title: smart.original_title(), // May return English title if available
             year: smart.year,
             imdb_id: smart.imdb_id,
             tmdb_id,
@@ -2440,21 +2515,162 @@ pub fn extract_season_from_dirname(dirname: &str) -> Option<u16> {
 pub fn extract_title_from_dirname(dirname: &str) -> Option<String> {
     let name = dirname.trim();
     
-    // Find the first Chinese character sequence that looks like a title
-    // Titles typically come at the beginning of the directory name
-    // before season info or English title
+    // Step 1: Extract all leading Chinese characters, stopping at non-Chinese delimiters
+    let chars: Vec<char> = name.chars().collect();
+    let mut result = String::new();
     
-    // Match Chinese characters at the beginning, before any season indicators
-    // Require at least 2 Chinese characters for a valid title
-    if let Some(captures) = regex::Regex::new(r"^([\u4e00-\u9fa5]{2,}(?:[\u4e00-\u9fa5\s]+)*?)\s*(?:第[\u4e00-\u9fa50-9]+季|S\d+|Season|[\(\[]\d{4}[\)\]])").ok()?.captures(name) {
-        let title = captures.get(1)?.as_str().trim().to_string();
-        return Some(title);
+    // Helper function to check if a character is Chinese (including punctuation)
+    let is_chinese_char = |c: char| -> bool {
+        // Basic Chinese characters: \u{4e00} to \u{9fa5}
+        if c >= '\u{4e00}' && c <= '\u{9fa5}' {
+            return true;
+        }
+        // Chinese punctuation: \u{FF00} to \u{FFEF} (Fullwidth forms)
+        if c >= '\u{FF00}' && c <= '\u{FFEF}' {
+            return true;
+        }
+        // Common Chinese punctuation marks
+        if c == '，' || c == '。' || c == '、' || c == '！' || c == '？' || c == '：' || c == '；' || c == '「' || c == '」' || c == '『' || c == '』' || c == '（' || c == '）' || c == '《' || c == '》' {
+            return true;
+        }
+        false
+    };
+    
+    let mut i = 0;
+    while i < chars.len() {
+        let c = chars[i];
+        
+        // Stop at S01, S02, etc.
+        if c == 'S' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit() {
+            break;
+        }
+        
+        // Stop at year or other metadata in parentheses/brackets
+        if c == '(' || c == '[' {
+            break;
+        }
+        
+        // Add Chinese character to result
+        if is_chinese_char(c) {
+            result.push(c);
+            i += 1;
+        } else if c.is_ascii_whitespace() {
+            // Skip whitespace but don't add to result
+            i += 1;
+        } else {
+            // Non-Chinese character, stop
+            break;
+        }
     }
     
-    // Simpler pattern: just get the leading Chinese part
-    if let Some(captures) = regex::Regex::new(r"^([\u4e00-\u9fa5]{2,}(?:[\u4e00-\u9fa5]+)*)").ok()?.captures(name) {
-        let title = captures.get(1)?.as_str().trim().to_string();
-        return Some(title);
+    // Step 2: Remove trailing season pattern "第X季" if present
+    let chinese_numerals = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+    let result_chars: Vec<char> = result.chars().collect();
+    
+    // Search for "季" at the end and work backwards
+    if let Some(season_pos) = result_chars.iter().rposition(|&c| c == '季') {
+        // Found "季", now look for "第" before it
+        let mut pos = season_pos;
+        while pos > 0 {
+            pos -= 1;
+            if result_chars[pos] == '第' {
+                // Found "第...季" pattern, remove everything from "第" onwards
+                let trimmed_result: String = result_chars[0..pos].iter().collect();
+                // Check character count (not byte length)
+                if trimmed_result.chars().count() >= 2 {
+                    return Some(trimmed_result);
+                } else {
+                    return None;
+                }
+            }
+            // Skip digits and whitespace between "第" and "季"
+            if !chinese_numerals.contains(&result_chars[pos]) && !result_chars[pos].is_ascii_whitespace() {
+                break; // Not part of season pattern
+            }
+        }
+    }
+    
+    // Final check: result must have at least 2 Chinese characters (character count, not byte length)
+    if result.chars().count() >= 2 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+/// Extract English title from non-standard TV Show folder names like:
+/// - "爱，死亡和机器人 第四季 Love, Death & Robots Season 4 (2025)"
+/// - "终极名单 第一季 The Terminal List Season 1 (2022)"
+pub fn extract_english_title_from_dirname(dirname: &str) -> Option<String> {
+    let name = dirname.trim();
+    
+    // Pattern 1: "Chinese Title Season X (Year)" or "Chinese Title English Title Season X (Year)"
+    // Look for "Season" followed by space and a number, then extract the title before it
+    // Handle both "Season 4 (2025)" and "Season 4 " formats
+    if let Ok(re) = regex::Regex::new(r"Season\s+\d+[^(]*(\((\d{4})\))?") {
+        if let Some(caps) = re.captures(name) {
+            // Get the position of "Season" in the string
+            if let Some(season_match) = caps.get(0) {
+                let season_pos = season_match.start();
+                // Extract everything before "Season" but after Chinese characters/space
+                let before_season = &name[..season_pos].trim();
+                
+                // First, clean up the string by removing Chinese characters
+                // Keep only English letters, numbers, spaces, and punctuation like &, ', -
+                let cleaned: String = before_season.chars().filter(|c| {
+                    c.is_ascii_alphabetic() || c.is_ascii_whitespace() || *c == '&' || *c == ',' || *c == '\'' || *c == '-' || *c == ':'
+                }).collect();
+                
+                // Trim and split by whitespace
+                let parts: Vec<&str> = cleaned.split_whitespace().filter(|s| !s.is_empty()).collect();
+                
+                // Join parts with spaces to form the title
+                if !parts.is_empty() {
+                    return Some(parts.join(" "));
+                }
+            }
+        }
+    }
+    
+    // Pattern 2: Simple "Chinese Title English Title (Year)"
+    // Look for year in parentheses and extract English title before it
+    if let Ok(re) = regex::Regex::new(r"(.+)\s+\((\d{4})\)$") {
+        if let Some(caps) = re.captures(name) {
+            let before_year = caps.get(1).unwrap().as_str().trim();
+            
+            // Split and find English title
+            let parts: Vec<&str> = before_year.split_whitespace().collect();
+            
+            // Find the longest English phrase
+            let mut english_parts: Vec<&str> = Vec::new();
+            for part in &parts {
+                if part.chars().any(|c| c.is_ascii_alphabetic()) && !contains_chinese(part) {
+                    english_parts.push(*part);
+                } else {
+                    // Reset if we hit Chinese
+                    if !english_parts.is_empty() {
+                        break;
+                    }
+                }
+            }
+            
+            if !english_parts.is_empty() {
+                return Some(english_parts.join(" "));
+            }
+        }
+    }
+    
+    None
+}
+
+pub fn extract_year_from_dirname(dirname: &str) -> Option<u16> {
+    let name = dirname.trim();
+    
+    // Match year in parentheses: (2025)
+    if let Some(captures) = regex::Regex::new(r"\((\d{4})\)").ok()?.captures(name) {
+        if let Ok(year) = captures.get(1)?.as_str().parse() {
+            return Some(year);
+        }
     }
     
     None

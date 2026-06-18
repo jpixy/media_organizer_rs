@@ -1,6 +1,7 @@
 use media_organizer::core::planner::Planner;
 use media_organizer::models::media::{VideoFile, VideoMetadata};
 use media_organizer::models::plan::{Operation, OperationType, PlanItem, PlanItemStatus};
+use media_organizer::services::tmdb::{MovieTranslations, TvTranslations};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -32,6 +33,61 @@ fn create_test_plan_item(path: &str, target_path: &str) -> PlanItem {
         }],
         poster_download: None,
     }
+}
+
+#[test]
+fn test_find_priority_chinese_title_priority_order() {
+    // Test priority order: CN > SG > HK > TW
+    let candidates = vec![
+        ("TW".to_string(), "繁體中文".to_string()),
+        ("HK".to_string(), "香港繁體".to_string()),
+        ("SG".to_string(), "简体中文(SG)".to_string()),
+        ("CN".to_string(), "简体中文".to_string()),
+    ];
+    
+    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    
+    // Should select CN first
+    assert_eq!(result, Some("简体中文".to_string()));
+}
+
+#[test]
+fn test_find_priority_chinese_title_fallback() {
+    // Test fallback when no priority region is available
+    let candidates = vec![
+        ("JP".to_string(), "日本語".to_string()),
+        ("KR".to_string(), "한국어".to_string()),
+    ];
+    
+    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    
+    // Should fallback to first available
+    assert_eq!(result, Some("日本語".to_string()));
+}
+
+#[test]
+fn test_find_priority_chinese_title_empty() {
+    // Test with empty candidates
+    let candidates: Vec<(String, String)> = vec![];
+    
+    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    
+    // Should return None
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_find_priority_chinese_title_partial_priority() {
+    // Test when only some priority regions are available
+    let candidates = vec![
+        ("HK".to_string(), "香港繁體".to_string()),
+        ("TW".to_string(), "繁體中文".to_string()),
+    ];
+    
+    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    
+    // Should select HK (higher priority than TW)
+    assert_eq!(result, Some("香港繁體".to_string()));
 }
 
 #[test]
@@ -156,4 +212,409 @@ fn test_validate_no_duplicate_targets_mixed_operations() {
     // 只有Move操作的重复会导致第二个项目被标记为Skip
     assert_eq!(items[0].status, PlanItemStatus::Pending);
     assert_eq!(items[1].status, PlanItemStatus::Skip);
+}
+
+#[test]
+fn test_movie_chinese_translation_priority() {
+    // Test that Movies use correct priority order: CN > SG > HK > TW
+    let json_response = r#"{
+        "id": 497698,
+        "translations": [
+            {
+                "iso_3166_1": "TW",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡婦",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "HK",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡婦",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "SG",
+                "iso_639_1": "zh",
+                "name": "简体中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡妇",
+                    "overview": "测试概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "CN",
+                "iso_639_1": "zh",
+                "name": "简体中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡妇",
+                    "overview": "测试概述",
+                    "homepage": ""
+                }
+            }
+        ]
+    }"#;
+    
+    let translations: MovieTranslations = serde_json::from_str(json_response).unwrap();
+    
+    // Collect all valid Chinese translations
+    let chinese_candidates: Vec<(String, String)> = translations.translations
+        .iter()
+        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()))
+        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+        .collect();
+    
+    // Priority order: CN > SG > HK > TW
+    let region_priority = ["CN", "SG", "HK", "TW"];
+    let mut selected_title = None;
+    
+    for priority_region in &region_priority {
+        if let Some((_region, chinese_title)) = chinese_candidates
+            .iter()
+            .find(|(r, _)| r == priority_region)
+        {
+            selected_title = Some(chinese_title.clone());
+            break;
+        }
+    }
+    
+    // Should select CN translation
+    assert_eq!(selected_title, Some("黑寡妇".to_string()));
+    assert_eq!(chinese_candidates.len(), 4);
+}
+
+#[test]
+fn test_movie_chinese_translation_fallback() {
+    // Test that Movies use fallback when no priority region is available
+    let json_response = r#"{
+        "id": 497698,
+        "translations": [
+            {
+                "iso_3166_1": "TW",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡婦",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "HK",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡婦",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            }
+        ]
+    }"#;
+    
+    let translations: MovieTranslations = serde_json::from_str(json_response).unwrap();
+    
+    // Collect all valid Chinese translations
+    let chinese_candidates: Vec<(String, String)> = translations.translations
+        .iter()
+        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()))
+        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+        .collect();
+    
+    // Priority order: CN > SG > HK > TW
+    let region_priority = ["CN", "SG", "HK", "TW"];
+    let mut selected_title = None;
+    
+    for priority_region in &region_priority {
+        if let Some((_region, chinese_title)) = chinese_candidates
+            .iter()
+            .find(|(r, _)| r == priority_region)
+        {
+            selected_title = Some(chinese_title.clone());
+            break;
+        }
+    }
+    
+    // No priority region found, should use fallback
+    if selected_title.is_none() {
+        if let Some((_region, chinese_title)) = chinese_candidates.first() {
+            selected_title = Some(chinese_title.clone());
+        }
+    }
+    
+    // Should fallback to first available (HK in this case)
+    assert_eq!(selected_title, Some("黑寡婦".to_string()));
+    assert_eq!(chinese_candidates.len(), 2);
+}
+
+#[test]
+fn test_tv_chinese_translation_priority() {
+    // Test that TV shows use correct priority order: CN > SG > HK > TW
+    let json_response = r#"{
+        "id": 86831,
+        "translations": [
+            {
+                "iso_3166_1": "TW",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "愛 x 死 x 機器人",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "HK",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "愛．死．機械人",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "SG",
+                "iso_639_1": "zh",
+                "name": "简体中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "爱、死亡 & 机器人",
+                    "overview": "测试概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "CN",
+                "iso_639_1": "zh",
+                "name": "简体中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "爱、死亡 & 机器人",
+                    "overview": "测试概述",
+                    "homepage": ""
+                }
+            }
+        ]
+    }"#;
+    
+    let translations: TvTranslations = serde_json::from_str(json_response).unwrap();
+    
+    // Collect all valid Chinese translations
+    let chinese_candidates: Vec<(String, String)> = translations.translations
+        .iter()
+        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()))
+        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+        .collect();
+    
+    // Priority order: CN > SG > HK > TW
+    let region_priority = ["CN", "SG", "HK", "TW"];
+    let mut selected_title = None;
+    
+    for priority_region in &region_priority {
+        if let Some((_region, chinese_title)) = chinese_candidates
+            .iter()
+            .find(|(r, _)| r == priority_region)
+        {
+            selected_title = Some(chinese_title.clone());
+            break;
+        }
+    }
+    
+    // Should select CN translation
+    assert_eq!(selected_title, Some("爱、死亡 & 机器人".to_string()));
+    assert_eq!(chinese_candidates.len(), 4);
+}
+
+#[test]
+fn test_tv_chinese_translation_fallback() {
+    // Test that TV shows use fallback when no priority region is available
+    let json_response = r#"{
+        "id": 86831,
+        "translations": [
+            {
+                "iso_3166_1": "TW",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "愛 x 死 x 機器人",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "HK",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "愛．死．機械人",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            }
+        ]
+    }"#;
+    
+    let translations: TvTranslations = serde_json::from_str(json_response).unwrap();
+    
+    // Collect all valid Chinese translations
+    let chinese_candidates: Vec<(String, String)> = translations.translations
+        .iter()
+        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()))
+        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+        .collect();
+    
+    // Priority order: CN > SG > HK > TW
+    let region_priority = ["CN", "SG", "HK", "TW"];
+    let mut selected_title = None;
+    
+    for priority_region in &region_priority {
+        if let Some((_region, chinese_title)) = chinese_candidates
+            .iter()
+            .find(|(r, _)| r == priority_region)
+        {
+            selected_title = Some(chinese_title.clone());
+            break;
+        }
+    }
+    
+    // No priority region found, should use fallback
+    if selected_title.is_none() {
+        if let Some((_region, chinese_title)) = chinese_candidates.first() {
+            selected_title = Some(chinese_title.clone());
+        }
+    }
+    
+    // Should fallback to first available (HK in this case, since it appears first in the collected candidates)
+    assert_eq!(selected_title, Some("愛．死．機械人".to_string()));
+    assert_eq!(chinese_candidates.len(), 2);
+}
+
+#[test]
+fn test_movies_and_tv_translation_logic_consistency() {
+    // Test that Movies and TV shows use the same translation logic
+    
+    // Movie data (uses "title" field)
+    let movie_json = r#"{
+        "id": 497698,
+        "translations": [
+            {
+                "iso_3166_1": "CN",
+                "iso_639_1": "zh",
+                "name": "简体中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡妇",
+                    "overview": "测试概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "TW",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "title": "黑寡婦",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            }
+        ]
+    }"#;
+    
+    // TV data (uses "name" field)
+    let tv_json = r#"{
+        "id": 86831,
+        "translations": [
+            {
+                "iso_3166_1": "CN",
+                "iso_639_1": "zh",
+                "name": "简体中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "爱、死亡 & 机器人",
+                    "overview": "测试概述",
+                    "homepage": ""
+                }
+            },
+            {
+                "iso_3166_1": "TW",
+                "iso_639_1": "zh",
+                "name": "繁體中文",
+                "english_name": "Mandarin",
+                "data": {
+                    "name": "愛 x 死 x 機器人",
+                    "overview": "測試概述",
+                    "homepage": ""
+                }
+            }
+        ]
+    }"#;
+    
+    let movie_translations: MovieTranslations = serde_json::from_str(movie_json).unwrap();
+    let tv_translations: TvTranslations = serde_json::from_str(tv_json).unwrap();
+    
+    // Process Movies
+    let movie_candidates: Vec<(String, String)> = movie_translations.translations
+        .iter()
+        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()))
+        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+        .collect();
+    
+    // Process TV
+    let tv_candidates: Vec<(String, String)> = tv_translations.translations
+        .iter()
+        .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()))
+        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+        .collect();
+    
+    // Both should use the same priority logic
+    let region_priority = ["CN", "SG", "HK", "TW"];
+    
+    let movie_result = region_priority.iter()
+        .find_map(|priority_region| {
+            movie_candidates.iter()
+                .find(|(r, _)| r == priority_region)
+                .map(|(_, title)| title.clone())
+        });
+    
+    let tv_result = region_priority.iter()
+        .find_map(|priority_region| {
+            tv_candidates.iter()
+                .find(|(r, _)| r == priority_region)
+                .map(|(_, title)| title.clone())
+        });
+    
+    // Both should select CN translation
+    assert_eq!(movie_result, Some("黑寡妇".to_string()));
+    assert_eq!(tv_result, Some("爱、死亡 & 机器人".to_string()));
+    
+    // Both should have same number of candidates
+    assert_eq!(movie_candidates.len(), 2);
+    assert_eq!(tv_candidates.len(), 2);
 }

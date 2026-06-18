@@ -2234,8 +2234,8 @@ async fn update_tv(config: &Config) -> Result<()> {
         if let Ok(tv_details) = tmdb_client.get_tv_details(*tmdb_id).await {
             // Update the TV show entry
             if let Some(tv) = index.tv_series.iter_mut().find(|t| t.id == *tv_id) {
-                tv.seasons = tv_details.number_of_seasons as u16;
-                tv.episodes = tv_details.number_of_episodes as u32;
+                tv.seasons = tv_details.number_of_seasons.unwrap_or_default() as u16;
+                tv.episodes = tv_details.number_of_episodes.unwrap_or_default() as u32;
                 
                 tracing::debug!(
                     "[TV] Updated {} (tmdb{}): {} seasons, {} episodes",

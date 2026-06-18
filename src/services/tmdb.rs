@@ -205,11 +205,22 @@ pub struct Translation {
 }
 
 /// Translation data containing title and overview.
+/// Note: TMDB uses different field names for movies vs TV shows:
+/// - Movies: uses "title" field
+/// - TV shows: uses "name" field
 #[derive(Debug, Deserialize)]
 pub struct TranslationData {
-    pub title: String,
-    pub overview: String,
-    pub homepage: String,
+    pub title: Option<String>,
+    pub name: Option<String>,
+    pub overview: Option<String>,
+    pub homepage: Option<String>,
+}
+
+impl TranslationData {
+    /// Get the localized title, checking both "title" (movies) and "name" (TV) fields.
+    pub fn get_title(&self) -> Option<&str> {
+        self.title.as_deref().or(self.name.as_deref())
+    }
 }
 
 /// TV show search result.
@@ -232,17 +243,17 @@ pub struct TvSearchItem {
 /// TV show details.
 #[derive(Debug, Deserialize)]
 pub struct TvDetails {
-    pub id: u64,
-    pub name: String,
-    pub original_name: String,
-    pub original_language: String,
+    pub id: Option<u64>,
+    pub name: Option<String>,
+    pub original_name: Option<String>,
+    pub original_language: Option<String>,
     pub first_air_date: Option<String>,
     pub overview: Option<String>,
     pub tagline: Option<String>,
     pub poster_path: Option<String>,
     pub backdrop_path: Option<String>,
-    pub number_of_seasons: u16,
-    pub number_of_episodes: u16,
+    pub number_of_seasons: Option<u16>,
+    pub number_of_episodes: Option<u16>,
     pub status: Option<String>,
     pub vote_average: Option<f32>,
     pub vote_count: Option<u32>,
@@ -334,23 +345,23 @@ pub struct FindTvResult {
 /// Season details.
 #[derive(Debug, Deserialize)]
 pub struct SeasonDetails {
-    pub id: u64,
-    pub name: String,
+    pub id: Option<u64>,
+    pub name: Option<String>,
     pub overview: Option<String>,
     pub poster_path: Option<String>,
-    pub season_number: u16,
+    pub season_number: Option<u16>,
     pub air_date: Option<String>,
-    pub episodes: Vec<EpisodeInfo>,
+    pub episodes: Option<Vec<EpisodeInfo>>,
 }
 
 /// Episode info within a season.
 #[derive(Debug, Deserialize)]
 pub struct EpisodeInfo {
-    pub id: u64,
-    pub name: String,
+    pub id: Option<u64>,
+    pub name: Option<String>,
     pub overview: Option<String>,
-    pub episode_number: u16,
-    pub season_number: u16,
+    pub episode_number: Option<u16>,
+    pub season_number: Option<u16>,
     pub air_date: Option<String>,
     pub still_path: Option<String>,
 }
@@ -1037,14 +1048,65 @@ mod tests {
         let chinese = translations.translations.iter()
             .find(|t| t.iso_639_1 == "zh")
             .expect("Should have Chinese translation");
-        assert_eq!(chinese.data.title, "黑寡妇");
+        assert_eq!(chinese.data.title.as_deref(), Some("黑寡妇"));
+        assert_eq!(chinese.data.get_title(), Some("黑寡妇")); // Test get_title() method
         assert_eq!(chinese.english_name, "Mandarin");
         
         // Find English translation
         let english = translations.translations.iter()
             .find(|t| t.iso_639_1 == "en")
             .expect("Should have English translation");
-        assert_eq!(english.data.title, "Black Widow");
+        assert_eq!(english.data.title.as_deref(), Some("Black Widow"));
+        assert_eq!(english.data.get_title(), Some("Black Widow")); // Test get_title() method
+    }
+
+    /// Test TranslationData::get_title() method for different scenarios
+    #[test]
+    fn test_translation_data_get_title() {
+        // Test Movie translation (uses "title" field)
+        let movie_data = TranslationData {
+            title: Some("黑寡妇".to_string()),
+            name: None,
+            overview: None,
+            homepage: None,
+        };
+        assert_eq!(movie_data.get_title(), Some("黑寡妇"));
+        
+        // Test TV translation (uses "name" field) - Real TMDB API behavior
+        let tv_data = TranslationData {
+            title: None,
+            name: Some("爱、死亡 & 机器人".to_string()),
+            overview: None,
+            homepage: None,
+        };
+        assert_eq!(tv_data.get_title(), Some("爱、死亡 & 机器人"));
+        
+        // Test fallback: if both are present, prefer title (movie takes precedence)
+        let both_data = TranslationData {
+            title: Some("电影标题".to_string()),
+            name: Some("TV名称".to_string()),
+            overview: None,
+            homepage: None,
+        };
+        assert_eq!(both_data.get_title(), Some("电影标题"));
+        
+        // Test empty case
+        let empty_data = TranslationData {
+            title: None,
+            name: None,
+            overview: None,
+            homepage: None,
+        };
+        assert_eq!(empty_data.get_title(), None);
+        
+        // Test empty string case
+        let empty_string_data = TranslationData {
+            title: Some("".to_string()),
+            name: None,
+            overview: None,
+            homepage: None,
+        };
+        assert_eq!(empty_string_data.get_title(), Some(""));
     }
 
     /// Test TV translations API URL construction
@@ -1058,7 +1120,7 @@ mod tests {
         assert!(translations_url.contains(&format!("tv/{}/translations", tv_id)), "URL should contain TV translations path");
     }
 
-    /// Test TV translations response parsing (same structure as MovieTranslations)
+    /// Test TV translations response parsing (TV shows use "name" field, not "title")
     #[test]
     fn test_tv_translations_response_parsing() {
         let json_response = r#"{
@@ -1070,7 +1132,7 @@ mod tests {
                     "name": "English",
                     "english_name": "English",
                     "data": {
-                        "title": "Game of Thrones",
+                        "name": "Game of Thrones",
                         "overview": "Test overview",
                         "homepage": ""
                     }
@@ -1081,7 +1143,7 @@ mod tests {
                     "name": "简体中文",
                     "english_name": "Mandarin",
                     "data": {
-                        "title": "权力的游戏",
+                        "name": "权力的游戏",
                         "overview": "测试概述",
                         "homepage": ""
                     }
@@ -1092,7 +1154,7 @@ mod tests {
                     "name": "繁體中文",
                     "english_name": "Mandarin",
                     "data": {
-                        "title": "冰與火之歌：權力遊戲",
+                        "name": "冰與火之歌：權力遊戲",
                         "overview": "測試概述",
                         "homepage": ""
                     }
@@ -1104,23 +1166,186 @@ mod tests {
         assert_eq!(translations.id, 1399);
         assert_eq!(translations.translations.len(), 3);
         
-        // Find Chinese (CN) translation
+        // Find Chinese (CN) translation - TV shows use "name" field
         let cn = translations.translations.iter()
             .find(|t| t.iso_3166_1 == "CN")
             .expect("Should have CN translation");
-        assert_eq!(cn.data.title, "权力的游戏");
+        assert_eq!(cn.data.name.as_deref(), Some("权力的游戏"));
+        assert_eq!(cn.data.get_title(), Some("权力的游戏")); // Test get_title() method
         
-        // Find Chinese (TW) translation
+        // Find Chinese (TW) translation - TV shows use "name" field
         let tw = translations.translations.iter()
             .find(|t| t.iso_3166_1 == "TW")
             .expect("Should have TW translation");
-        assert_eq!(tw.data.title, "冰與火之歌：權力遊戲");
+        assert_eq!(tw.data.name.as_deref(), Some("冰與火之歌：權力遊戲"));
+        assert_eq!(tw.data.get_title(), Some("冰與火之歌：權力遊戲")); // Test get_title() method
         
-        // Find English translation
+        // Find English translation - TV shows use "name" field
         let english = translations.translations.iter()
             .find(|t| t.iso_639_1 == "en")
             .expect("Should have English translation");
-        assert_eq!(english.data.title, "Game of Thrones");
+        assert_eq!(english.data.name.as_deref(), Some("Game of Thrones"));
+        assert_eq!(english.data.get_title(), Some("Game of Thrones")); // Test get_title() method
+    }
+
+    /// Test real-world TV translation data (Love, Death & Robots example)
+    #[test]
+    fn test_real_world_tv_translations() {
+        // This is the actual response format from TMDB API for TV shows
+        let json_response = r#"{
+            "id": 86831,
+            "translations": [
+                {
+                    "iso_3166_1": "CN",
+                    "iso_639_1": "zh",
+                    "name": "简体中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "name": "",
+                        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+                        "homepage": "",
+                        "tagline": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "TW",
+                    "iso_639_1": "zh",
+                    "name": "繁體中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "name": "愛 x 死 x 機器人",
+                        "overview": "這部動畫選集由提姆·米勒和大衛·芬奇聯手打造，充滿了嚇人生物、惡毒驚喜和黑色幽默，千萬別在辦公室看！",
+                        "homepage": "",
+                        "tagline": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "HK",
+                    "iso_639_1": "zh",
+                    "name": "繁體中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "name": "愛．死．機械人",
+                        "overview": "這部動畫選集由提姆·米勒和大衛·芬奇聯手打造，充滿了嚇人生物、惡毒驚喜和黑色幽默，千萬別在辦公室看！",
+                        "homepage": "",
+                        "tagline": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "SG",
+                    "iso_639_1": "zh",
+                    "name": "简体中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "name": "爱、死亡 & 机器人",
+                        "overview": "这部公共场合不宜观看的动画剧集充满了恐怖生物、脑洞大开的惊奇情节以及黑色幽默，由蒂姆·米勒和大卫·芬奇联袂打造。",
+                        "homepage": "",
+                        "tagline": ""
+                    }
+                }
+            ]
+        }"#;
+        
+        let translations: TvTranslations = serde_json::from_str(json_response).unwrap();
+        assert_eq!(translations.id, 86831);
+        assert_eq!(translations.translations.len(), 4);
+        
+        // Test that CN translation has empty name (this was the bug we found!)
+        let cn = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "CN")
+            .expect("Should have CN translation");
+        assert_eq!(cn.data.name.as_deref(), Some(""));
+        assert_eq!(cn.data.get_title(), Some("")); // Empty string, not None
+        
+        // Test that TW translation has valid Chinese name
+        let tw = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "TW")
+            .expect("Should have TW translation");
+        assert_eq!(tw.data.name.as_deref(), Some("愛 x 死 x 機器人"));
+        assert_eq!(tw.data.get_title(), Some("愛 x 死 x 機器人"));
+        
+        // Test that HK translation has valid Chinese name
+        let hk = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "HK")
+            .expect("Should have HK translation");
+        assert_eq!(hk.data.name.as_deref(), Some("愛．死．機械人"));
+        assert_eq!(hk.data.get_title(), Some("愛．死．機械人"));
+        
+        // Test that SG translation has valid Chinese name
+        let sg = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "SG")
+            .expect("Should have SG translation");
+        assert_eq!(sg.data.name.as_deref(), Some("爱、死亡 & 机器人"));
+        assert_eq!(sg.data.get_title(), Some("爱、死亡 & 机器人"));
+    }
+
+    /// Test that movies still work correctly with "title" field (not affected by TV "name" field)
+    #[test]
+    fn test_movie_translations_still_works() {
+        // This test ensures that the fix for TV shows doesn't break movie translations
+        let json_response = r#"{
+            "id": 497698,
+            "translations": [
+                {
+                    "iso_3166_1": "US",
+                    "iso_639_1": "en",
+                    "name": "English",
+                    "english_name": "English",
+                    "data": {
+                        "title": "Black Widow",
+                        "overview": "Test overview",
+                        "homepage": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "CN",
+                    "iso_639_1": "zh",
+                    "name": "简体中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "title": "黑寡妇",
+                        "overview": "测试概述",
+                        "homepage": ""
+                    }
+                },
+                {
+                    "iso_3166_1": "TW",
+                    "iso_639_1": "zh",
+                    "name": "繁體中文",
+                    "english_name": "Mandarin",
+                    "data": {
+                        "title": "黑寡婦",
+                        "overview": "測試概述",
+                        "homepage": ""
+                    }
+                }
+            ]
+        }"#;
+        
+        let translations: MovieTranslations = serde_json::from_str(json_response).unwrap();
+        assert_eq!(translations.id, 497698);
+        assert_eq!(translations.translations.len(), 3);
+        
+        // Find Chinese (CN) translation - Movies use "title" field
+        let cn = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "CN")
+            .expect("Should have CN translation");
+        assert_eq!(cn.data.title.as_deref(), Some("黑寡妇"));
+        assert_eq!(cn.data.get_title(), Some("黑寡妇")); // get_title() should work for movies too
+        
+        // Find Chinese (TW) translation - Movies use "title" field
+        let tw = translations.translations.iter()
+            .find(|t| t.iso_3166_1 == "TW")
+            .expect("Should have TW translation");
+        assert_eq!(tw.data.title.as_deref(), Some("黑寡婦"));
+        assert_eq!(tw.data.get_title(), Some("黑寡婦")); // get_title() should work for movies too
+        
+        // Find English translation - Movies use "title" field
+        let english = translations.translations.iter()
+            .find(|t| t.iso_639_1 == "en")
+            .expect("Should have English translation");
+        assert_eq!(english.data.title.as_deref(), Some("Black Widow"));
+        assert_eq!(english.data.get_title(), Some("Black Widow")); // get_title() should work for movies too
     }
 
     /// Test search_tv_with_language URL construction

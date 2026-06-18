@@ -709,6 +709,7 @@ pub fn extract_ids_from_path_starting_at(
     }
 
     // Check parent directories (walk up the path from start_dir)
+    let mut found_tmdb_from_season = false;
     let mut current = start_dir.parent();
     while let Some(dir) = current {
         if let Some(dirname) = dir.file_name().and_then(|n| n.to_str()) {
@@ -733,6 +734,12 @@ pub fn extract_ids_from_path_starting_at(
                     if let Some(caps) = re.captures(dirname) {
                         tmdb_id = caps.get(1).and_then(|m| m.as_str().parse().ok());
                         tracing::debug!("[EXTRACT-ID] Found TMDB ID: {:?} in {}", tmdb_id, dirname);
+                        
+                        // Track if this looks like a Season folder (has S## prefix)
+                        if dirname.starts_with("[S") || dirname.starts_with("[Season") {
+                            found_tmdb_from_season = true;
+                            tracing::debug!("[EXTRACT-ID] TMDB ID found in Season folder, may need correction");
+                        }
                     }
                 }
             }
@@ -750,12 +757,57 @@ pub fn extract_ids_from_path_starting_at(
             }
         }
 
-        // Stop if we found both IDs
-        if tmdb_id.is_some() && imdb_id.is_some() {
+        // CRITICAL: For organized TV show folders, prefer IDs from TV Show level (outermost)
+        // instead of Season level. Season folders may have incorrect TMDB IDs.
+        // Track if we found TMDB ID from a Season folder (to fix later)
+        
+        // Stop if we found both IDs from TV Show level (outermost)
+        if tmdb_id.is_some() && imdb_id.is_some() && !found_tmdb_from_season {
             break;
         }
 
+        // Continue searching if TMDB ID came from season folder
+        // (to potentially find correct ID from TV Show folder)
+        if found_tmdb_from_season {
+            // Keep searching, but don't break early
+        }
+
         current = dir.parent();
+    }
+
+    // If TMDB ID came from Season folder, search TV Show level again
+    // This handles the case where Season folder has wrong TMDB ID
+    if found_tmdb_from_season && tmdb_id.is_some() {
+        tracing::debug!("[EXTRACT-ID] TMDB ID came from season folder, searching TV Show level...");
+        
+        // Find the TV Show folder (look for pattern with S## prefix)
+        let mut current = start_dir.parent();
+        while let Some(dir) = current {
+            if let Some(dirname) = dir.file_name().and_then(|n| n.to_str()) {
+                // Check if this is TV Show folder (no S## prefix)
+                if !dirname.starts_with("[S") && !dirname.starts_with("[Season") {
+                    // This should be the TV Show folder, extract IDs from here
+                    if let Some(ref re) = imdb_re {
+                        if imdb_id.is_none() {
+                            if let Some(caps) = re.captures(dirname) {
+                                imdb_id = caps.get(1).map(|m| m.as_str().to_string());
+                            }
+                        }
+                    }
+                    if let Some(ref re) = tmdb_re {
+                        // Found TV Show level, use this TMDB ID instead of season's
+                        if let Some(caps) = re.captures(dirname) {
+                            if let Some(new_tmdb) = caps.get(1).and_then(|m| m.as_str().parse().ok()) {
+                                tracing::debug!("[EXTRACT-ID] Found TV Show level TMDB ID: {} (replacing season's {})", new_tmdb, tmdb_id.unwrap());
+                                tmdb_id = Some(new_tmdb);
+                            }
+                        }
+                    }
+                    break; // Stop after first TV Show level folder
+                }
+            }
+            current = dir.parent();
+        }
     }
 
     if tmdb_id.is_none() && imdb_id.is_none() {

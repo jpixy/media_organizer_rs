@@ -73,6 +73,22 @@ fn country_code_to_name(code: &str) -> String {
     }
 }
 
+/// Find Chinese title with priority order: CN > SG > HK > TW
+/// Falls back to any available Chinese translation if no priority region is found
+pub fn find_priority_chinese_title(candidates: &[(String, String)]) -> Option<String> {
+    let region_priority = ["CN", "SG", "HK", "TW"];
+    
+    // First pass: try in priority order
+    for priority_region in &region_priority {
+        if let Some((_region, title)) = candidates.iter().find(|(r, _)| r == priority_region) {
+            return Some(title.clone());
+        }
+    }
+    
+    // Final fallback: use any available Chinese translation
+    candidates.first().map(|(_, title)| title.clone())
+}
+
 /// Convert ISO 639-1 language code to human-readable name.
 /// Used for folder naming: e.g., "zh" -> "Chinese" -> "ZH_Chinese"
 fn language_code_to_name(code: &str) -> String {
@@ -713,7 +729,7 @@ impl Planner {
                     // Try to use existing organized folder logic
                     if let Some(folder_info) = self.find_organized_tv_series_folder(&video.parent_dir)
                     {
-                        tracing::info!(
+                        tracing::debug!(
                             "[PATH-ID] TV show file in folder with ID: {} -> tmdb{}",
                             video.filename,
                             tmdb_id
@@ -737,6 +753,66 @@ impl Planner {
                         let season = season_num.unwrap_or(1);
                         let episode = episode_num.unwrap_or(1);
 
+                        // Extract title and year from parent directory for fallback
+                        let mut fallback_title: Option<String> = None;
+                        let mut fallback_year: Option<u16> = None;
+                        let mut current_path = Some(video.parent_dir.as_path());
+                        let mut found_tvshow_folder = false;
+                        for _ in 0..3 {
+                            if let Some(path) = current_path {
+                                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                    // Check if this is a season folder (starts with [S\d+])
+                                    let is_season_folder = name.starts_with("[S") && name.contains("][Season ");
+                                    
+                                    tracing::info!(
+                                        "[PATH-ID] Checking folder '{}', is_season_folder={}",
+                                        name,
+                                        is_season_folder
+                                    );
+                                    
+                                    // First, check if this is an organized folder (has TMDB ID in name)
+                                    // For organized folders, we should use parse_organized_tv_series_folder
+                                    // to extract the title, not extract_title_from_dirname
+                                    if let Some(info) = parser::parse_organized_tv_series_folder(name) {
+                                        // This is an organized folder
+                                        // Skip season folders and continue to look for TV show folder
+                                        if is_season_folder {
+                                            tracing::info!(
+                                                "[PATH-ID] Skipping season folder '{}' to find TV show folder",
+                                                name
+                                            );
+                                        } else {
+                                            // This is TV show folder, use it
+                                            if fallback_title.is_none() {
+                                                fallback_title = Some(info.title);
+                                            }
+                                            if fallback_year.is_none() && info.year.is_some() {
+                                                fallback_year = info.year;
+                                            }
+                                            found_tvshow_folder = true;
+                                        }
+                                    } else if !found_tvshow_folder && !is_season_folder {
+                                        // Not an organized folder and not a season folder
+                                        // Try to extract Chinese title from directory name
+                                        if fallback_title.is_none() {
+                                            if let Some(title) = parser::extract_title_from_dirname(name) {
+                                                fallback_title = Some(title);
+                                            }
+                                        }
+                                        // Try to extract year from directory name
+                                        if fallback_year.is_none() {
+                                            if let Some(year) = parser::extract_year_from_dirname(name) {
+                                                fallback_year = Some(year);
+                                            }
+                                        }
+                                    }
+                                }
+                                current_path = path.parent();
+                            } else {
+                                break;
+                            }
+                        }
+
                         // Fetch show details, episode details, and season details IN PARALLEL
                         let (show_result, episode_result, season_result) = tokio::join!(
                             client.get_tv_details(tmdb_id),
@@ -746,7 +822,7 @@ impl Planner {
 
                         if let Ok(show_details) = show_result {
                             let mut show_metadata =
-                                self.build_tv_series_metadata_from_details(&show_details);
+                                self.build_tv_series_metadata_from_details(&show_details, client, Some(tmdb_id), fallback_title.as_deref(), fallback_year, None).await;
 
                             // PATH-ID mode: Apply Chinese title extraction logic
                             // Try to get Chinese title from directory name or TMDB translations
@@ -778,39 +854,30 @@ impl Planner {
                                 } else {
                                     // Try TMDB translations API
                                     if let Ok(translations) = client.get_tv_translations(tmdb_id).await {
+                                        tracing::debug!("[TMDB] Got {} translations for tv{}", translations.translations.len(), tmdb_id);
+                                        
+                                        // Debug: log first 5 translations to see what we have
+                                        for (i, t) in translations.translations.iter().take(5).enumerate() {
+                                            tracing::info!("[TMDB] translation[{}]: {}/{} - name: {} - title: {:?}", 
+                                                i, t.iso_3166_1, t.iso_639_1, t.english_name, t.data.get_title());
+                                        }
+                                        
                                         let chinese_candidates: Vec<(String, String)> = translations.translations
                                             .iter()
                                             .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
-                                            .filter(|t| !t.data.title.is_empty() && chinese::contains_chinese(&t.data.title))
-                                            .map(|t| (t.iso_3166_1.clone(), t.data.title.clone()))
+                                            .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()) && t.data.get_title().map_or(false, |s| chinese::contains_chinese(s)))
+                                            .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
                                             .collect();
+                                        
+                                        tracing::info!("[TMDB] Chinese candidates count: {}", chinese_candidates.len());
 
-                                        let region_priority = ["CN", "SG", "HK", "TW"];
-                                        for priority_region in &region_priority {
-                                            if let Some((_region, chinese_title)) = chinese_candidates
-                                                .iter()
-                                                .find(|(r, _)| r == priority_region)
-                                            {
-                                                tracing::info!(
-                                                    "[PATH-ID] Found Chinese title '{}' from TMDB translations ({} region)",
-                                                    chinese_title,
-                                                    priority_region
-                                                );
-                                                show_metadata.name = chinese_title.clone();
-                                                break;
-                                            }
-                                        }
-
-                                        // Final fallback: use any available Chinese translation
-                                        if !chinese::contains_chinese(&show_metadata.name) {
-                                            if let Some((region, chinese_title)) = chinese_candidates.first() {
-                                                tracing::info!(
-                                                    "[PATH-ID] Found Chinese title '{}' from TMDB translations ({} region, fallback)",
-                                                    chinese_title,
-                                                    region
-                                                );
-                                                show_metadata.name = chinese_title.clone();
-                                            }
+                                        // Use common priority function to find best Chinese title
+                                        if let Some(chinese_title) = find_priority_chinese_title(&chinese_candidates) {
+                                            tracing::info!(
+                                                "[PATH-ID] Found Chinese title '{}' from TMDB translations",
+                                                chinese_title
+                                            );
+                                            show_metadata.name = chinese_title;
                                         }
                                     }
                                 }
@@ -851,13 +918,13 @@ impl Planner {
                             // Get season metadata from TMDB (already fetched in parallel)
                             let season_metadata = if let Ok(season_details) = season_result {
                                 Some(SeasonMetadata {
-                                    season_number: season_details.season_number,
-                                    name: season_details.name,
+                                    season_number: season_details.season_number.unwrap_or_default(),
+                                    name: season_details.name.clone().unwrap_or_default(),
                                     overview: season_details.overview,
                                     air_date: season_details.air_date,
                                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                    episode_count: season_details.episodes.len() as u16,
-                                    tmdb_id: season_details.id,
+                                    episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                                    tmdb_id: season_details.id.unwrap_or_default(),
                                 })
                             } else {
                                 None
@@ -1285,13 +1352,13 @@ impl Planner {
                     let season_meta = if let Some(client) = &self.tmdb_client {
                         match client.get_season_details(show_meta.tmdb_id, season).await {
                             Ok(season_details) => Some(SeasonMetadata {
-                                season_number: season_details.season_number,
-                                name: season_details.name,
+                                season_number: season_details.season_number.unwrap_or_default(),
+                                name: season_details.name.clone().unwrap_or_default(),
                                 overview: season_details.overview,
                                 air_date: season_details.air_date,
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                episode_count: season_details.episodes.len() as u16,
-                                tmdb_id: season_details.id,
+                                episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                                tmdb_id: season_details.id.unwrap_or_default(),
                             }),
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
@@ -1339,13 +1406,13 @@ impl Planner {
                     let season_meta = if let Some(client) = &self.tmdb_client {
                         match client.get_season_details(show_meta.tmdb_id, season).await {
                             Ok(season_details) => Some(SeasonMetadata {
-                                season_number: season_details.season_number,
-                                name: season_details.name,
+                                season_number: season_details.season_number.unwrap_or_default(),
+                                name: season_details.name.clone().unwrap_or_default(),
                                 overview: season_details.overview,
                                 air_date: season_details.air_date,
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                episode_count: season_details.episodes.len() as u16,
-                                tmdb_id: season_details.id,
+                                episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                                tmdb_id: season_details.id.unwrap_or_default(),
                             }),
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
@@ -1521,13 +1588,13 @@ impl Planner {
                 let season_meta = if let Some(client) = &self.tmdb_client {
                     match client.get_season_details(show_meta.tmdb_id, info.season).await {
                         Ok(season_details) => Some(SeasonMetadata {
-                            season_number: season_details.season_number,
-                            name: season_details.name,
+                            season_number: season_details.season_number.unwrap_or_default(),
+                            name: season_details.name.clone().unwrap_or_default(),
                             overview: season_details.overview,
                             air_date: season_details.air_date,
                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                            episode_count: season_details.episodes.len() as u16,
-                            tmdb_id: season_details.id,
+                            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                            tmdb_id: season_details.id.unwrap_or_default(),
                         }),
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for {}: {}", info.season, show_meta.name, e);
@@ -1708,24 +1775,22 @@ impl Planner {
                     match tmdb.get_movie_translations(tmdb_id).await {
                         Ok(translations) => {
                             tracing::info!("[TMDB] Got {} translations for tmdb{}", translations.translations.len(), tmdb_id);
-                            // Look for Chinese translation (zh or zh-CN)
-                            for translation in &translations.translations {
-                                tracing::debug!("[TMDB] Checking translation: {} / {} / '{}'", 
-                                    translation.iso_639_1, translation.english_name, translation.data.title);
-                                if translation.iso_639_1 == "zh" || translation.iso_639_1 == "zh-CN" {
-                                    let chinese_title = &translation.data.title;
-                                    tracing::info!("[TMDB] Found zh translation candidate: '{}'", chinese_title);
-                                    if !chinese_title.is_empty() && chinese::contains_chinese(chinese_title) {
-                                        tracing::info!(
-                                            "[TMDB] Found Chinese title '{}' from translations API",
-                                            chinese_title
-                                        );
-                                        fallback_chinese_title = Some(chinese_title.clone());
-                                        break;
-                                    } else {
-                                        tracing::warn!("[TMDB] zh translation title is empty or not Chinese: '{}'", chinese_title);
-                                    }
-                                }
+                            
+                            // Collect all valid Chinese translations
+                            let chinese_candidates: Vec<(String, String)> = translations.translations
+                                .iter()
+                                .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+                                .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()) && t.data.get_title().map_or(false, |s| chinese::contains_chinese(s)))
+                                .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+                                .collect();
+                            
+                            // Use common priority function to find best Chinese title
+                            if let Some(chinese_title) = find_priority_chinese_title(&chinese_candidates) {
+                                tracing::info!(
+                                    "[TMDB] Found Chinese title '{}' from translations API",
+                                    chinese_title
+                                );
+                                fallback_chinese_title = Some(chinese_title);
                             }
                         }
                         Err(e) => {
@@ -1954,8 +2019,17 @@ impl Planner {
             backdrop_url,
             directors,
             writers,
-            actors,
-            actor_roles,
+            actors: actors.clone(),
+            actor_roles: actor_roles.clone(),
+            actors_info: actors
+                .iter()
+                .enumerate()
+                .map(|(i, name)| Actor {
+                    name: name.clone(),
+                    role: actor_roles.get(i).cloned(),
+                    order: Some(i as u32),
+                })
+                .collect(),
             certification: None,
             collection_id: details.belongs_to_collection.as_ref().map(|c| c.id),
             collection_name: details
@@ -2026,7 +2100,16 @@ impl Planner {
         };
 
         let show_meta = match tmdb.get_tv_details(folder_info.tmdb_id).await {
-            Ok(details) => self.build_tv_series_metadata_from_details(&details),
+            Ok(details) => {
+                // If TMDB response is missing id, use folder_info.tmdb_id as fallback
+                if details.id.is_none() {
+                    tracing::warn!(
+                        "[ORGANIZED-FOLDER] TMDB returned data without id for tmdb{}, using folder id as fallback",
+                        folder_info.tmdb_id
+                    );
+                }
+                self.build_tv_series_metadata_from_details(&details, tmdb, Some(folder_info.tmdb_id), Some(&folder_info.title), folder_info.year, folder_info.original_title.as_deref()).await
+            },
             Err(e) => {
                 tracing::warn!(
                     "[ORGANIZED-FOLDER] Failed to fetch TV details for tmdb{}: {}",
@@ -2044,15 +2127,23 @@ impl Planner {
 
         // Get season metadata
         let season_meta = match tmdb.get_season_details(folder_info.tmdb_id, season).await {
-            Ok(season_details) => Some(SeasonMetadata {
-                season_number: season_details.season_number,
-                name: season_details.name,
-                overview: season_details.overview,
-                air_date: season_details.air_date,
-                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                episode_count: season_details.episodes.len() as u16,
-                tmdb_id: season_details.id,
-            }),
+            Ok(season_details) => {
+                // Use season from filename if TMDB season_number is 0 or None
+                let sn = if season_details.season_number.unwrap_or(0) == 0 {
+                    season
+                } else {
+                    season_details.season_number.unwrap_or(season)
+                };
+                Some(SeasonMetadata {
+                    season_number: sn,
+                    name: season_details.name.clone().unwrap_or_default(),
+                    overview: season_details.overview,
+                    air_date: season_details.air_date,
+                    poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
+                    episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                    tmdb_id: season_details.id.unwrap_or_default(),
+                })
+            },
             Err(e) => {
                 tracing::warn!("[ORGANIZED-FOLDER] Failed to get season {} details for tmdb{}: {}", season, folder_info.tmdb_id, e);
                 None
@@ -2184,13 +2275,13 @@ impl Planner {
                     // Fetch season metadata
                     let season_meta = match tmdb.get_season_details(folder_info.tmdb_id, season_num).await {
                         Ok(season_details) => Some(SeasonMetadata {
-                            season_number: season_details.season_number,
-                            name: season_details.name,
+                            season_number: season_details.season_number.unwrap_or_default(),
+                            name: season_details.name.clone().unwrap_or_default(),
                             overview: season_details.overview,
                             air_date: season_details.air_date,
                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                            episode_count: season_details.episodes.len() as u16,
-                            tmdb_id: season_details.id,
+                            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                            tmdb_id: season_details.id.unwrap_or_default(),
                         }),
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for tmdb{}: {}", season_num, folder_info.tmdb_id, e);
@@ -2279,20 +2370,91 @@ impl Planner {
         &self,
         start_dir: &Path,
     ) -> Option<parser::OrganizedTvSeriesFolderInfo> {
+        // Find all possible organized TV folders, then prefer TV Show level over Season level
+        let mut season_folder_info: Option<parser::OrganizedTvSeriesFolderInfo> = None;
+        let mut tvshow_folder_info: Option<parser::OrganizedTvSeriesFolderInfo> = None;
+        
         let mut current = Some(start_dir);
 
         while let Some(dir) = current {
             if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
                 // Try to parse as organized folder
                 if let Some(info) = parser::parse_organized_tv_series_folder(name) {
-                    tracing::debug!("Found organized TV folder: {} (tmdb{})", name, info.tmdb_id);
-                    return Some(info);
+                    // Check if this is a Season folder (starts with [S or [Season)
+                    let is_season_folder = name.starts_with("[S") && name.contains("][Season ");
+                    
+                    if is_season_folder {
+                        // Store season folder info as fallback
+                        if season_folder_info.is_none() {
+                            season_folder_info = Some(info.clone());
+                            tracing::debug!("[FIND-FOLDER] Found Season folder: {} (tmdb{})", name, info.tmdb_id);
+                        }
+                    } else {
+                        // This is TV Show level folder - use this preferentially
+                        // But first check if the title looks valid (not just season number)
+                        if !info.title.starts_with("S") || info.title.len() > 3 {
+                            // Valid TV Show title (not just "S01", "S02", etc.)
+                            tvshow_folder_info = Some(info.clone());
+                            tracing::debug!("[FIND-FOLDER] Found TV Show folder: {} (tmdb{})", name, info.tmdb_id);
+                            break; // Found TV Show level, no need to continue
+                        } else {
+                            // Title looks like just a season number, treat as season folder
+                            if season_folder_info.is_none() {
+                                season_folder_info = Some(info.clone());
+                                tracing::debug!("[FIND-FOLDER] Found Season folder (title looks like season): {} (tmdb{})", name, info.tmdb_id);
+                            }
+                        }
+                    }
+                } else {
+                    // Try to parse as non-standard TV Show folder (e.g., "爱，死亡和机器人 第四季 Love, Death & Robots Season 4 (2025)")
+                    // This is a TV Show level folder even if it doesn't match organized folder pattern
+                    let is_likely_tvshow_folder = name.contains("Season") || name.contains("Love, Death & Robots") || name.contains("Terminal List");
+                    
+                    if is_likely_tvshow_folder {
+                        // Try to extract title from this folder
+                        if let Some(title) = parser::extract_title_from_dirname(name) {
+                            // Extract original English title from dirname
+                            let original_title = parser::extract_english_title_from_dirname(name);
+                            
+                            // Check if we already have a season folder with TMDB ID
+                            if let Some(ref season_info) = season_folder_info {
+                                // Use season folder's TMDB ID but replace title with Chinese title
+                                let chinese_info = parser::OrganizedTvSeriesFolderInfo {
+                                    title,
+                                    original_title: original_title.or_else(|| season_info.original_title.clone()),
+                                    year: season_info.year,
+                                    imdb_id: season_info.imdb_id.clone(),
+                                    tmdb_id: season_info.tmdb_id,
+                                };
+                                tvshow_folder_info = Some(chinese_info);
+                                break;
+                            } else {
+                                // No season folder found, use info from dirname directly
+                                // Create minimal info with just title and original_title
+                                tvshow_folder_info = Some(parser::OrganizedTvSeriesFolderInfo {
+                                    title,
+                                    original_title,
+                                    year: parser::extract_year_from_dirname(name),
+                                    imdb_id: None,
+                                    tmdb_id: 0, // Will be overridden by TMDB ID from filename
+                                });
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             current = dir.parent();
         }
 
-        None
+        // Prefer TV Show folder's ID over Season folder's ID
+        // This fixes cases where Season folder has incorrect TMDB ID
+        if tvshow_folder_info.is_some() {
+            return tvshow_folder_info;
+        }
+        
+        // Fall back to season folder if no TV Show folder found
+        season_folder_info
     }
 
     /// Find an organized movie folder by searching parent directories.
@@ -2332,15 +2494,158 @@ impl Planner {
         };
 
         let details = tmdb.get_tv_details(tmdb_id).await?;
-        Ok(self.build_tv_series_metadata_from_details(&details))
+        
+        // Check if the response has valid data
+        if details.id.is_none() {
+            return Err(crate::error::Error::Other(format!(
+                "TMDB returned invalid data for tv{}: missing id",
+                tmdb_id
+            )));
+        }
+        
+        Ok(self.build_tv_series_metadata_from_details(&details, tmdb, None, None, None, None).await)
     }
 
     /// Build TvSeriesMetadata from TMDB TvDetails (used for organized files with TMDB ID).
-    fn build_tv_series_metadata_from_details(
+    /// Includes Chinese title extraction from TMDB translations API.
+    async fn build_tv_series_metadata_from_details(
         &self,
         details: &crate::services::tmdb::TvDetails,
+        client: &crate::services::tmdb::TmdbClient,
+        fallback_tmdb_id: Option<u64>,
+        fallback_title: Option<&str>,
+        fallback_year: Option<u16>,
+        fallback_dirname: Option<&str>,
     ) -> TvSeriesMetadata {
         use crate::models::media::Actor;
+
+        // Get tmdb_id with fallback
+        let tmdb_id_value = details.id.or(fallback_tmdb_id).unwrap_or_default();
+
+        // Get name with fallback to folder title
+        let name = details.name.clone().unwrap_or_default();
+        let original_name = details.original_name.clone().unwrap_or_default();
+        
+        // Use fallback_dirname directly as fallback_en_title if it looks like an English title
+        // (contains letters but not Chinese characters, and not a bracket/parenthesis format)
+        let fallback_en_title = fallback_dirname.and_then(|d| {
+            let has_brackets = d.contains('[') || d.contains(']');
+            let has_chinese = chinese::contains_chinese(d);
+            let has_letters = d.chars().any(|c| c.is_ascii_alphabetic());
+            if !has_brackets && !has_chinese && has_letters {
+                Some(d.to_string())
+            } else {
+                None
+            }
+        });
+        
+        // Use folder title as fallback if TMDB name is empty
+        let name_with_fallback = if name.is_empty() {
+            fallback_title.unwrap_or_default().to_string()
+        } else {
+            name.clone()
+        };
+        
+        // Use fallback_title for original_name if TMDB original_name is empty or contains Chinese
+        // This ensures we have a valid original_name for folder generation
+        // Priority: original_name (if English only) > name (if English only) > fallback_title (if English only) > fallback_en_title > "Unknown"
+        // IMPORTANT: original_name should always be English (the original title)
+        let original_name_with_fallback: String = if original_name.is_empty() || chinese::contains_chinese(&original_name) {
+            // TMDB original_name is empty or contains Chinese, try to find English title
+            if !chinese::contains_chinese(&name) && !name.is_empty() {
+                // name is English, use it
+                name.clone()
+            } else if fallback_title.as_ref().map_or(false, |t| !chinese::contains_chinese(t)) {
+                // fallback_title is English, use it
+                fallback_title.unwrap().to_string()
+            } else if fallback_en_title.is_some() {
+                // fallback_en_title is English (extracted from dirname), use it
+                fallback_en_title.unwrap()
+            } else {
+                // All are Chinese or empty, use a placeholder
+                // This should not happen for English shows, but provides a fallback
+                fallback_title.map(|t| t.to_string()).unwrap_or_else(|| "Unknown".to_string())
+            }
+        } else {
+            original_name.clone()
+        };
+        
+        // Determine show name - use TMDB name, but try to get Chinese title from translations API
+        let mut show_name: String = name_with_fallback.clone();
+        let tmdb_name = &name_with_fallback;
+        let tmdb_original = &original_name_with_fallback;
+        let names_same = self.normalize_title(tmdb_name) == self.normalize_title(tmdb_original);
+        let name_has_chinese = chinese::contains_chinese(tmdb_name);
+        let fallback_has_chinese = fallback_title.map_or(false, |t| chinese::contains_chinese(&t));
+
+        // If fallback_title contains Chinese, use it as show_name (directory name has correct Chinese title)
+        // This handles cases where TMDB returns English name but directory has Chinese
+        if fallback_has_chinese {
+            tracing::info!(
+                "[TMDB] fallback_title '{}' contains Chinese, using it as show_name",
+                fallback_title.as_ref().unwrap()
+            );
+            show_name = fallback_title.unwrap().to_string();
+        } else if names_same && !name_has_chinese {
+            // Try translations API to get Chinese title
+            tracing::info!("[TMDB] Show name '{}' is not Chinese, trying translations API", show_name);
+            if tmdb_id_value != 0 {
+                match client.get_tv_translations(tmdb_id_value).await {
+                    Ok(translations) => {
+                        tracing::info!("[TMDB] Got {} translations for tv{}", translations.translations.len(), tmdb_id_value);
+                        
+                        // Debug: log first 5 translations to see iso codes
+                        for (i, t) in translations.translations.iter().take(5).enumerate() {
+                            tracing::info!("[TMDB] translation[{}]: iso_639_1={}, iso_3166_1={}, title={:?}", 
+                                i, t.iso_639_1, t.iso_3166_1, t.data.get_title());
+                        }
+                        
+                        let chinese_candidates: Vec<(String, String)> = translations.translations
+                            .iter()
+                            .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
+                            .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()) && t.data.get_title().map_or(false, |s| chinese::contains_chinese(s)))
+                            .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
+                            .collect();
+                        
+                        tracing::info!("[TMDB] Chinese candidates count: {} (in build_tv_series_metadata_from_details)", chinese_candidates.len());
+                        
+                        // Use common priority function to find best Chinese title
+                        if let Some(chinese_title) = find_priority_chinese_title(&chinese_candidates) {
+                            tracing::info!(
+                                "[TMDB] Found Chinese title '{}' from translations API",
+                                chinese_title
+                            );
+                            show_name = chinese_title;
+                        } else if let Some(title) = fallback_title {
+                            // No Chinese title from translations API, use fallback_title from directory name
+                            tracing::info!(
+                                "[TMDB] No Chinese title from translations API, using fallback '{}' from directory name",
+                                title
+                            );
+                            show_name = title.to_string();
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("[TMDB] Failed to get translations for tv{}: {}", tmdb_id_value, e);
+                        // Use fallback_title from directory name when translations API fails
+                        if let Some(title) = fallback_title {
+                            tracing::info!(
+                                "[TMDB] Using fallback '{}' from directory name (translations API failed)",
+                                title
+                            );
+                            show_name = title.to_string();
+                        }
+                    }
+                }
+            } else if let Some(title) = fallback_title {
+                // TMDB ID is 0, use fallback_title from directory name
+                tracing::info!(
+                    "[TMDB] Using fallback '{}' from directory name (TMDB ID is 0)",
+                    title
+                );
+                show_name = title.to_string();
+            }
+        }
 
         let genres: Vec<String> = details
             .genres
@@ -2414,6 +2719,7 @@ impl Planner {
             .as_ref()
             .and_then(|d| d.split('-').next())
             .and_then(|y| y.parse().ok())
+            .or(fallback_year)
             .unwrap_or(0);
 
         let poster_urls: Vec<String> = details
@@ -2427,12 +2733,44 @@ impl Planner {
             .as_ref()
             .map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p));
 
+        // Determine original_language with fallback logic
+        // TMDB may return empty original_language for some TV shows
+        let original_language = details.original_language.clone().unwrap_or_else(|| {
+            // Fallback 1: Try to infer from origin_country
+            if let Some(ref countries) = details.origin_country {
+                if !countries.is_empty() {
+                    // Map common country codes to language codes
+                    return match countries[0].to_uppercase().as_str() {
+                        "US" | "GB" | "AU" | "CA" => "en".to_string(),
+                        "CN" | "HK" | "TW" | "MO" => "zh".to_string(),
+                        "JP" => "ja".to_string(),
+                        "KR" => "ko".to_string(),
+                        "FR" => "fr".to_string(),
+                        "DE" => "de".to_string(),
+                        "ES" => "es".to_string(),
+                        "IT" => "it".to_string(),
+                        "PT" => "pt".to_string(),
+                        "RU" => "ru".to_string(),
+                        "IN" => "hi".to_string(),
+                        "TH" => "th".to_string(),
+                        "VN" => "vi".to_string(),
+                        "ID" => "id".to_string(),
+                        "MY" => "ms".to_string(),
+                        "PH" => "tl".to_string(),
+                        _ => countries[0].to_lowercase(),
+                    };
+                }
+            }
+            // Fallback 2: Default to English
+            "en".to_string()
+        });
+
         TvSeriesMetadata {
-            tmdb_id: details.id,
+            tmdb_id: tmdb_id_value,
             imdb_id,
-            original_name: details.original_name.clone(),
-            name: details.name.clone(),
-            original_language: details.original_language.clone(),
+            original_name: original_name_with_fallback,
+            name: show_name,
+            original_language,
             year,
             first_air_date: details.first_air_date.clone(),
             overview: details.overview.clone(),
@@ -2443,8 +2781,8 @@ impl Planner {
             networks,
             rating: details.vote_average,
             votes: details.vote_count,
-            number_of_seasons: details.number_of_seasons,
-            number_of_episodes: details.number_of_episodes,
+            number_of_seasons: details.number_of_seasons.unwrap_or_default(),
+            number_of_episodes: details.number_of_episodes.unwrap_or_default(),
             status: details.status.clone(),
             creators,
             actors,
@@ -2468,11 +2806,11 @@ impl Planner {
             let read_cache = cache.read().await;
             if let Some(episodes) = read_cache.get(&cache_key) {
                 // Find the episode in cached data
-                if let Some(ep_info) = episodes.iter().find(|e| e.episode_number == episode) {
+                if let Some(ep_info) = episodes.iter().find(|e| e.episode_number == Some(episode)) {
                     return Some(EpisodeMetadata {
                         season_number: season,
                         episode_number: episode,
-                        name: ep_info.name.clone(),
+                        name: ep_info.name.clone().unwrap_or_default(),
                         original_name: None,
                         air_date: ep_info.air_date.clone(),
                         overview: ep_info.overview.clone(),
@@ -2490,19 +2828,19 @@ impl Planner {
                     tracing::info!(
                         "Cached season {} info ({} episodes) for TMDB ID {}",
                         season,
-                        season_details.episodes.len(),
+                        season_details.episodes.as_ref().map(|e| e.len()).unwrap_or(0),
                         tmdb_id
                     );
 
                     // Find the target episode first
                     let target_ep = season_details
                         .episodes
-                        .iter()
-                        .find(|e| e.episode_number == episode)
+                        .as_ref()
+                        .and_then(|eps| eps.iter().find(|e| e.episode_number == Some(episode)))
                         .map(|ep_info| EpisodeMetadata {
                             season_number: season,
                             episode_number: episode,
-                            name: ep_info.name.clone(),
+                            name: ep_info.name.clone().unwrap_or_default(),
                             original_name: None,
                             air_date: ep_info.air_date.clone(),
                             overview: ep_info.overview.clone(),
@@ -2513,7 +2851,7 @@ impl Planner {
                     // Update cache
                     {
                         let mut write_cache = cache.write().await;
-                        write_cache.insert(cache_key, season_details.episodes);
+                        write_cache.insert(cache_key, season_details.episodes.unwrap_or_default());
                     }
 
                     return target_ep;
@@ -2738,13 +3076,13 @@ impl Planner {
                             // Try to get season details first
                             if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
                                 season_meta = Some(SeasonMetadata {
-                                    season_number: season_details.season_number,
-                                    name: season_details.name,
+                                    season_number: season_details.season_number.unwrap_or_default(),
+                                    name: season_details.name.clone().unwrap_or_default(),
                                     overview: season_details.overview,
                                     air_date: season_details.air_date,
                                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                    episode_count: season_details.episodes.len() as u16,
-                                    tmdb_id: season_details.id,
+                                    episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                                    tmdb_id: season_details.id.unwrap_or_default(),
                                 });
                             }
                             
@@ -2861,13 +3199,13 @@ impl Planner {
                     if let (Some(season), Some(client)) = (season_num, &self.tmdb_client) {
                         if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
                             season_metadata = Some(SeasonMetadata {
-                                season_number: season_details.season_number,
-                                name: season_details.name,
+                                season_number: season_details.season_number.unwrap_or_default(),
+                                name: season_details.name.clone().unwrap_or_default(),
                                 overview: season_details.overview,
                                 air_date: season_details.air_date,
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                episode_count: season_details.episodes.len() as u16,
-                                tmdb_id: season_details.id,
+                                episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                                tmdb_id: season_details.id.unwrap_or_default(),
                             });
                         }
                     }
@@ -2900,13 +3238,13 @@ impl Planner {
                                 if season_metadata.is_none() {
                                     if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
                                         season_metadata = Some(SeasonMetadata {
-                                            season_number: season_details.season_number,
-                                            name: season_details.name,
+                                            season_number: season_details.season_number.unwrap_or_default(),
+                                            name: season_details.name.clone().unwrap_or_default(),
                                             overview: season_details.overview,
                                             air_date: season_details.air_date,
                                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                            episode_count: season_details.episodes.len() as u16,
-                                            tmdb_id: season_details.id,
+                                            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+                                            tmdb_id: season_details.id.unwrap_or_default(),
                                         });
                                     }
                                 }
@@ -4956,11 +5294,23 @@ impl Planner {
     ) -> Result<(Option<TvSeriesMetadata>, Option<EpisodeMetadata>)> {
         let details = client.get_tv_details(tv_id).await?;
 
+        // Check if response has valid data
+        if details.id.is_none() {
+            return Err(crate::error::Error::Other(format!(
+                "TMDB returned invalid data for tv{}: missing id",
+                tv_id
+            )));
+        }
+
+        // Get name with fallback
+        let name = details.name.clone().unwrap_or_default();
+        let original_name_val = details.original_name.clone().unwrap_or_default();
+        
         // Determine show name - use TMDB name, but try to get Chinese title from translations API
         // or fallback to parsed Chinese title from filename
-        let mut show_name: String = details.name.clone();
-        let tmdb_name = &details.name;
-        let tmdb_original = &details.original_name;
+        let mut show_name: String = name.clone();
+        let tmdb_name = &name;
+        let tmdb_original = &original_name_val;
         let names_same = self.normalize_title(tmdb_name) == self.normalize_title(tmdb_original);
         let name_has_chinese = chinese::contains_chinese(tmdb_name);
 
@@ -4990,40 +5340,17 @@ impl Planner {
                     let chinese_candidates: Vec<(String, String)> = translations.translations
                         .iter()
                         .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
-                        .filter(|t| !t.data.title.is_empty() && chinese::contains_chinese(&t.data.title))
-                        .map(|t| (t.iso_3166_1.clone(), t.data.title.clone()))
+                        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()) && t.data.get_title().map_or(false, |s| chinese::contains_chinese(s)))
+                        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
                         .collect();
                     
-                    // Priority order: CN (Simplified) > SG (Simplified) > HK (Traditional) > TW (Traditional)
-                    let region_priority = ["CN", "SG", "HK", "TW"];
-                    
-                    // First pass: try in priority order
-                    for priority_region in &region_priority {
-                        if let Some((_region, chinese_title)) = chinese_candidates
-                            .iter()
-                            .find(|(r, _)| r == priority_region)
-                        {
-                            tracing::info!(
-                                "[TMDB] Found {} title '{}' ({} region, priority {})",
-                                if *priority_region == "CN" || *priority_region == "SG" { "Simplified Chinese" } else { "Traditional Chinese" },
-                                chinese_title, 
-                                priority_region,
-                                priority_region
-                            );
-                            show_name = chinese_title.clone();
-                            break;
-                        }
-                    }
-                    
-                    // Final fallback: use any available Chinese translation
-                    if !chinese::contains_chinese(&show_name) {
-                        if let Some((region, chinese_title)) = chinese_candidates.first() {
-                            tracing::info!(
-                                "[TMDB] Found Chinese title '{}' ({} region, final fallback)",
-                                chinese_title, region
-                            );
-                            show_name = chinese_title.clone();
-                        }
+                    // Use common priority function to find best Chinese title
+                    if let Some(chinese_title) = find_priority_chinese_title(&chinese_candidates) {
+                        tracing::info!(
+                            "[TMDB] Found Chinese title '{}' from translations API",
+                            chinese_title
+                        );
+                        show_name = chinese_title;
                     }
                 }
                 Err(e) => {
@@ -5130,11 +5457,11 @@ impl Planner {
             .unwrap_or_default();
 
         let show = TvSeriesMetadata {
-            tmdb_id: details.id,
+            tmdb_id: details.id.unwrap_or_default(),
             imdb_id: details.external_ids.and_then(|e| e.imdb_id),
-            original_name: details.original_name,
+            original_name: original_name_val,
             name: show_name,
-            original_language: details.original_language,
+            original_language: details.original_language.clone().unwrap_or_default(),
             year,
             first_air_date: details.first_air_date,
             overview: details.overview,
@@ -5145,8 +5472,8 @@ impl Planner {
             networks,
             rating: details.vote_average,
             votes: details.vote_count,
-            number_of_seasons: details.number_of_seasons,
-            number_of_episodes: details.number_of_episodes,
+            number_of_seasons: details.number_of_seasons.unwrap_or_default(),
+            number_of_episodes: details.number_of_episodes.unwrap_or_default(),
             status: details.status,
             creators,
             actors,
@@ -5567,40 +5894,17 @@ impl Planner {
                     let chinese_candidates: Vec<(String, String)> = translations.translations
                         .iter()
                         .filter(|t| t.iso_639_1 == "zh" || t.iso_639_1 == "zh-CN")
-                        .filter(|t| !t.data.title.is_empty() && chinese::contains_chinese(&t.data.title))
-                        .map(|t| (t.iso_3166_1.clone(), t.data.title.clone()))
+                        .filter(|t| t.data.get_title().map_or(false, |s| !s.is_empty()) && t.data.get_title().map_or(false, |s| chinese::contains_chinese(s)))
+                        .map(|t| (t.iso_3166_1.clone(), t.data.get_title().unwrap_or_default().to_string()))
                         .collect();
                     
-                    // Priority order: CN (Simplified) > SG (Simplified) > HK (Traditional) > TW (Traditional)
-                    let region_priority = ["CN", "SG", "HK", "TW"];
-                    
-                    // First pass: try in priority order
-                    for priority_region in &region_priority {
-                        if let Some((_region, chinese_title)) = chinese_candidates
-                            .iter()
-                            .find(|(r, _)| r == priority_region)
-                        {
-                            tracing::info!(
-                                "[TMDB] Found {} title '{}' ({} region, priority {})",
-                                if *priority_region == "CN" || *priority_region == "SG" { "Simplified Chinese" } else { "Traditional Chinese" },
-                                chinese_title, 
-                                priority_region,
-                                priority_region
-                            );
-                            title = chinese_title.clone();
-                            break;
-                        }
-                    }
-                    
-                    // Final fallback: use any available Chinese translation
-                    if !chinese::contains_chinese(&title) {
-                        if let Some((region, chinese_title)) = chinese_candidates.first() {
-                            tracing::info!(
-                                "[TMDB] Found Chinese title '{}' ({} region, final fallback)",
-                                chinese_title, region
-                            );
-                            title = chinese_title.clone();
-                        }
+                    // Use common priority function to find best Chinese title
+                    if let Some(chinese_title) = find_priority_chinese_title(&chinese_candidates) {
+                        tracing::info!(
+                            "[TMDB] Found Chinese title '{}' from translations API",
+                            chinese_title
+                        );
+                        title = chinese_title;
                     }
                 }
                 Err(e) => {
@@ -5630,8 +5934,17 @@ impl Planner {
             backdrop_url,
             directors,
             writers,
-            actors,
-            actor_roles,
+            actors: actors.clone(),
+            actor_roles: actor_roles.clone(),
+            actors_info: actors
+                .iter()
+                .enumerate()
+                .map(|(i, name)| Actor {
+                    name: name.clone(),
+                    role: actor_roles.get(i).cloned(),
+                    order: Some(i as u32),
+                })
+                .collect(),
             certification,
             collection_id,
             collection_name,

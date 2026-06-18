@@ -122,14 +122,16 @@ pub fn generate_tv_series_folder(metadata: &TvSeriesMetadata) -> String {
     parts.push(format!("[{}]", sort_prefix));
 
     // Handle title deduplication
-    let is_chinese_lang = matches!(metadata.original_language.as_str(), "zh" | "cn" | "zh-CN" | "zh-TW" | "zh-HK");
-    let is_chinese = is_chinese_lang;
+    // Always show both titles when they differ (for proper identification)
+    // Only deduplicate when titles are actually the same (e.g., English-only content)
     let titles_same = normalize_title(&metadata.original_name) == normalize_title(&metadata.name);
 
-    if is_chinese || titles_same {
+    if titles_same {
+        // Titles are the same (e.g., English-only), show only one
         parts.push(format!("[{}]", sanitize_filename(&metadata.name)));
     } else {
-        // Use both localized and original title (localized first)
+        // Titles are different - show both (localized first, then original)
+        // This ensures non-English content can still be identified by original name
         parts.push(format!("[{}]", sanitize_filename(&metadata.name)));
         parts.push(format!("[{}]", sanitize_filename(&metadata.original_name)));
     }

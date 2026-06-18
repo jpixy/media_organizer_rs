@@ -129,6 +129,9 @@ pub struct MovieMetadata {
     pub actors: Vec<String>,
     /// Actor roles (parallel to actors).
     pub actor_roles: Vec<String>,
+    /// Actor information with name, role, and order.
+    #[serde(default)]
+    pub actors_info: Vec<Actor>,
     /// Certification/rating (e.g., "PG-13").
     pub certification: Option<String>,
     /// Collection/Set ID (for movie series like "Pirates of the Caribbean").

@@ -1,6 +1,7 @@
 //! Filename generator.
 
 use crate::models::media::{EpisodeMetadata, MovieMetadata, TvSeriesMetadata, VideoMetadata};
+use crate::utils::chinese;
 
 /// ============================================================================
 /// Sorting Prefix Generation
@@ -264,24 +265,54 @@ pub fn generate_episode_filename(
     parts.push(format!("-[{}]", sanitize_filename(&episode.name)));
 
     // Show title part: -[A][爱死亡与机器人][Love, Death & Robots]
-    let has_chinese = show.original_language == "zh" 
-        || normalize_title(&show.name) != normalize_title(&show.original_name);
-    let sort_prefix = generate_sort_prefix(
-        has_chinese,
-        &show.name,
-        &show.original_language,
-        &show.original_name,
-    );
+    // Determine if show name contains Chinese
+    let show_has_chinese = chinese::contains_chinese(&show.name);
+    
+    // Sort prefix should be based on the displayed title (show.name)
+    // If show.name is Chinese, use its pinyin; otherwise use English logic
+    let sort_prefix = if show_has_chinese {
+        // Show name has Chinese, use pinyin
+        if let Some(first_char) = show.name.chars().next() {
+            if ('\u{4E00}'..='\u{9FFF}').contains(&first_char) {
+                use pinyin::ToPinyin;
+                if let Some(pinyin) = first_char.to_pinyin() {
+                    let pinyin_str = pinyin.plain();
+                    if let Some(first_pinyin_char) = pinyin_str.chars().next() {
+                        first_pinyin_char.to_ascii_uppercase()
+                    } else {
+                        '?'
+                    }
+                } else {
+                    first_char.to_ascii_uppercase()
+                }
+            } else {
+                first_char.to_ascii_uppercase()
+            }
+        } else {
+            '?'
+        }
+    } else {
+        // Show name is English, use standard English logic
+        let effective_title = if show.name.to_lowercase().starts_with("the ") {
+            &show.name[4..]
+        } else if show.name.to_lowercase().starts_with("a ") {
+            &show.name[2..]
+        } else {
+            show.name.as_str()
+        };
+        effective_title.chars().next().unwrap_or('?').to_ascii_uppercase()
+    };
     
     let mut title_part = format!("[{}]", sort_prefix);
     
-    let is_chinese = show.original_language == "zh";
+    // Only show single title if they are the same, otherwise show both
     let titles_same = normalize_title(&show.original_name) == normalize_title(&show.name);
 
-    if is_chinese || titles_same {
+    if titles_same {
+        // Titles are the same, show only one
         title_part.push_str(&format!("[{}]", sanitize_filename(&show.name)));
     } else {
-        // Use both localized and original title (localized first)
+        // Titles are different, show both (localized first, then original)
         title_part.push_str(&format!("[{}][{}]", sanitize_filename(&show.name), sanitize_filename(&show.original_name)));
     }
     

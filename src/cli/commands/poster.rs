@@ -472,7 +472,7 @@ async fn process_tv_show_seasons(
     
     // If no season directories found, create entries for all seasons
     if season_dirs.is_empty() {
-        for season_num in 1..=show_details.number_of_seasons as u32 {
+        for season_num in 1..=show_details.number_of_seasons.unwrap_or_default() as u32 {
             season_dirs.push((season_num, entry_path.join(format!("Season {:02}", season_num))));
         }
     }
