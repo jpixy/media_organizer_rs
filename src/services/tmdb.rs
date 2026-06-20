@@ -66,7 +66,7 @@ pub struct MovieSearchResult {
 }
 
 /// Movie search item.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct MovieSearchItem {
     pub id: u64,
     pub title: String,
@@ -223,6 +223,29 @@ impl TranslationData {
     }
 }
 
+/// External ID type for find API.
+#[derive(Debug, Clone, Copy)]
+pub enum ExternalIdType {
+    Imdb,
+    Tvdb,
+}
+
+impl ExternalIdType {
+    pub fn to_param(&self) -> &str {
+        match self {
+            ExternalIdType::Imdb => "imdb_id",
+            ExternalIdType::Tvdb => "tvdb_id",
+        }
+    }
+}
+
+/// Find API result.
+#[derive(Debug, Deserialize)]
+pub struct FindResult {
+    pub tv_results: Vec<TvSearchItem>,
+    pub movie_results: Vec<MovieSearchItem>,
+}
+
 /// TV show search result.
 #[derive(Debug, Deserialize)]
 pub struct TvSearchResult {
@@ -352,6 +375,20 @@ pub struct SeasonDetails {
     pub season_number: Option<u16>,
     pub air_date: Option<String>,
     pub episodes: Option<Vec<EpisodeInfo>>,
+}
+
+/// Season external IDs (for anthology series where each season has its own IMDB ID)
+#[derive(Debug, Deserialize)]
+pub struct SeasonExternalIds {
+    pub id: Option<u64>,
+    #[serde(rename = "imdb_id")]
+    pub imdb_id: Option<String>,
+    #[serde(rename = "tvdb_id")]
+    pub tvdb_id: Option<u64>,
+    #[serde(rename = "freebase_id")]
+    pub freebase_id: Option<String>,
+    #[serde(rename = "freebase_mid")]
+    pub freebase_mid: Option<String>,
 }
 
 /// Episode info within a season.
@@ -493,21 +530,25 @@ impl TmdbClient {
         for attempt in 0..MAX_RETRIES {
             match build_request().await {
                 Ok(resp) => {
-                    if resp.status().is_success() {
-                        return resp.json().await.map_err(crate::Error::from);
-                    }
-                    let status = resp.status();
-                    if (status.is_server_error() || status.as_u16() == 429) && attempt < MAX_RETRIES - 1 {
-                        let backoff = INITIAL_BACKOFF_MS * 2u64.pow(attempt);
-                        tracing::warn!(
-                            "TMDB server error {} (attempt {}/{}), retrying in {}ms...",
-                            status,
-                            attempt + 1,
-                            MAX_RETRIES,
-                            backoff
-                        );
-                        tokio::time::sleep(std::time::Duration::from_millis(backoff)).await;
-                        continue;
+                    if !resp.status().is_success() {
+                        let status = resp.status();
+                        if status.is_server_error() || status.as_u16() == 429 {
+                            if attempt < MAX_RETRIES - 1 {
+                                let backoff = INITIAL_BACKOFF_MS * 2u64.pow(attempt);
+                                tracing::warn!(
+                                    "TMDB server error {} (attempt {}/{}), retrying in {}ms...",
+                                    status,
+                                    attempt + 1,
+                                    MAX_RETRIES,
+                                    backoff
+                                );
+                                tokio::time::sleep(std::time::Duration::from_millis(backoff)).await;
+                                continue;
+                            }
+                        }
+                        // For client errors (4xx except 429), return error without trying to parse response
+                        let err_msg = format!("TMDB API error: {}", status);
+                        return Err(crate::Error::TmdbSearchError(err_msg));
                     }
                     return resp.json().await.map_err(crate::Error::from);
                 }
@@ -744,6 +785,19 @@ impl TmdbClient {
         Ok(resp.results)
     }
 
+    /// Find media by external ID (IMDB, TVDB, etc.)
+    pub async fn find_by_external_id(&self, external_id: &str, id_type: ExternalIdType) -> Result<FindResult> {
+        let url = self.build_url(
+            &format!("find/{}", urlencoding::encode(external_id)),
+            &format!("&external_source={}", id_type.to_param()),
+        );
+        
+        tracing::debug!("TMDB find_by_external_id URL: {}", url);
+        
+        let resp: FindResult = self.request_with_retry(|| self.build_request(&url).send()).await?;
+        Ok(resp)
+    }
+
     /// Get TV show details.
     pub async fn get_tv_details(&self, tv_id: u64) -> Result<TvDetails> {
         let url = self.build_url(
@@ -762,6 +816,17 @@ impl TmdbClient {
     ) -> Result<SeasonDetails> {
         let url = self.build_url(&format!("tv/{}/season/{}", tv_id, season_number), "");
         let resp: SeasonDetails = self.request_with_retry(|| self.build_request(&url).send()).await?;
+        Ok(resp)
+    }
+
+    /// Get season external IDs (for anthology series where each season has its own IMDB ID)
+    pub async fn get_season_external_ids(
+        &self,
+        tv_id: u64,
+        season_number: u16,
+    ) -> Result<SeasonExternalIds> {
+        let url = self.build_url(&format!("tv/{}/season/{}/external_ids", tv_id, season_number), "");
+        let resp: SeasonExternalIds = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp)
     }
 

@@ -213,6 +213,8 @@ pub fn classify_directory(dirname: &str) -> DirectoryType {
 /// Formats:
 /// - `[Title](Year)-ttIMDB-tmdbID`
 /// - `[Title](Year)-tmdbID`
+/// - `[A][Title1][Title2](Year)-tmdbID` (sort prefix + dual title)
+/// - `[A][Title](Year)-tmdbID` (sort prefix + single title)
 fn parse_organized_directory(name: &str) -> Option<OrganizedInfo> {
     // Pattern with IMDB: [Title](Year)-ttIMDB-tmdbID
     let re_with_imdb = regex::Regex::new(r"^\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
@@ -230,6 +232,61 @@ fn parse_organized_directory(name: &str) -> Option<OrganizedInfo> {
     let re_no_imdb = regex::Regex::new(r"^\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
 
     if let Some(caps) = re_no_imdb.captures(name) {
+        return Some(OrganizedInfo {
+            title: caps.get(1)?.as_str().to_string(),
+            year: caps.get(2)?.as_str().parse().ok(),
+            imdb_id: None,
+            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern with sort prefix + dual title + IMDB: [Prefix][Title1][Title2](Year)-ttIMDB-tmdbID
+    // e.g., [A][爱，死亡和机器人][Love, Death & Robots](2025)-tt9561862-tmdb450504
+    let re_prefix_dual_with_imdb = regex::Regex::new(r"^\[[A-Z]\]\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_prefix_dual_with_imdb.captures(name) {
+        let title1 = caps.get(1)?.as_str().to_string();
+        let title2 = caps.get(2)?.as_str().to_string();
+        // Prefer Chinese title (title1) over English (title2)
+        let title = if title1.chars().any(|c| !c.is_ascii()) {
+            title1
+        } else {
+            title2
+        };
+        return Some(OrganizedInfo {
+            title,
+            year: caps.get(3)?.as_str().parse().ok(),
+            imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
+            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern with sort prefix + dual title, no IMDB: [Prefix][Title1][Title2](Year)-tmdbID
+    // e.g., [A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504
+    let re_prefix_dual_no_imdb = regex::Regex::new(r"^\[[A-Z]\]\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_prefix_dual_no_imdb.captures(name) {
+        let title1 = caps.get(1)?.as_str().to_string();
+        let title2 = caps.get(2)?.as_str().to_string();
+        // Prefer Chinese title (title1) over English (title2)
+        let title = if title1.chars().any(|c| !c.is_ascii()) {
+            title1
+        } else {
+            title2
+        };
+        return Some(OrganizedInfo {
+            title,
+            year: caps.get(3)?.as_str().parse().ok(),
+            imdb_id: None,
+            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern with sort prefix + single title, no IMDB: [Prefix][Title](Year)-tmdbID
+    // e.g., [T][Some Title](2024)-tmdb12345
+    let re_prefix_single_no_imdb = regex::Regex::new(r"^\[[A-Z]\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_prefix_single_no_imdb.captures(name) {
         return Some(OrganizedInfo {
             title: caps.get(1)?.as_str().to_string(),
             year: caps.get(2)?.as_str().parse().ok(),

@@ -1251,6 +1251,28 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_organized_tv_series_folder_dual_no_imdb_with_prefix() {
+        // Pattern 5: Sort prefix + Dual title with year, no IMDB
+        let info = parse_organized_tv_series_folder("[A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504").unwrap();
+        assert_eq!(info.title, "爱，死亡和机器人");
+        assert_eq!(info.original_title, Some("Love, Death & Robots".to_string()));
+        assert_eq!(info.year, Some(2025));
+        assert_eq!(info.imdb_id, None);
+        assert_eq!(info.tmdb_id, 450504);
+    }
+
+    #[test]
+    fn test_parse_organized_tv_series_folder_single_no_imdb_with_prefix() {
+        // Pattern 6: Sort prefix + Single title with year, no IMDB
+        let info = parse_organized_tv_series_folder("[T][Some Title](2024)-tmdb12345").unwrap();
+        assert_eq!(info.title, "Some Title");
+        assert_eq!(info.original_title, None);
+        assert_eq!(info.year, Some(2024));
+        assert_eq!(info.imdb_id, None);
+        assert_eq!(info.tmdb_id, 12345);
+    }
+
+    #[test]
     fn test_parse_organized_tv_series_folder_empty_chinese() {
         let info = parse_organized_tv_series_folder("[러브 미][ ]-tt35451747-tmdb275989").unwrap();
         // Empty Chinese title falls back to original title
@@ -1758,6 +1780,15 @@ pub fn is_organized_filename(filename: &str) -> bool {
         }
     }
 
+    // TV show pattern with season prefix: S04E02-[Episode Name]-[Title]-...
+    // e.g., S04E02-[Episode 2]-[A][爱，死亡和机器人][Love, Death & Robots]-1920x1080(1080p)-...
+    let tv_pattern_with_season_prefix = regex::Regex::new(r"^S\d{2}E\d{2,3}-\[.+\]-").ok();
+    if let Some(re) = tv_pattern_with_season_prefix {
+        if re.is_match(filename) {
+            return true;
+        }
+    }
+
     // Movie pattern with TMDB ID: [Title](Year)-tt...-tmdb...-
     // or [Title][Title](Year)-tt...-tmdb...-
     let movie_pattern_with_id =
@@ -1789,16 +1820,50 @@ pub fn is_organized_filename(filename: &str) -> bool {
 /// Format: `[Title]-S01E01-[Episode Name]-1080p-WEB-DL-...`
 /// Returns: (title, season, episode, episode_name)
 pub fn parse_organized_tv_series_filename(filename: &str) -> Option<OrganizedTvSeriesInfo> {
+    // Pattern 1: [Title]-S01E01-[Episode Name]-...
     let re = regex::Regex::new(r"^\[([^\]]+)\]-S(\d{2})E(\d{2,3})-\[([^\]]+)\]-").ok()?;
 
-    let caps = re.captures(filename)?;
+    if let Some(caps) = re.captures(filename) {
+        return Some(OrganizedTvSeriesInfo {
+            title: caps.get(1)?.as_str().to_string(),
+            season: caps.get(2)?.as_str().parse().ok()?,
+            episode: caps.get(3)?.as_str().parse().ok()?,
+            episode_name: caps.get(4)?.as_str().to_string(),
+        });
+    }
 
-    Some(OrganizedTvSeriesInfo {
-        title: caps.get(1)?.as_str().to_string(),
-        season: caps.get(2)?.as_str().parse().ok()?,
-        episode: caps.get(3)?.as_str().parse().ok()?,
-        episode_name: caps.get(4)?.as_str().to_string(),
-    })
+    // Pattern 2: S04E02-[Episode Name]-[Title]-...
+    // e.g., S04E02-[Episode 2]-[A][爱，死亡和机器人][Love, Death & Robots]-1920x1080(1080p)-...
+    let re_season_prefix = regex::Regex::new(r"^S(\d{2})E(\d{2,3})-\[([^\]]+)\]-").ok()?;
+
+    if let Some(caps) = re_season_prefix.captures(filename) {
+        let season = caps.get(1)?.as_str().parse().ok()?;
+        let episode = caps.get(2)?.as_str().parse().ok()?;
+        let episode_name = caps.get(3)?.as_str().to_string();
+
+        // Extract title from the remaining part of the filename
+        let remaining = &filename[caps.get(0).unwrap().end()..];
+        // Try to find the longest bracketed title (excluding single-letter sort prefixes)
+        let title_re = regex::Regex::new(r"\[([^\]]{2,})\]").ok()?;
+        let mut best_title: Option<String> = None;
+        for cap in title_re.captures_iter(remaining) {
+            let candidate = cap.get(1)?.as_str().to_string();
+            // Prefer Chinese titles or longer titles
+            let is_chinese = candidate.chars().any(|c| !c.is_ascii());
+            if best_title.is_none() || is_chinese || candidate.len() > best_title.as_ref().unwrap().len() {
+                best_title = Some(candidate);
+            }
+        }
+
+        return Some(OrganizedTvSeriesInfo {
+            title: best_title.unwrap_or_else(|| "Unknown".to_string()),
+            season,
+            episode,
+            episode_name,
+        });
+    }
+
+    None
 }
 
 /// Parse an organized movie filename to extract metadata.
@@ -1894,8 +1959,12 @@ pub struct OrganizedTvSeriesFolderInfo {
     /// Original/English title (if available)
     pub original_title: Option<String>,
     pub year: Option<u16>,
+    /// TV Show level IMDB ID
     pub imdb_id: Option<String>,
+    /// TV Show level TMDB ID
     pub tmdb_id: u64,
+    /// Season level IMDB ID (for anthology series where each season has its own IMDB ID)
+    pub season_imdb_id: Option<String>,
 }
 
 /// Information extracted from an organized movie folder name.
@@ -2177,6 +2246,54 @@ pub fn parse_organized_movie_folder(dirname: &str) -> Option<OrganizedMovieFolde
         });
     }
 
+    // Pattern 4: Category prefix + Dual title without IMDB: [C][Original][Chinese](Year)-tmdbID
+    // e.g., [N][Original Title][中文标题](2024)-tmdb12345
+    let re_category_dual_no_imdb =
+        regex::Regex::new(r"^\[[A-Za-z]\]\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_category_dual_no_imdb.captures(dirname) {
+        let original_title = caps.get(1)?.as_str();
+        let title = caps.get(2)?.as_str();
+        return Some(OrganizedMovieFolderInfo {
+            original_title: Some(original_title.to_string()),
+            title: Some(title.to_string()),
+            year: caps.get(3)?.as_str().parse().ok()?,
+            imdb_id: None,
+            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern 5: Category prefix + Single title without IMDB: [C][Title](Year)-tmdbID
+    // e.g., [N][Some Title](2024)-tmdb12345
+    let re_category_single_no_imdb =
+        regex::Regex::new(r"^\[[A-Za-z]\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_category_single_no_imdb.captures(dirname) {
+        let title = caps.get(1)?.as_str();
+        return Some(OrganizedMovieFolderInfo {
+            original_title: None,
+            title: Some(title.to_string()),
+            year: caps.get(2)?.as_str().parse().ok()?,
+            imdb_id: None,
+            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+        });
+    }
+
+    // Pattern 6: Dual title without IMDB: [Original][Chinese](Year)-tmdbID
+    // e.g., [Original Title][中文标题](2024)-tmdb12345
+    let re_dual_no_imdb =
+        regex::Regex::new(r"^\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_dual_no_imdb.captures(dirname) {
+        return Some(OrganizedMovieFolderInfo {
+            original_title: Some(caps.get(1)?.as_str().to_string()),
+            title: Some(caps.get(2)?.as_str().to_string()),
+            year: caps.get(3)?.as_str().parse().ok()?,
+            imdb_id: None,
+            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+        });
+    }
+
     // ========================================================================
     // FALLBACK: Smart extraction (order-independent)
     // ========================================================================
@@ -2262,6 +2379,8 @@ pub fn is_organized_tv_series_folder(dirname: &str) -> bool {
 /// - `[러브 미][爱我](2025)-tt35451747-tmdb275989`
 /// - `[러브 미][ ]-tt35451747-tmdb275989` (empty Chinese title)
 pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeriesFolderInfo> {
+    println!("[PARSE-TV-FOLDER] Parsing: {}", dirname);
+    
     // Pattern 0: Season folder with dual title and year: [S04][Season 04]-[Title1][Title2](Year)-ttIMDB-tmdbID
     // This pattern is for season folders that have season info prefix
     // e.g., [S04][Season 04]-[L][Love, Death & Robots](2025)-tt9561862-tmdb450504
@@ -2284,12 +2403,80 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
         } else {
             Some(title1)
         };
+        // For season folders, the IMDB ID in filename is the season-level IMDB ID (for anthology series)
+        // If TMDB doesn't return a season-level IMDB ID, we use this one
+        let season_imdb_id = Some(format!("tt{}", caps.get(4)?.as_str()));
         return Some(OrganizedTvSeriesFolderInfo {
             title,
             original_title,
             year: caps.get(3)?.as_str().parse().ok(),
-            imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
+            imdb_id: None, // TV Show IMDB ID (not available in this format)
             tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+            season_imdb_id,
+        });
+    }
+
+    // Pattern 0a: Season folder with sort prefix + dual title + year + IMDB: [S04][Season 04]-[A][Title1][Title2](Year)-ttIMDB-tmdbID
+    // e.g., [S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots](2025)-tt21661768-tmdb86831
+    tracing::debug!("[PARSE-TV-FOLDER] Pattern 0 did not match, trying Pattern 0a...");
+    let re_season_sort_prefix_dual_with_imdb =
+        regex::Regex::new(r"^\[S\d+\]\[Season \d+\]-\[[A-Z]\]\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tt(\d+)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_season_sort_prefix_dual_with_imdb.captures(dirname) {
+        tracing::debug!("[PARSE-TV-FOLDER] Pattern 0a matched!");
+        let title1 = caps.get(1)?.as_str().to_string();
+        let title2 = caps.get(2)?.as_str().to_string();
+        // Prefer Chinese title (title1) over English (title2)
+        let title = if contains_chinese(&title1) {
+            title1.clone()
+        } else {
+            title2.clone()
+        };
+        // title2 is usually the English title
+        let original_title = if contains_chinese(&title2) {
+            None
+        } else {
+            Some(title2)
+        };
+        // For season folders, the IMDB ID in filename is the season-level IMDB ID (for anthology series)
+        let season_imdb_id = Some(format!("tt{}", caps.get(4)?.as_str()));
+        return Some(OrganizedTvSeriesFolderInfo {
+            title,
+            original_title,
+            year: caps.get(3)?.as_str().parse().ok(),
+            imdb_id: None, // TV Show IMDB ID (not available in this format)
+            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+            season_imdb_id,
+        });
+    }
+
+    // Pattern 0b: Season folder with sort prefix + dual title, no year or IMDB: [S04][Season 04]-[A][Title1][Title2]-tmdbID
+    // e.g., [S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots]-tmdb450504
+    let re_season_sort_prefix_dual =
+        regex::Regex::new(r"^\[S\d+\]\[Season \d+\]-\[[A-Z]\]\[([^\]]+)\]\[([^\]]+)\]-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_season_sort_prefix_dual.captures(dirname) {
+        let title1 = caps.get(1)?.as_str().to_string();
+        let title2 = caps.get(2)?.as_str().to_string();
+        // Prefer Chinese title (title1) over English (title2)
+        let title = if contains_chinese(&title1) {
+            title1.clone()
+        } else {
+            title2.clone()
+        };
+        // title2 is usually the English title
+        let original_title = if contains_chinese(&title2) {
+            None
+        } else {
+            Some(title2)
+        };
+        return Some(OrganizedTvSeriesFolderInfo {
+            title,
+            original_title,
+            year: None,
+            imdb_id: None,
+            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+            season_imdb_id: None,
         });
     }
 
@@ -2317,6 +2504,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
             tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+            season_imdb_id: None,
         });
     }
 
@@ -2343,6 +2531,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             year: None,
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
             tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+            season_imdb_id: None,
         });
     }
 
@@ -2356,6 +2545,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
             tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+            season_imdb_id: None,
         });
     }
 
@@ -2369,6 +2559,51 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: None,
             tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+            season_imdb_id: None,
+        });
+    }
+
+    // Pattern 5: Sort prefix + Dual title with year, no IMDB: [Prefix][Title1][Title2](Year)-tmdbID
+    // e.g., [A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504
+    let re_dual_no_imdb = regex::Regex::new(r"^\[[A-Z]\]\[([^\]]+)\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_dual_no_imdb.captures(dirname) {
+        let title1 = caps.get(1)?.as_str();
+        let title2 = caps.get(2)?.as_str();
+        // Prefer Chinese title (title1) over English (title2)
+        let title = if contains_chinese(title1) {
+            title1.to_string()
+        } else {
+            title2.to_string()
+        };
+        // English title is title2 if it's not Chinese
+        let original_title = if contains_chinese(title2) {
+            None
+        } else {
+            Some(title2.to_string())
+        };
+        return Some(OrganizedTvSeriesFolderInfo {
+            title,
+            original_title,
+            year: caps.get(3)?.as_str().parse().ok(),
+            imdb_id: None,
+            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+            season_imdb_id: None,
+        });
+    }
+
+    // Pattern 6: Sort prefix + Single title with year, no IMDB: [Prefix][Title](Year)-tmdbID
+    // e.g., [T][Some Title](2024)-tmdb12345
+    let re_single_prefix_no_imdb = regex::Regex::new(r"^\[[A-Z]\]\[([^\]]+)\]\((\d{4})\)-tmdb(\d+)$").ok()?;
+
+    if let Some(caps) = re_single_prefix_no_imdb.captures(dirname) {
+        return Some(OrganizedTvSeriesFolderInfo {
+            title: caps.get(1)?.as_str().to_string(),
+            original_title: None,
+            year: caps.get(2)?.as_str().parse().ok(),
+            imdb_id: None,
+            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+            season_imdb_id: None,
         });
     }
 
@@ -2405,6 +2640,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             year: smart.year,
             imdb_id: smart.imdb_id,
             tmdb_id,
+            season_imdb_id: None,
         });
     }
 

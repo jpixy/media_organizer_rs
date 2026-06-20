@@ -21,6 +21,7 @@ use crate::models::plan::{
     PosterStats, SampleItem, TargetInfo, UnknownItem,
 };
 use crate::utils::chinese;
+use crate::utils::locale::{country_code_to_name, find_priority_chinese_title, format_language_folder};
 use crate::services::ffprobe;
 use crate::services::tmdb::{Credits, MovieDetails, TmdbClient};
 use crate::Result;
@@ -40,120 +41,221 @@ use uuid::Uuid;
 type SeasonEpisodesCache =
     Arc<RwLock<HashMap<(u64, u16), Vec<crate::services::tmdb::EpisodeInfo>>>>;
 
-/// Convert ISO 3166-1 country code to country name.
-/// Convert ISO 3166-1 country code to human-readable name.
-/// Used for metadata (countries field in NFO), NOT for folder classification.
-fn country_code_to_name(code: &str) -> String {
-    match code.to_uppercase().as_str() {
-        "US" => "United States".to_string(),
-        "GB" => "United Kingdom".to_string(),
-        "CA" => "Canada".to_string(),
-        "CN" => "China".to_string(),
-        "JP" => "Japan".to_string(),
-        "KR" => "South Korea".to_string(),
-        "TW" => "Taiwan".to_string(),
-        "HK" => "Hong Kong".to_string(),
-        "FR" => "France".to_string(),
-        "DE" => "Germany".to_string(),
-        "ES" => "Spain".to_string(),
-        "IT" => "Italy".to_string(),
-        "AU" => "Australia".to_string(),
-        "NZ" => "New Zealand".to_string(),
-        "IN" => "India".to_string(),
-        "TH" => "Thailand".to_string(),
-        "ID" => "Indonesia".to_string(),
-        "BR" => "Brazil".to_string(),
-        "MX" => "Mexico".to_string(),
-        "RU" => "Russia".to_string(),
-        "NL" => "Netherlands".to_string(),
-        "SE" => "Sweden".to_string(),
-        "NO" => "Norway".to_string(),
-        "DK" => "Denmark".to_string(),
-        _ => code.to_uppercase(),
+// ============================================================================
+// Media Search Trait and Common Fallback Logic
+// ============================================================================
+
+/// Trait for abstracting media search operations across different media types (TV/Movie).
+/// This enables unified fallback search logic for both TV shows and movies.
+trait MediaSearch {
+    type SearchItem: Clone;
+
+    /// Search for media items by title and optional year.
+    async fn search(
+        &self,
+        tmdb: &TmdbClient,
+        title: &str,
+        year: Option<u16>,
+    ) -> crate::Result<Vec<Self::SearchItem>>;
+
+    /// Get the display title from a search item.
+    fn get_title(item: &Self::SearchItem) -> &str;
+
+    /// Get the original title from a search item.
+    fn get_original_title(item: &Self::SearchItem) -> &str;
+
+    /// Get the year from a search item (extracted from date string).
+    fn get_year(item: &Self::SearchItem) -> Option<u16>;
+
+    /// Get the TMDB ID from a search item.
+    fn get_id(item: &Self::SearchItem) -> u64;
+}
+
+/// Implementation of MediaSearch for TV shows.
+struct TvMediaSearch;
+
+impl MediaSearch for TvMediaSearch {
+    type SearchItem = crate::services::tmdb::TvSearchItem;
+
+    async fn search(
+        &self,
+        tmdb: &TmdbClient,
+        title: &str,
+        year: Option<u16>,
+    ) -> crate::Result<Vec<Self::SearchItem>> {
+        tmdb.search_tv(title, year).await
+    }
+
+    fn get_title(item: &Self::SearchItem) -> &str {
+        &item.name
+    }
+
+    fn get_original_title(item: &Self::SearchItem) -> &str {
+        &item.original_name
+    }
+
+    fn get_year(item: &Self::SearchItem) -> Option<u16> {
+        item.first_air_date
+            .as_ref()
+            .and_then(|d| d.split('-').next())
+            .and_then(|y| y.parse().ok())
+    }
+
+    fn get_id(item: &Self::SearchItem) -> u64 {
+        item.id
     }
 }
 
-/// Find Chinese title with priority order: CN > SG > HK > TW
-/// Falls back to any available Chinese translation if no priority region is found
-pub fn find_priority_chinese_title(candidates: &[(String, String)]) -> Option<String> {
-    let region_priority = ["CN", "SG", "HK", "TW"];
-    
-    // First pass: try in priority order
-    for priority_region in &region_priority {
-        if let Some((_region, title)) = candidates.iter().find(|(r, _)| r == priority_region) {
-            return Some(title.clone());
+/// Implementation of MediaSearch for movies.
+struct MovieMediaSearch;
+
+impl MediaSearch for MovieMediaSearch {
+    type SearchItem = crate::services::tmdb::MovieSearchItem;
+
+    async fn search(
+        &self,
+        tmdb: &TmdbClient,
+        title: &str,
+        year: Option<u16>,
+    ) -> crate::Result<Vec<Self::SearchItem>> {
+        tmdb.search_movie(title, year).await
+    }
+
+    fn get_title(item: &Self::SearchItem) -> &str {
+        &item.title
+    }
+
+    fn get_original_title(item: &Self::SearchItem) -> &str {
+        &item.original_title
+    }
+
+    fn get_year(item: &Self::SearchItem) -> Option<u16> {
+        item.release_date
+            .as_ref()
+            .and_then(|d| d.split('-').next())
+            .and_then(|y| y.parse().ok())
+    }
+
+    fn get_id(item: &Self::SearchItem) -> u64 {
+        item.id
+    }
+}
+
+/// Common fallback search logic for both TV shows and movies.
+///
+/// This function implements a multi-layer fallback strategy:
+/// 1. Try primary title (often Chinese) with year filter
+/// 2. If no results, try original title (often English) with year filter
+/// 3. If still no results and year was provided, try without year filter
+/// 4. Match results with dual verification (search title and original title)
+///
+/// Returns the best matching search item if found.
+async fn search_with_fallback<M: MediaSearch>(
+    media: &M,
+    tmdb: &TmdbClient,
+    title: &str,
+    original_title: Option<&str>,
+    year: Option<u16>,
+) -> crate::Result<Option<M::SearchItem>> {
+    // Step 1: Try primary title with year
+    tracing::info!("[SEARCH-FALLBACK] Attempting search for: {} (year: {:?})", title, year);
+    let mut search_results = media.search(tmdb, title, year).await?;
+
+    // Track which title was used for successful search
+    let mut search_title_used = title;
+
+    // Step 2: If no results and we have original title, try that
+    if search_results.is_empty() {
+        if let Some(orig) = original_title {
+            tracing::info!("[SEARCH-FALLBACK] No results for '{}', trying original title: {}", title, orig);
+            search_results = media.search(tmdb, orig, year).await?;
+            tracing::info!("[SEARCH-FALLBACK] Search with '{}' (with year) returned {} results", orig, search_results.len());
+            search_title_used = orig;
         }
     }
-    
-    // Final fallback: use any available Chinese translation
-    candidates.first().map(|(_, title)| title.clone())
-}
 
-/// Convert ISO 639-1 language code to human-readable name.
-/// Used for folder naming: e.g., "zh" -> "Chinese" -> "ZH_Chinese"
-fn language_code_to_name(code: &str) -> String {
-    match code.to_lowercase().as_str() {
-        // Major languages
-        "en" => "English".to_string(),
-        "zh" => "Chinese".to_string(),
-        "ja" => "Japanese".to_string(),
-        "ko" => "Korean".to_string(),
-        "fr" => "French".to_string(),
-        "de" => "German".to_string(),
-        "es" => "Spanish".to_string(),
-        "it" => "Italian".to_string(),
-        "pt" => "Portuguese".to_string(),
-        "ru" => "Russian".to_string(),
-        // Asian languages
-        "th" => "Thai".to_string(),
-        "vi" => "Vietnamese".to_string(),
-        "id" => "Indonesian".to_string(),
-        "ms" => "Malay".to_string(),
-        "tl" => "Filipino".to_string(),
-        "hi" => "Hindi".to_string(),
-        "ta" => "Tamil".to_string(),
-        "te" => "Telugu".to_string(),
-        "bn" => "Bengali".to_string(),
-        // European languages
-        "nl" => "Dutch".to_string(),
-        "pl" => "Polish".to_string(),
-        "sv" => "Swedish".to_string(),
-        "no" => "Norwegian".to_string(),
-        "da" => "Danish".to_string(),
-        "fi" => "Finnish".to_string(),
-        "cs" => "Czech".to_string(),
-        "hu" => "Hungarian".to_string(),
-        "el" => "Greek".to_string(),
-        "tr" => "Turkish".to_string(),
-        "uk" => "Ukrainian".to_string(),
-        "ro" => "Romanian".to_string(),
-        // Middle Eastern
-        "ar" => "Arabic".to_string(),
-        "he" => "Hebrew".to_string(),
-        "fa" => "Persian".to_string(),
-        // Chinese variants (TMDB sometimes uses these)
-        "cn" => "Chinese".to_string(),
-        "yue" => "Cantonese".to_string(),
-        // Fallback
-        _ => code.to_uppercase(),
+    // Step 3: If still no results and year was provided, try without year
+    if search_results.is_empty() && year.is_some() {
+        tracing::info!("[SEARCH-FALLBACK] No results with year filter, trying without year for '{}'", search_title_used);
+        search_results = media.search(tmdb, search_title_used, None).await?;
+        tracing::info!("[SEARCH-FALLBACK] Search without year returned {} results", search_results.len());
     }
-}
 
-/// Normalize language code to standard ISO 639-1.
-/// Handles TMDB quirks like "cn" -> "zh".
-fn normalize_language_code(code: &str) -> &str {
-    match code.to_lowercase().as_str() {
-        "cn" => "zh",  // TMDB sometimes uses "cn" for Chinese
-        _ => code,
+    if search_results.is_empty() {
+        tracing::warn!(
+            "[SEARCH-FALLBACK] No search results for '{}' or '{}' (with or without year)",
+            title,
+            original_title.unwrap_or("(no original title)")
+        );
+        return Ok(None);
     }
-}
 
-/// Format language folder name from original_language.
-/// Returns format like "ZH_Chinese", "EN_English", etc.
-fn format_language_folder(original_language: &str) -> String {
-    let normalized = normalize_language_code(original_language);
-    let name = language_code_to_name(normalized);
-    format!("{}_{}", normalized.to_uppercase(), name)
+    // Step 4: Find the best match using title comparison
+    tracing::info!("[SEARCH-FALLBACK] Search results count: {}, comparing against: '{}'", search_results.len(), search_title_used);
+
+    let mut best_match: Option<(f64, M::SearchItem)> = None;
+
+    // First pass: match with the title that was used for search
+    for result in &search_results {
+        let similarity = crate::utils::metadata::compare_titles(
+            search_title_used,
+            year,
+            M::get_title(result),
+            Some(M::get_original_title(result)),
+            M::get_year(result),
+        );
+
+        tracing::debug!(
+            "[SEARCH-FALLBACK] Similarity: matched={}, score={}, reason='{}'",
+            similarity.matched,
+            similarity.score,
+            similarity.reason
+        );
+
+        if similarity.matched {
+            if best_match.is_none() || similarity.score > best_match.as_ref().unwrap().0 {
+                best_match = Some((similarity.score, result.clone()));
+            }
+        }
+    }
+
+    // Second pass: if no match and we have original title, try matching with it
+    if best_match.is_none() && original_title.is_some() && original_title.unwrap() != search_title_used {
+        tracing::info!(
+            "[SEARCH-FALLBACK] No match with '{}', trying to match with original title '{}'",
+            search_title_used,
+            original_title.unwrap()
+        );
+
+        for result in &search_results {
+            let similarity = crate::utils::metadata::compare_titles(
+                original_title.unwrap(),
+                year,
+                M::get_title(result),
+                Some(M::get_original_title(result)),
+                M::get_year(result),
+            );
+
+            if similarity.matched {
+                if best_match.is_none() || similarity.score > best_match.as_ref().unwrap().0 {
+                    best_match = Some((similarity.score, result.clone()));
+                }
+            }
+        }
+    }
+
+    if let Some((score, best_result)) = best_match {
+        tracing::info!(
+            "[SEARCH-FALLBACK] Found match: {} -> tmdb{} (score: {:.2})",
+            title,
+            M::get_id(&best_result),
+            score
+        );
+        Ok(Some(best_result))
+    } else {
+        tracing::warn!("[SEARCH-FALLBACK] No matching result found for '{}'", title);
+        Ok(None)
+    }
 }
 
 /// Planner configuration.
@@ -925,6 +1027,7 @@ impl Planner {
                                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                     episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                                     tmdb_id: season_details.id.unwrap_or_default(),
+                                    imdb_id: show_metadata.imdb_id.clone(),
                                 })
                             } else {
                                 None
@@ -1359,6 +1462,7 @@ impl Planner {
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                 episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                                 tmdb_id: season_details.id.unwrap_or_default(),
+                                imdb_id: show_meta.imdb_id.clone(),
                             }),
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
@@ -1413,6 +1517,7 @@ impl Planner {
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                 episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                                 tmdb_id: season_details.id.unwrap_or_default(),
+                                imdb_id: show_meta.imdb_id.clone(),
                             }),
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
@@ -1595,6 +1700,7 @@ impl Planner {
                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                             episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                             tmdb_id: season_details.id.unwrap_or_default(),
+                            imdb_id: show_meta.imdb_id.clone(),
                         }),
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for {}: {}", info.season, show_meta.name, e);
@@ -1668,7 +1774,7 @@ impl Planner {
                 let guessit_title = guessit_result.as_ref().and_then(|r| r.primary_title());
                 let guessit_alt_titles = guessit_result.as_ref().and_then(|r| r.alternative_title.clone());
 
-                // Fetch movie details directly using TMDB ID
+                // Fetch movie details with fallback search logic
                 let tmdb = match self.tmdb_client.as_ref() {
                     Some(client) => client,
                     None => {
@@ -1676,8 +1782,23 @@ impl Planner {
                         return Ok(None);
                     }
                 };
-                let details = tmdb.get_movie_details(tmdb_id).await?;
-                let credits = tmdb.get_movie_credits(tmdb_id).await.ok();
+                
+                let (details, credits, correct_tmdb_id) = match self.get_movie_with_fallback(
+                    tmdb,
+                    tmdb_id,
+                    info.imdb_id.as_deref(),
+                    info.title.as_deref().unwrap_or(""),
+                    Some(info.year),
+                    info.original_title.as_deref(),
+                ).await {
+                    Ok(result) => result,
+                    Err(e) => {
+                        tracing::warn!("[ORGANIZED] Failed to get movie metadata for {}: {}", info.title.as_deref().unwrap_or("Unknown"), e);
+                        return Ok(None);
+                    }
+                };
+                
+                let tmdb_id = correct_tmdb_id;
 
                 // Fetch collection details if movie belongs to a collection
                 let collection_total = if let Some(ref collection) = details.belongs_to_collection {
@@ -2058,6 +2179,7 @@ impl Planner {
         season_cache: &SeasonEpisodesCache,
         precomputed_ffprobe: Option<&VideoMetadata>,
     ) -> Result<Option<(PlanItem, Option<TvSeriesMetadata>)>> {
+        tracing::info!("[ORGANIZED-FOLDER] START: folder_info.title={}, tmdb_id={}, season_imdb_id={:?}", folder_info.title, folder_info.tmdb_id, folder_info.season_imdb_id);
         // Extract season and episode from filename
         let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
 
@@ -2099,21 +2221,19 @@ impl Planner {
             }
         };
 
-        let show_meta = match tmdb.get_tv_details(folder_info.tmdb_id).await {
-            Ok(details) => {
-                // If TMDB response is missing id, use folder_info.tmdb_id as fallback
-                if details.id.is_none() {
-                    tracing::warn!(
-                        "[ORGANIZED-FOLDER] TMDB returned data without id for tmdb{}, using folder id as fallback",
-                        folder_info.tmdb_id
-                    );
-                }
-                self.build_tv_series_metadata_from_details(&details, tmdb, Some(folder_info.tmdb_id), Some(&folder_info.title), folder_info.year, folder_info.original_title.as_deref()).await
-            },
+        let show_meta = match self.get_tv_show_with_fallback(
+            tmdb,
+            folder_info.tmdb_id,
+            folder_info.imdb_id.as_deref(),
+            &folder_info.title,
+            folder_info.year,
+            folder_info.original_title.as_deref(),
+        ).await {
+            Ok(meta) => meta,
             Err(e) => {
                 tracing::warn!(
-                    "[ORGANIZED-FOLDER] Failed to fetch TV details for tmdb{}: {}",
-                    folder_info.tmdb_id,
+                    "[ORGANIZED-FOLDER] Failed to get TV metadata for {}: {}",
+                    folder_info.title,
                     e
                 );
                 return Ok(None);
@@ -2126,7 +2246,9 @@ impl Planner {
             .await;
 
         // Get season metadata
-        let season_meta = match tmdb.get_season_details(folder_info.tmdb_id, season).await {
+        // Note: For anthology series (like "Love, Death & Robots"), each season has its own IMDB ID
+        // We need to fetch season external_ids to get the correct IMDB ID
+        let season_meta = match tmdb.get_season_details(show_meta.tmdb_id, season).await {
             Ok(season_details) => {
                 // Use season from filename if TMDB season_number is 0 or None
                 let sn = if season_details.season_number.unwrap_or(0) == 0 {
@@ -2134,6 +2256,33 @@ impl Planner {
                 } else {
                     season_details.season_number.unwrap_or(season)
                 };
+                
+                // Try to get season external_ids (important for anthology series)
+                // This will return season-specific IMDB ID if available
+                // Priority: folder_info.season_imdb_id > TMDB season external_ids > TV show IMDB ID
+                let season_imdb_id = if let Some(ref folder_season_imdb) = folder_info.season_imdb_id {
+                    tracing::info!("[ORGANIZED-FOLDER] Using season IMDB ID from folder: {}", folder_season_imdb);
+                    Some(folder_season_imdb.clone())
+                } else {
+                    tracing::warn!("[ORGANIZED-FOLDER] folder_info.season_imdb_id is None! Using TMDB API...");
+                    match tmdb.get_season_external_ids(show_meta.tmdb_id, season).await {
+                        Ok(external_ids) => {
+                            tracing::info!(
+                                "[ORGANIZED-FOLDER] Season {} external_ids: imdb={:?}, tvdb={:?}",
+                                season, external_ids.imdb_id, external_ids.tvdb_id
+                            );
+                            // Use season's IMDB ID if available (for anthology series)
+                            // Otherwise, fallback to TV show's IMDB ID
+                            external_ids.imdb_id.or_else(|| show_meta.imdb_id.clone())
+                        },
+                        Err(e) => {
+                            tracing::debug!("[ORGANIZED-FOLDER] No season external_ids for S{}: {}", season, e);
+                            // Fallback to TV show's IMDB ID
+                            show_meta.imdb_id.clone()
+                        }
+                    }
+                };
+                
                 Some(SeasonMetadata {
                     season_number: sn,
                     name: season_details.name.clone().unwrap_or_default(),
@@ -2142,6 +2291,8 @@ impl Planner {
                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                     episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                     tmdb_id: season_details.id.unwrap_or_default(),
+                    // Include season-specific IMDB ID for anthology series
+                    imdb_id: season_imdb_id,
                 })
             },
             Err(e) => {
@@ -2273,7 +2424,7 @@ impl Planner {
                 // Process each season
                 for (season_num, season_path) in seasons {
                     // Fetch season metadata
-                    let season_meta = match tmdb.get_season_details(folder_info.tmdb_id, season_num).await {
+                    let season_meta = match tmdb.get_season_details(show_meta.tmdb_id, season_num).await {
                         Ok(season_details) => Some(SeasonMetadata {
                             season_number: season_details.season_number.unwrap_or_default(),
                             name: season_details.name.clone().unwrap_or_default(),
@@ -2282,6 +2433,7 @@ impl Planner {
                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                             episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                             tmdb_id: season_details.id.unwrap_or_default(),
+                            imdb_id: show_meta.imdb_id.clone(),
                         }),
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for tmdb{}: {}", season_num, folder_info.tmdb_id, e);
@@ -2370,6 +2522,7 @@ impl Planner {
         &self,
         start_dir: &Path,
     ) -> Option<parser::OrganizedTvSeriesFolderInfo> {
+        tracing::info!("[FIND-FOLDER] Called with start_dir: {:?}", start_dir);
         // Find all possible organized TV folders, then prefer TV Show level over Season level
         let mut season_folder_info: Option<parser::OrganizedTvSeriesFolderInfo> = None;
         let mut tvshow_folder_info: Option<parser::OrganizedTvSeriesFolderInfo> = None;
@@ -2378,8 +2531,10 @@ impl Planner {
 
         while let Some(dir) = current {
             if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
+                println!("[FIND-FOLDER] Checking folder: {}", name);
                 // Try to parse as organized folder
                 if let Some(info) = parser::parse_organized_tv_series_folder(name) {
+                    println!("[FIND-FOLDER] Parsed folder '{}': tmdb={}, season_imdb={:?}", name, info.tmdb_id, info.season_imdb_id);
                     // Check if this is a Season folder (starts with [S or [Season)
                     let is_season_folder = name.starts_with("[S") && name.contains("][Season ");
                     
@@ -2408,7 +2563,9 @@ impl Planner {
                 } else {
                     // Try to parse as non-standard TV Show folder (e.g., "爱，死亡和机器人 第四季 Love, Death & Robots Season 4 (2025)")
                     // This is a TV Show level folder even if it doesn't match organized folder pattern
-                    let is_likely_tvshow_folder = name.contains("Season") || name.contains("Love, Death & Robots") || name.contains("Terminal List");
+                    // But exclude season folders that start with [Sxx][Season xx]
+                    let is_season_folder = name.starts_with("[S") && name.contains("][Season ");
+                    let is_likely_tvshow_folder = !is_season_folder && (name.contains("Season") || name.contains("Love, Death & Robots") || name.contains("Terminal List"));
                     
                     if is_likely_tvshow_folder {
                         // Try to extract title from this folder
@@ -2425,6 +2582,7 @@ impl Planner {
                                     year: season_info.year,
                                     imdb_id: season_info.imdb_id.clone(),
                                     tmdb_id: season_info.tmdb_id,
+                                    season_imdb_id: season_info.season_imdb_id.clone(),
                                 };
                                 tvshow_folder_info = Some(chinese_info);
                                 break;
@@ -2437,6 +2595,7 @@ impl Planner {
                                     year: parser::extract_year_from_dirname(name),
                                     imdb_id: None,
                                     tmdb_id: 0, // Will be overridden by TMDB ID from filename
+                                    season_imdb_id: None,
                                 });
                                 break;
                             }
@@ -2504,6 +2663,224 @@ impl Planner {
         }
         
         Ok(self.build_tv_series_metadata_from_details(&details, tmdb, None, None, None, None).await)
+    }
+
+    /// Get TV show metadata with fallback search logic
+    /// 
+    /// Priority:
+    /// 1. Try TMDB ID directly
+    /// 2. If failed, try IMDB ID via /find API
+    /// 3. If failed, try title search
+    async fn get_tv_show_with_fallback(
+        &self,
+        tmdb: &crate::services::tmdb::TmdbClient,
+        tmdb_id: u64,
+        imdb_id: Option<&str>,
+        title: &str,
+        year: Option<u16>,
+        original_title: Option<&str>,
+    ) -> std::result::Result<TvSeriesMetadata, String> {
+        // Step 1: Try TMDB ID directly
+        tracing::info!("[TV-FALLBACK] Attempting to fetch TV show using TMDB ID: {}", tmdb_id);
+        match tmdb.get_tv_details(tmdb_id).await {
+            Ok(details) => {
+                if details.id.is_some() {
+                    // Verify the TMDB data matches our expectations
+                    let tmdb_name = details.name.as_deref().unwrap_or("");
+                    let tmdb_original = details.original_name.as_deref().unwrap_or("");
+                    let tmdb_year = details.first_air_date.as_ref().and_then(|d| d.split('-').next()).and_then(|y| y.parse().ok());
+                    
+                    // Check if title matches (case-insensitive)
+                    let title_match = !tmdb_name.is_empty() && (
+                        tmdb_name.eq_ignore_ascii_case(title) ||
+                        tmdb_original.eq_ignore_ascii_case(title) ||
+                        tmdb_name.eq_ignore_ascii_case(original_title.unwrap_or("")) ||
+                        tmdb_original.eq_ignore_ascii_case(original_title.unwrap_or(""))
+                    );
+                    
+                    // Check if year matches (if provided)
+                    let year_match = year.map(|y| tmdb_year == Some(y)).unwrap_or(true);
+                    
+                    // Check if IMDB ID matches (if provided)
+                    let tmdb_imdb = details.external_ids.as_ref().and_then(|e| e.imdb_id.as_deref());
+                    let imdb_match = imdb_id.map(|i| tmdb_imdb == Some(i)).unwrap_or(true);
+                    
+                    // Always log TMDB's IMDB ID for debugging
+                    tracing::info!("[TV-FALLBACK] TMDB {} returned: title={:?}, year={:?}, imdb={:?}", 
+                        tmdb_id, tmdb_name, tmdb_year, tmdb_imdb);
+                    
+                    if !title_match || !year_match || !imdb_match {
+                        tracing::warn!(
+                            "[TV-FALLBACK] TMDB {} data mismatch! title={:?} vs expected={}, year={:?} vs expected={:?}, imdb={:?} vs expected={:?}",
+                            tmdb_id, tmdb_name, title, tmdb_year, year, tmdb_imdb, imdb_id
+                        );
+                    } else {
+                        tracing::info!("[TV-FALLBACK] Successfully fetched TV show via TMDB ID: {} (verified: title={}, year={:?}, imdb={:?})", 
+                            tmdb_id, tmdb_name, tmdb_year, tmdb_imdb);
+                    }
+                    
+                    return Ok(self.build_tv_series_metadata_from_details(
+                        &details,
+                        tmdb,
+                        Some(tmdb_id),
+                        Some(title),
+                        year,
+                        original_title,
+                    ).await);
+                } else {
+                    tracing::warn!("[TV-FALLBACK] TMDB ID {} returned data without id. name={:?}, overview={:?}", 
+                        tmdb_id, details.name, details.overview.as_ref().map(|s| if s.len() > 100 { format!("{}...", &s[..100]) } else { s.clone() }));
+                }
+            },
+            Err(e) => {
+                tracing::warn!("[TV-FALLBACK] Failed to fetch TV show via TMDB ID {}: {}", tmdb_id, e);
+            }
+        }
+
+        // Step 2: Try IMDB ID via /find API
+        if let Some(imdb) = imdb_id {
+            tracing::info!("[TV-FALLBACK] Attempting to find TV show using IMDB ID: {}", imdb);
+            match tmdb.find_by_external_id(imdb, crate::services::tmdb::ExternalIdType::Imdb).await {
+                Ok(find_result) => {
+                    if let Some(tv_result) = find_result.tv_results.first() {
+                        let correct_tmdb_id = tv_result.id;
+                        tracing::info!("[TV-FALLBACK] Found TV show via IMDB ID: {} -> tmdb{}", imdb, correct_tmdb_id);
+                        match tmdb.get_tv_details(correct_tmdb_id).await {
+                            Ok(details) => {
+                                return Ok(self.build_tv_series_metadata_from_details(
+                                    &details,
+                                    tmdb,
+                                    Some(correct_tmdb_id),
+                                    Some(title),
+                                    year,
+                                    original_title,
+                                ).await);
+                            }
+                            Err(e) => {
+                                tracing::warn!("[TV-FALLBACK] Failed to fetch details for tmdb{} found via IMDB: {}", correct_tmdb_id, e);
+                            }
+                        }
+                    } else {
+                        tracing::warn!("[TV-FALLBACK] No TV results found for IMDB ID: {}", imdb);
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[TV-FALLBACK] Failed to search by IMDB ID {}: {}", imdb, e);
+                }
+            }
+        }
+
+        // Step 3: Try title search using common fallback logic
+        tracing::info!("[TV-FALLBACK] Attempting title search for: {}", title);
+        
+        let tv_search = TvMediaSearch;
+        let match_result = search_with_fallback(&tv_search, tmdb, title, original_title, year)
+            .await
+            .map_err(|e| format!("Search failed: {}", e))?;
+
+        if let Some(best_result) = match_result {
+            let correct_tmdb_id = best_result.id;
+            tracing::info!("[TV-FALLBACK] Found TV show via title search: {} -> tmdb{}", title, correct_tmdb_id);
+            
+            match tmdb.get_tv_details(correct_tmdb_id).await {
+                Ok(details) => {
+                    return Ok(self.build_tv_series_metadata_from_details(
+                        &details,
+                        tmdb,
+                        Some(correct_tmdb_id),
+                        Some(title),
+                        year,
+                        original_title,
+                    ).await);
+                }
+                Err(e) => {
+                    return Err(format!("Failed to fetch details for found TV show: {}", e));
+                }
+            }
+        }
+
+        Err(format!("No matching TV show found for title: {}", title))
+    }
+
+    /// Get movie metadata with fallback search logic
+    /// 
+    /// Priority:
+    /// 1. Try TMDB ID directly
+    /// 2. If failed, try IMDB ID via /find API
+    /// 3. If failed, try title search
+    async fn get_movie_with_fallback(
+        &self,
+        tmdb: &crate::services::tmdb::TmdbClient,
+        tmdb_id: u64,
+        imdb_id: Option<&str>,
+        title: &str,
+        year: Option<u16>,
+        original_title: Option<&str>,
+    ) -> std::result::Result<(crate::services::tmdb::MovieDetails, Option<crate::services::tmdb::Credits>, u64), String> {
+        // Step 1: Try TMDB ID directly
+        tracing::info!("[MOVIE-FALLBACK] Attempting to fetch movie using TMDB ID: {}", tmdb_id);
+        match tmdb.get_movie_details(tmdb_id).await {
+            Ok(details) => {
+                tracing::info!("[MOVIE-FALLBACK] Successfully fetched movie via TMDB ID: {}", tmdb_id);
+                let credits = tmdb.get_movie_credits(tmdb_id).await.ok();
+                return Ok((details, credits, tmdb_id));
+            },
+            Err(e) => {
+                tracing::warn!("[MOVIE-FALLBACK] Failed to fetch movie via TMDB ID {}: {}", tmdb_id, e);
+            }
+        }
+
+        // Step 2: Try IMDB ID via /find API
+        if let Some(imdb) = imdb_id {
+            tracing::info!("[MOVIE-FALLBACK] Attempting to find movie using IMDB ID: {}", imdb);
+            match tmdb.find_by_external_id(imdb, crate::services::tmdb::ExternalIdType::Imdb).await {
+                Ok(find_result) => {
+                    if let Some(movie_result) = find_result.movie_results.first() {
+                        let correct_tmdb_id = movie_result.id;
+                        tracing::info!("[MOVIE-FALLBACK] Found movie via IMDB ID: {} -> tmdb{}", imdb, correct_tmdb_id);
+                        match tmdb.get_movie_details(correct_tmdb_id).await {
+                            Ok(details) => {
+                                let credits = tmdb.get_movie_credits(correct_tmdb_id).await.ok();
+                                return Ok((details, credits, correct_tmdb_id));
+                            }
+                            Err(e) => {
+                                tracing::warn!("[MOVIE-FALLBACK] Failed to fetch details for tmdb{} found via IMDB: {}", correct_tmdb_id, e);
+                            }
+                        }
+                    } else {
+                        tracing::warn!("[MOVIE-FALLBACK] No movie results found for IMDB ID: {}", imdb);
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[MOVIE-FALLBACK] Failed to search by IMDB ID {}: {}", imdb, e);
+                }
+            }
+        }
+
+        // Step 3: Try title search using common fallback logic
+        tracing::info!("[MOVIE-FALLBACK] Attempting title search for: {}", title);
+        
+        let movie_search = MovieMediaSearch;
+        let match_result = search_with_fallback(&movie_search, tmdb, title, original_title, year)
+            .await
+            .map_err(|e| format!("Search failed: {}", e))?;
+
+        if let Some(best_result) = match_result {
+            let correct_tmdb_id = best_result.id;
+            tracing::info!("[MOVIE-FALLBACK] Found movie via title search: {} -> tmdb{}", title, correct_tmdb_id);
+            
+            match tmdb.get_movie_details(correct_tmdb_id).await {
+                Ok(details) => {
+                    let credits = tmdb.get_movie_credits(correct_tmdb_id).await.ok();
+                    return Ok((details, credits, correct_tmdb_id));
+                }
+                Err(e) => {
+                    return Err(format!("Failed to fetch details for found movie: {}", e));
+                }
+            }
+        }
+
+        Err(format!("No matching movie found for title: {}", title))
     }
 
     /// Build TvSeriesMetadata from TMDB TvDetails (used for organized files with TMDB ID).
@@ -2709,10 +3086,10 @@ impl Planner {
             })
             .unwrap_or_default();
 
-        let imdb_id = details
-            .external_ids
-            .as_ref()
-            .and_then(|e| e.imdb_id.clone());
+        // Use IMDB ID from TMDB's external_ids
+        // Note: TMDB's external_ids may return the series-level IMDB ID (usually Season 1's)
+        // But we trust TMDB's data as the source of truth
+        let imdb_id = details.external_ids.as_ref().and_then(|e| e.imdb_id.clone());
 
         let year = details
             .first_air_date
@@ -3083,6 +3460,7 @@ impl Planner {
                                     poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                     episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                                     tmdb_id: season_details.id.unwrap_or_default(),
+                                    imdb_id: show_meta.imdb_id.clone(),
                                 });
                             }
                             
@@ -3206,6 +3584,7 @@ impl Planner {
                                 poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                 episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                                 tmdb_id: season_details.id.unwrap_or_default(),
+                                imdb_id: show_meta.imdb_id.clone(),
                             });
                         }
                     }
@@ -3245,6 +3624,7 @@ impl Planner {
                                             poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
                                             episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
                                             tmdb_id: season_details.id.unwrap_or_default(),
+                                            imdb_id: show_meta.imdb_id.clone(),
                                         });
                                     }
                                 }
@@ -6092,8 +6472,18 @@ impl Planner {
                     .unwrap_or(1);
                 
                 // Get season metadata for folder generation
+                // Use show.tmdb_id as fallback if season_meta.tmdb_id is 0
+                let effective_tmdb_id = if season.as_ref().map_or(true, |s| s.tmdb_id == 0) {
+                    show.tmdb_id
+                } else {
+                    season.as_ref().map(|s| s.tmdb_id).unwrap_or(show.tmdb_id)
+                };
+                
                 let season_folder_name = if let Some(season_meta) = season {
                     let sort_prefix = gen_folder::generate_sort_prefix(&show.name, &show.original_language);
+                    // Use season's IMDB ID if available (for anthology series)
+                    // Otherwise fallback to TV show's IMDB ID
+                    let effective_imdb_id = season_meta.imdb_id.as_deref().or(show.imdb_id.as_deref());
                     // Use season's air_date only (no fallback)
                     gen_folder::generate_season_folder(
                         season_meta.season_number,
@@ -6101,8 +6491,8 @@ impl Planner {
                         &sort_prefix.to_string(),
                         &show.name,
                         &show.original_name,
-                        show.imdb_id.as_deref(),
-                        season_meta.tmdb_id,
+                        effective_imdb_id,
+                        effective_tmdb_id,
                         season_meta.air_date.as_deref(),
                     )
                 } else {
@@ -6869,84 +7259,6 @@ mod tests {
     }
 
     // test_save_and_load_plan moved to tests/io_tests.rs
-
-    #[test]
-    fn test_language_code_to_name() {
-        // Major languages
-        assert_eq!(language_code_to_name("en"), "English");
-        assert_eq!(language_code_to_name("zh"), "Chinese");
-        assert_eq!(language_code_to_name("ja"), "Japanese");
-        assert_eq!(language_code_to_name("ko"), "Korean");
-        assert_eq!(language_code_to_name("fr"), "French");
-        assert_eq!(language_code_to_name("de"), "German");
-        assert_eq!(language_code_to_name("es"), "Spanish");
-        assert_eq!(language_code_to_name("it"), "Italian");
-
-        // Case insensitive
-        assert_eq!(language_code_to_name("EN"), "English");
-        assert_eq!(language_code_to_name("ZH"), "Chinese");
-
-        // Asian languages
-        assert_eq!(language_code_to_name("th"), "Thai");
-        assert_eq!(language_code_to_name("vi"), "Vietnamese");
-        assert_eq!(language_code_to_name("id"), "Indonesian");
-
-        // Chinese variants
-        assert_eq!(language_code_to_name("cn"), "Chinese");
-        assert_eq!(language_code_to_name("yue"), "Cantonese");
-
-        // Unknown language - returns uppercase code
-        assert_eq!(language_code_to_name("xx"), "XX");
-        assert_eq!(language_code_to_name("unknown"), "UNKNOWN");
-    }
-
-    #[test]
-    fn test_format_language_folder() {
-        // Standard cases
-        assert_eq!(format_language_folder("en"), "EN_English");
-        assert_eq!(format_language_folder("zh"), "ZH_Chinese");
-        assert_eq!(format_language_folder("ja"), "JA_Japanese");
-        assert_eq!(format_language_folder("ko"), "KO_Korean");
-        assert_eq!(format_language_folder("fr"), "FR_French");
-
-        // Case insensitive input
-        assert_eq!(format_language_folder("EN"), "EN_English");
-        assert_eq!(format_language_folder("ZH"), "ZH_Chinese");
-
-        // TMDB quirk: "cn" should normalize to "zh"
-        assert_eq!(format_language_folder("cn"), "ZH_Chinese");
-        assert_eq!(format_language_folder("CN"), "ZH_Chinese");
-
-        // Unknown language
-        assert_eq!(format_language_folder("xx"), "XX_XX");
-    }
-
-    #[test]
-    fn test_normalize_language_code() {
-        assert_eq!(normalize_language_code("cn"), "zh");
-        assert_eq!(normalize_language_code("CN"), "zh");
-        assert_eq!(normalize_language_code("zh"), "zh");
-        assert_eq!(normalize_language_code("en"), "en");
-        assert_eq!(normalize_language_code("ja"), "ja");
-    }
-
-    #[test]
-    fn test_country_code_to_name() {
-        // Major countries (used for NFO metadata)
-        assert_eq!(country_code_to_name("US"), "United States");
-        assert_eq!(country_code_to_name("CN"), "China");
-        assert_eq!(country_code_to_name("JP"), "Japan");
-        assert_eq!(country_code_to_name("KR"), "South Korea");
-        assert_eq!(country_code_to_name("GB"), "United Kingdom");
-        assert_eq!(country_code_to_name("ID"), "Indonesia");
-
-        // Case insensitive
-        assert_eq!(country_code_to_name("us"), "United States");
-        assert_eq!(country_code_to_name("cn"), "China");
-
-        // Unknown country - returns uppercase code
-        assert_eq!(country_code_to_name("XX"), "XX");
-    }
 
     #[test]
     fn test_add_auxiliary_operations_with_media_titles() {

@@ -14,6 +14,7 @@ fn test_season_metadata_structure() {
         poster_url: Some("https://example.com/poster.jpg".to_string()),
         episode_count: 10,
         tmdb_id: 123456,
+        imdb_id: None,
     };
     
     assert_eq!(season_meta.season_number, 1);
@@ -22,6 +23,7 @@ fn test_season_metadata_structure() {
     assert!(season_meta.air_date.is_some());
     assert!(season_meta.poster_url.is_some());
     assert_eq!(season_meta.episode_count, 10);
+    assert!(season_meta.imdb_id.is_none());
     
     println!("Test passed: SeasonMetadata structure is valid!");
 }
@@ -37,6 +39,7 @@ fn test_plan_item_with_season_metadata() {
         poster_url: None,
         episode_count: 13,
         tmdb_id: 123457,
+        imdb_id: None,
     }));
     
     assert!(plan_item.season_metadata.is_some());
@@ -45,6 +48,27 @@ fn test_plan_item_with_season_metadata() {
     assert_eq!(plan_item.season_metadata.as_ref().unwrap().episode_count, 13);
     
     println!("Test passed: PlanItem can hold season metadata!");
+}
+
+#[test]
+fn test_season_metadata_with_imdb_id() {
+    // Test that SeasonMetadata can hold season-level IMDB ID (for anthology series)
+    let season_meta = SeasonMetadata {
+        season_number: 4,
+        name: "Season 4".to_string(),
+        overview: Some("This is season 4".to_string()),
+        air_date: Some("2025-05-15".to_string()),
+        poster_url: Some("https://example.com/season4.jpg".to_string()),
+        episode_count: 10,
+        tmdb_id: 450504,
+        imdb_id: Some("tt21661768".to_string()),
+    };
+    
+    assert_eq!(season_meta.season_number, 4);
+    assert_eq!(season_meta.imdb_id, Some("tt21661768".to_string()));
+    assert_eq!(season_meta.tmdb_id, 450504);
+    
+    println!("Test passed: SeasonMetadata can hold season-level IMDB ID!");
 }
 
 #[test]
@@ -68,6 +92,7 @@ fn test_season_metadata_with_none_values() {
         poster_url: None,
         episode_count: 8,
         tmdb_id: 123458,
+        imdb_id: None,
     };
     
     assert_eq!(season_meta.season_number, 3);
@@ -76,6 +101,7 @@ fn test_season_metadata_with_none_values() {
     assert!(season_meta.air_date.is_none());
     assert!(season_meta.poster_url.is_none());
     assert_eq!(season_meta.episode_count, 8);
+    assert!(season_meta.imdb_id.is_none());
     
     println!("Test passed: SeasonMetadata works with None values!");
 }

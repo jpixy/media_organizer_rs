@@ -231,4 +231,7 @@ pub struct SeasonMetadata {
     pub episode_count: u16,
     /// TMDB Season ID.
     pub tmdb_id: u64,
+    /// IMDB ID (important for anthology series where each season has its own IMDB ID)
+    /// Falls back to TV Show's IMDB ID if not available.
+    pub imdb_id: Option<String>,
 }

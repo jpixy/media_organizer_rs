@@ -45,7 +45,7 @@ fn test_find_priority_chinese_title_priority_order() {
         ("CN".to_string(), "简体中文".to_string()),
     ];
     
-    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    let result = media_organizer::utils::locale::find_priority_chinese_title(&candidates);
     
     // Should select CN first
     assert_eq!(result, Some("简体中文".to_string()));
@@ -59,7 +59,7 @@ fn test_find_priority_chinese_title_fallback() {
         ("KR".to_string(), "한국어".to_string()),
     ];
     
-    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    let result = media_organizer::utils::locale::find_priority_chinese_title(&candidates);
     
     // Should fallback to first available
     assert_eq!(result, Some("日本語".to_string()));
@@ -70,7 +70,7 @@ fn test_find_priority_chinese_title_empty() {
     // Test with empty candidates
     let candidates: Vec<(String, String)> = vec![];
     
-    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    let result = media_organizer::utils::locale::find_priority_chinese_title(&candidates);
     
     // Should return None
     assert_eq!(result, None);
@@ -84,7 +84,7 @@ fn test_find_priority_chinese_title_partial_priority() {
         ("TW".to_string(), "繁體中文".to_string()),
     ];
     
-    let result = media_organizer::core::planner::find_priority_chinese_title(&candidates);
+    let result = media_organizer::utils::locale::find_priority_chinese_title(&candidates);
     
     // Should select HK (higher priority than TW)
     assert_eq!(result, Some("香港繁體".to_string()));
