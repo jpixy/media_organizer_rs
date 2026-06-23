@@ -474,6 +474,59 @@ fn build_search_url(&self, endpoint: &str, query: &str, year_param: &str, langua
 - 统一了 URL 构建逻辑，便于维护和修改
 - 提高了代码可读性和一致性
 
+#### 4.4.5.4 代码优化：函数参数结构体化
+
+为解决 `generate_target_info` 函数参数过多（8个参数）的问题，引入了参数结构体：
+
+**位置**: `src/core/planner.rs`
+
+```rust
+/// Parameters for generate_target_info function
+#[derive(Debug)]
+struct GenerateTargetInfoParams<'a> {
+    video: &'a VideoFile,
+    movie_metadata: &'a Option<MovieMetadata>,
+    tv_series_metadata: &'a Option<(TvSeriesMetadata, Option<EpisodeMetadata>, Option<SeasonMetadata>)>,
+    parsed: &'a ParsedFilename,
+    video_metadata: &'a VideoMetadata,
+    target: &'a Path,
+    media_type: MediaType,
+}
+```
+
+**使用示例**:
+
+```rust
+// 重构前（8个参数）
+let (target_info, operations, poster_download) = self.generate_target_info(
+    video,
+    &Some(movie_metadata.clone()),
+    &None,
+    &parsed,
+    &video_metadata,
+    target,
+    media_type,
+)?;
+
+// 重构后（1个参数结构体）
+let params = GenerateTargetInfoParams {
+    video,
+    movie_metadata: &Some(movie_metadata.clone()),
+    tv_series_metadata: &None,
+    parsed: &parsed,
+    video_metadata: &video_metadata,
+    target,
+    media_type,
+};
+let (target_info, operations, poster_download) = self.generate_target_info(&params)?;
+```
+
+**优化效果**:
+- 消除了 `clippy::too_many_arguments` 警告
+- 提高了代码可读性，参数含义一目了然
+- 便于扩展和维护，添加新参数只需修改结构体
+- 所有7个调用点已更新为使用新的参数结构体
+
 ### 4.4.6 ID 搜索与验证逻辑
 
 程序使用完整的 fallback 搜索逻辑来处理 ID 匹配问题，包括目录中 TMDB ID 错误的情况。

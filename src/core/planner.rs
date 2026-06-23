@@ -41,6 +41,18 @@ use uuid::Uuid;
 type SeasonEpisodesCache =
     Arc<RwLock<HashMap<(u64, u16), Vec<crate::services::tmdb::EpisodeInfo>>>>;
 
+/// Parameters for generate_target_info function
+#[derive(Debug)]
+struct GenerateTargetInfoParams<'a> {
+    video: &'a VideoFile,
+    movie_metadata: &'a Option<MovieMetadata>,
+    tv_series_metadata: &'a Option<(TvSeriesMetadata, Option<EpisodeMetadata>, Option<SeasonMetadata>)>,
+    parsed: &'a ParsedFilename,
+    video_metadata: &'a VideoMetadata,
+    target: &'a Path,
+    media_type: MediaType,
+}
+
 // ============================================================================
 // Media Search Trait and Common Fallback Logic
 // ============================================================================
@@ -762,14 +774,17 @@ impl Planner {
                     };
 
                     // Generate target info
-                    let (target_info, operations, poster_download) = match self.generate_target_info(
+                    let params = GenerateTargetInfoParams {
                         video,
-                        &Some(movie_metadata.clone()),
-                        &None,
-                        &parsed,
-                        &video_metadata,
+                        movie_metadata: &Some(movie_metadata.clone()),
+                        tv_series_metadata: &None,
+                        parsed: &parsed,
+                        video_metadata: &video_metadata,
                         target,
                         media_type,
+                    };
+                    let (target_info, operations, poster_download) = match self.generate_target_info(
+                        &params,
                     )? {
                         Some(result) => result,
                         None => return Ok(None),
@@ -1076,14 +1091,17 @@ impl Planner {
 
                             // Generate target info - tv_series_metadata needs to be a tuple
                             let tv_series_tuple = (show_metadata.clone(), episode_metadata.clone(), season_metadata.clone());
-                            let (target_info, operations, poster_download) = match self.generate_target_info(
+                            let params = GenerateTargetInfoParams {
                                 video,
-                                &None,
-                                &Some(tv_series_tuple),
-                                &parsed,
-                                &video_metadata,
+                                movie_metadata: &None,
+                                tv_series_metadata: &Some(tv_series_tuple),
+                                parsed: &parsed,
+                                video_metadata: &video_metadata,
                                 target,
                                 media_type,
+                            };
+                            let (target_info, operations, poster_download) = match self.generate_target_info(
+                                &params,
                             )? {
                                 Some(result) => result,
                                 None => return Ok(None),
@@ -1185,14 +1203,17 @@ impl Planner {
                 };
 
                 // Generate target info and operations
-                let (target_info, operations, poster_download) = match self.generate_target_info(
+                let params = GenerateTargetInfoParams {
                     video,
-                    &Some(movie_metadata.clone()),
-                    &None,
-                    &parsed,
-                    &video_metadata,
+                    movie_metadata: &Some(movie_metadata.clone()),
+                    tv_series_metadata: &None,
+                    parsed: &parsed,
+                    video_metadata: &video_metadata,
                     target,
                     media_type,
+                };
+                let (target_info, operations, poster_download) = match self.generate_target_info(
+                    &params,
                 )? {
                     Some(result) => result,
                     None => return Ok(None),
@@ -1567,14 +1588,17 @@ impl Planner {
             .as_ref()
             .map(|show| (show.clone(), episode_metadata.clone(), season_metadata.clone()));
 
-        let (target_info, operations, poster_download) = match self.generate_target_info(
+        let params = GenerateTargetInfoParams {
             video,
-            &movie_metadata,
-            &tv_series_with_episode,
-            &parsed,
-            &video_metadata,
+            movie_metadata: &movie_metadata,
+            tv_series_metadata: &tv_series_with_episode,
+            parsed: &parsed,
+            video_metadata: &video_metadata,
             target,
             media_type,
+        };
+        let (target_info, operations, poster_download) = match self.generate_target_info(
+            &params,
         )? {
             Some(result) => result,
             None => return Ok(None), // Skip: cannot determine country
@@ -1977,14 +2001,17 @@ impl Planner {
             .as_ref()
             .map(|show| (show.clone(), episode_metadata.clone(), season_metadata.clone()));
 
-        let (target_info, operations, poster_download) = match self.generate_target_info(
+        let params = GenerateTargetInfoParams {
             video,
-            &movie_metadata,
-            &tv_series_with_episode,
-            &parsed,
-            &video_metadata,
+            movie_metadata: &movie_metadata,
+            tv_series_metadata: &tv_series_with_episode,
+            parsed: &parsed,
+            video_metadata: &video_metadata,
             target,
             media_type,
+        };
+        let (target_info, operations, poster_download) = match self.generate_target_info(
+            &params,
         )? {
             Some(result) => result,
             None => return Ok(None),
@@ -2397,15 +2424,17 @@ impl Planner {
 
         // Generate target info
         let tv_series_with_episode = Some((show_meta.clone(), ep_meta.clone(), season_meta.clone()));
-
-        let (target_info, operations, poster_download) = match self.generate_target_info(
+        let params = GenerateTargetInfoParams {
             video,
-            &None,
-            &tv_series_with_episode,
-            &parsed,
-            &video_metadata,
+            movie_metadata: &None,
+            tv_series_metadata: &tv_series_with_episode,
+            parsed: &parsed,
+            video_metadata: &video_metadata,
             target,
-            MediaType::TvSeries,
+            media_type: MediaType::TvSeries,
+        };
+        let (target_info, operations, poster_download) = match self.generate_target_info(
+            &params,
         )? {
             Some(result) => result,
             None => return Ok(None),
@@ -6175,16 +6204,17 @@ impl Planner {
         };
 
         // Generate target info using the cached movie metadata
+        let params = GenerateTargetInfoParams {
+            video,
+            movie_metadata: &Some(cached_movie.clone()),
+            tv_series_metadata: &None,
+            parsed: &parsed,
+            video_metadata: &video_metadata,
+            target,
+            media_type: MediaType::Movies,
+        };
         let (target_info, operations, poster_download) = self
-            .generate_target_info(
-                video,
-                &Some(cached_movie.clone()),
-                &None,
-                &parsed,
-                &video_metadata,
-                target,
-                MediaType::Movies,
-            )?
+            .generate_target_info(&params)?
             .ok_or_else(|| {
                 crate::Error::other("Failed to generate target info for sibling movie")
             })?;
@@ -6275,47 +6305,40 @@ impl Planner {
 
     /// Generate target path information and operations.
     /// Returns None if country information cannot be determined (skip rather than wrong match).
-    #[allow(clippy::too_many_arguments)]
     fn generate_target_info(
         &self,
-        video: &VideoFile,
-        movie_metadata: &Option<MovieMetadata>,
-        tv_series_metadata: &Option<(TvSeriesMetadata, Option<EpisodeMetadata>, Option<SeasonMetadata>)>,
-        parsed: &ParsedFilename,
-        video_metadata: &VideoMetadata,
-        target: &Path,
-        media_type: MediaType,
+        params: &GenerateTargetInfoParams<'_>,
     ) -> Result<Option<(TargetInfo, Vec<Operation>, Option<PosterDownloadStatus>)>> {
         let mut operations = Vec::new();
 
         // Get file extension
-        let extension = video
+        let extension = params.video
             .path
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("mkv");
 
-        let (folder_name, filename, nfo_name, season_folder) = match media_type {
+        let (folder_name, filename, nfo_name, season_folder) = match params.media_type {
             MediaType::Movies => {
-                let metadata = movie_metadata
+                let metadata = params.movie_metadata
                     .as_ref()
                     .ok_or_else(|| crate::Error::other("Missing movie metadata"))?;
 
                 let folder = gen_folder::generate_movie_folder(metadata, None);
 
                 // Extract disc identifier from source filename (cd1, cd2, part1, part2, etc.)
-                let disc_id = gen_filename::extract_disc_identifier(&video.filename);
+                let disc_id = gen_filename::extract_disc_identifier(&params.video.filename);
                 if disc_id.is_some() {
                     tracing::debug!(
                         "[MULTI-DISC] Detected disc identifier '{}' in: {}",
                         disc_id.as_ref().unwrap(),
-                        video.filename
+                        params.video.filename
                     );
                 }
 
                 let filename = gen_filename::generate_movie_filename_with_disc(
                     metadata,
-                    video_metadata,
+                    params.video_metadata,
                     None,
                     disc_id.as_deref(),
                     extension,
@@ -6325,7 +6348,7 @@ impl Planner {
                 (folder, filename, nfo, None)
             }
             MediaType::TvSeries => {
-                let (show, episode, season) = tv_series_metadata
+                let (show, episode, season) = params.tv_series_metadata
                     .as_ref()
                     .ok_or_else(|| crate::Error::other("Missing TV show metadata"))?;
 
@@ -6337,7 +6360,7 @@ impl Planner {
                 let season_num = episode
                     .as_ref()
                     .map(|e| e.season_number)
-                    .or(parsed.season)
+                    .or(params.parsed.season)
                     .unwrap_or(1);
                 
                 // Get season metadata for folder generation
@@ -6372,7 +6395,7 @@ impl Planner {
                 let ep_num = episode
                     .as_ref()
                     .map(|e| e.episode_number)
-                    .or(parsed.episode)
+                    .or(params.parsed.episode)
                     .unwrap_or(1);
                 let ep_meta = episode.clone().unwrap_or_else(|| EpisodeMetadata {
                     season_number: season_num,
@@ -6387,7 +6410,7 @@ impl Planner {
                 let filename = gen_filename::generate_episode_filename(
                     show,
                     &ep_meta,
-                    video_metadata,
+                    params.video_metadata,
                     extension,
                 );
 
@@ -6401,14 +6424,14 @@ impl Planner {
 
         // Get language folder name (e.g., "ZH_Chinese", "EN_English", "JA_Japanese")
         // Uses original_language from TMDB for classification
-        let language_folder = match media_type {
+        let language_folder = match params.media_type {
             MediaType::Movies => {
-                movie_metadata
+                params.movie_metadata
                     .as_ref()
                     .map(|m| format_language_folder(&m.original_language))
             }
             MediaType::TvSeries => {
-                tv_series_metadata
+                params.tv_series_metadata
                     .as_ref()
                     .map(|(show, _, _)| format_language_folder(&show.original_language))
             }
@@ -6420,14 +6443,14 @@ impl Planner {
             None => {
                 tracing::warn!(
                     "Skipping {}: cannot determine language (prefer skip over wrong match)",
-                    video.filename
+                    params.video.filename
                 );
                 return Ok(None);
             }
         };
 
         // Build target paths with language folder layer
-        let language_path = target.join(&language_folder);
+        let language_path = params.target.join(&language_folder);
         let show_folder = language_path.join(&folder_name);
         let target_folder = if let Some(ref season_dir) = season_folder {
             show_folder.join(season_dir)
@@ -6451,33 +6474,33 @@ impl Planner {
         // Operation 2: Move video file
         operations.push(Operation {
             op: OperationType::Move,
-            from: Some(video.path.clone()),
+            from: Some(params.video.path.clone()),
             to: target_file.clone(),
             url: None,
             content_ref: None,
         });
 
         // Operation 2.5: Move subtitle, sample, extras, and poster files (keep original names)
-        let media_titles = match media_type {
+        let media_titles = match params.media_type {
             MediaType::Movies => {
-                movie_metadata.as_ref().map(|m| {
+                params.movie_metadata.as_ref().map(|m| {
                     let chinese_title = &m.title;
                     let original_title = &m.original_title;
                     (chinese_title.as_str(), original_title.as_str())
                 })
             }
             MediaType::TvSeries => {
-                tv_series_metadata.as_ref().map(|(show, _, _)| {
+                params.tv_series_metadata.as_ref().map(|(show, _, _)| {
                     let chinese_title = &show.name;
                     let original_title = &show.original_name;
                     (chinese_title.as_str(), original_title.as_str())
                 })
             }
         };
-        self.add_auxiliary_operations(&video.parent_dir, &target_folder, &mut operations, media_titles);
+        self.add_auxiliary_operations(&params.video.parent_dir, &target_folder, &mut operations, media_titles);
 
         // Operation 3: Create NFO file
-        match media_type {
+        match params.media_type {
             MediaType::Movies => {
                 if self.config.generate_nfo && self.config.generate_movie_nfo {
                     operations.push(Operation {
@@ -6490,7 +6513,7 @@ impl Planner {
                 }
             }
             MediaType::TvSeries => {
-                let (show, _, _) = tv_series_metadata.as_ref().unwrap();
+                let (show, _, _) = params.tv_series_metadata.as_ref().unwrap();
                 
                 // Create TV show NFO in show root folder
                 if self.config.generate_nfo && self.config.generate_tv_show_nfo {
@@ -6520,11 +6543,11 @@ impl Planner {
                 // Create season NFO in season folder
                 if self.config.generate_nfo && self.config.generate_tv_season_nfo {
                     if season_folder.is_some() {
-                        let (_, episode, _) = tv_series_metadata.as_ref().unwrap();
+                        let (_, episode, _) = params.tv_series_metadata.as_ref().unwrap();
                         let season_num = episode
                             .as_ref()
                             .map(|e| e.season_number)
-                            .or(parsed.season)
+                            .or(params.parsed.season)
                             .unwrap_or(1);
                         let sort_prefix = gen_folder::generate_sort_prefix(&show.name, &show.original_language);
                         let season_nfo_name = format!("[{}][{}][{}]-season{:02}.nfo", sort_prefix, show.name, show.original_name, season_num);
@@ -6551,11 +6574,11 @@ impl Planner {
             // Poster goes in same folder as video file
             let poster_folder = target_folder.clone();
 
-            let poster_url = movie_metadata
+            let poster_url = params.movie_metadata
                 .as_ref()
                 .and_then(|m| m.poster_urls.first().cloned())
                 .or_else(|| {
-                    tv_series_metadata
+                    params.tv_series_metadata
                         .as_ref()
                         .and_then(|(s, _, _)| s.poster_urls.first().cloned())
                 });
@@ -6563,16 +6586,16 @@ impl Planner {
             if let Some(url) = poster_url {
                 // For movies: use video filename as poster name
                 // For TV series: use [show.name]-seasonXX.jpg (same naming as NFO)
-                let poster_filename = match media_type {
+                let poster_filename = match params.media_type {
                     MediaType::Movies => filename.replace(&format!(".{}", extension), ".jpg"),
                     MediaType::TvSeries => {
                         // Use [show.name]-seasonXX.jpg for TV series to ensure only one poster per season
                         // and keep consistent naming with season NFO
-                        let (show, episode, _) = tv_series_metadata.as_ref().unwrap();
+                        let (show, episode, _) = params.tv_series_metadata.as_ref().unwrap();
                         let season_num = episode
                             .as_ref()
                             .map(|e| e.season_number)
-                            .or(parsed.season)
+                            .or(params.parsed.season)
                             .unwrap_or(1);
                         format!("[{}]-season{:02}.jpg", show.name, season_num)
                     }
