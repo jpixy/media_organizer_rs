@@ -214,6 +214,45 @@ pub struct EpisodeMetadata {
     pub crew: Vec<CrewMember>,
 }
 
+impl EpisodeMetadata {
+    /// Build EpisodeMetadata from TMDB EpisodeDetails response.
+    ///
+    /// This is the single source of truth for constructing EpisodeMetadata,
+    /// eliminating field-by-field duplication and cast/crew mapping across all call sites.
+    pub fn from_tmdb_details(
+        ep_details: &crate::services::tmdb::EpisodeDetails,
+        season_number: u16,
+        episode_number: u16,
+    ) -> Self {
+        Self {
+            season_number,
+            episode_number,
+            name: ep_details.name.clone(),
+            original_name: None, // Not available in EpisodeDetails
+            air_date: ep_details.air_date.clone(),
+            overview: ep_details.overview.clone(),
+            cast: ep_details
+                .credits
+                .as_ref()
+                .map(|c| c.cast.iter().take(10).map(|a| Actor {
+                    name: a.name.clone(),
+                    role: a.character.clone(),
+                    order: a.order,
+                }).collect())
+                .unwrap_or_default(),
+            crew: ep_details
+                .credits
+                .as_ref()
+                .map(|c| c.crew.iter().map(|cr| CrewMember {
+                    name: cr.name.clone(),
+                    job: cr.job.clone(),
+                    department: cr.department.clone(),
+                }).collect())
+                .unwrap_or_default(),
+        }
+    }
+}
+
 /// TMDB metadata for a TV season.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SeasonMetadata {
@@ -234,4 +273,30 @@ pub struct SeasonMetadata {
     /// IMDB ID (important for anthology series where each season has its own IMDB ID)
     /// Falls back to TV Show's IMDB ID if not available.
     pub imdb_id: Option<String>,
+}
+
+impl SeasonMetadata {
+    /// Build SeasonMetadata from TMDB SeasonDetails response.
+    ///
+    /// This is the single source of truth for constructing SeasonMetadata,
+    /// eliminating field-by-field duplication across all call sites.
+    pub fn from_tmdb_details(
+        season_details: &crate::services::tmdb::SeasonDetails,
+        imdb_id: Option<String>,
+        poster_size: &str,
+    ) -> Self {
+        Self {
+            season_number: season_details.season_number.unwrap_or_default(),
+            name: season_details.name.clone().unwrap_or_default(),
+            overview: season_details.overview.clone(),
+            air_date: season_details.air_date.clone(),
+            poster_url: season_details
+                .poster_path
+                .as_ref()
+                .map(|p| format!("https://image.tmdb.org/t/p/{}{}", poster_size, p)),
+            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
+            tmdb_id: season_details.id.unwrap_or_default(),
+            imdb_id,
+        }
+    }
 }

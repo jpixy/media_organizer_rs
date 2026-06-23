@@ -375,6 +375,9 @@ pub struct SeasonDetails {
     pub season_number: Option<u16>,
     pub air_date: Option<String>,
     pub episodes: Option<Vec<EpisodeInfo>>,
+    /// Parent TV Show TMDB ID (used to find the correct show metadata for anthology series)
+    #[serde(rename = "_parent_id")]
+    pub parent_tmdb_id: Option<u64>,
 }
 
 /// Season external IDs (for anthology series where each season has its own IMDB ID)
@@ -550,7 +553,19 @@ impl TmdbClient {
                         let err_msg = format!("TMDB API error: {}", status);
                         return Err(crate::Error::TmdbSearchError(err_msg));
                     }
-                    return resp.json().await.map_err(crate::Error::from);
+                    let status = resp.status();
+                    let body_text = resp.text().await.unwrap_or_default();
+                    match serde_json::from_str::<R>(&body_text) {
+                        Ok(data) => return Ok(data),
+                        Err(e) => {
+                            let err_msg = if body_text.is_empty() {
+                                format!("TMDB API returned empty response body (HTTP {})", status)
+                            } else {
+                                format!("TMDB API error decoding response: {} (body preview: {})", e, &body_text[..body_text.len().min(200)])
+                            };
+                            return Err(crate::Error::TmdbSearchError(err_msg));
+                        }
+                    }
                 }
                 Err(e) => {
                     if attempt < MAX_RETRIES - 1 {
@@ -592,6 +607,23 @@ impl TmdbClient {
         Ok(resp.results)
     }
 
+    /// Build URL with custom language parameter for localized search results.
+    /// This is a helper function to avoid code duplication between movie and TV search.
+    fn build_search_url(&self, endpoint: &str, query: &str, year_param: &str, language: &str) -> String {
+        let api_key_param = if self.config.use_bearer {
+            String::new()
+        } else {
+            format!("api_key={}&", self.config.api_key)
+        };
+        format!(
+            "{}/{}?{}{}&language={}{}",
+            TMDB_BASE_URL, endpoint, api_key_param, 
+            format!("query={}", urlencoding::encode(query)),
+            language,
+            year_param
+        )
+    }
+
     /// Search for movies with specific language for localized results.
     pub async fn search_movie_with_language(
         &self,
@@ -600,20 +632,7 @@ impl TmdbClient {
         language: &str,
     ) -> Result<Vec<MovieSearchItem>> {
         let year_param = year.map(|y| format!("&year={}", y)).unwrap_or_default();
-        // Build URL with custom language parameter for localized search results
-        let base_url = TMDB_BASE_URL;
-        let api_key_param = if self.config.use_bearer {
-            String::new()
-        } else {
-            format!("api_key={}&", self.config.api_key)
-        };
-        let url = format!(
-            "{}/{}?{}{}&language={}{}",
-            base_url, "search/movie", api_key_param, 
-            format!("query={}", urlencoding::encode(query)),
-            language,
-            year_param
-        );
+        let url = self.build_search_url("search/movie", query, &year_param, language);
         
         let resp: MovieSearchResult = self.request_with_retry(|| self.build_request(&url).send()).await?;
         Ok(resp.results)
@@ -757,28 +776,11 @@ impl TmdbClient {
         let year_param = year
             .map(|y| format!("&first_air_date_year={}", y))
             .unwrap_or_default();
-        // Build URL with custom language parameter for localized search results
-        let base_url = TMDB_BASE_URL;
-        let api_key_param = if self.config.use_bearer {
-            String::new()
-        } else {
-            format!("api_key={}&", self.config.api_key)
-        };
-        let url = format!(
-            "{}/{}?{}{}&language={}{}",
-            base_url, "search/tv", api_key_param, 
-            format!("query={}", urlencoding::encode(query)),
-            language,
-            year_param
-        );
+        let url = self.build_search_url("search/tv", query, &year_param, language);
         
         tracing::debug!("TMDB search_tv_with_language URL: {}", url);
         
-        let resp = self.build_request(&url).send().await?;
-        
-        tracing::debug!("TMDB search_tv_with_language status: {}", resp.status());
-        
-        let resp: TvSearchResult = resp.json().await?;
+        let resp: TvSearchResult = self.request_with_retry(|| self.build_request(&url).send()).await?;
         
         tracing::debug!("TMDB search_tv_with_language results count: {}", resp.results.len());
         

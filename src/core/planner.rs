@@ -174,7 +174,25 @@ async fn search_with_fallback<M: MediaSearch>(
         }
     }
 
-    // Step 3: If still no results and year was provided, try without year
+    // Step 3: If still no results and year was provided, try year-1
+    if search_results.is_empty() && year.is_some() {
+        let y = year.unwrap();
+        if y > 0 {
+            tracing::info!("[SEARCH-FALLBACK] No results with year {}, trying year-1: {}", y, y - 1);
+            search_results = media.search(tmdb, search_title_used, Some(y - 1)).await?;
+            tracing::info!("[SEARCH-FALLBACK] Search with year {} returned {} results", y - 1, search_results.len());
+        }
+    }
+
+    // Step 4: If still no results and year was provided, try year+1
+    if search_results.is_empty() && year.is_some() {
+        let y = year.unwrap();
+        tracing::info!("[SEARCH-FALLBACK] No results with year-1, trying year+1: {}", y + 1);
+        search_results = media.search(tmdb, search_title_used, Some(y + 1)).await?;
+        tracing::info!("[SEARCH-FALLBACK] Search with year {} returned {} results", y + 1, search_results.len());
+    }
+
+    // Step 5: If still no results and year was provided, try without year
     if search_results.is_empty() && year.is_some() {
         tracing::info!("[SEARCH-FALLBACK] No results with year filter, trying without year for '{}'", search_title_used);
         search_results = media.search(tmdb, search_title_used, None).await?;
@@ -190,7 +208,7 @@ async fn search_with_fallback<M: MediaSearch>(
         return Ok(None);
     }
 
-    // Step 4: Find the best match using title comparison
+    // Step 6: Find the best match using title comparison
     tracing::info!("[SEARCH-FALLBACK] Search results count: {}, comparing against: '{}'", search_results.len(), search_title_used);
 
     let mut best_match: Option<(f64, M::SearchItem)> = None;
@@ -828,19 +846,19 @@ impl Planner {
                 };
 
                 if let Some(tmdb_id) = resolved_tmdb_id {
-                    // Try to use existing organized folder logic
-                    if let Some(folder_info) = self.find_organized_tv_series_folder(&video.parent_dir)
+                    // Try to use new context-based logic
+                    if let Some(context) = self.find_tv_series_folder_context(&video.parent_dir)
                     {
                         tracing::debug!(
-                            "[PATH-ID] TV show file in folder with ID: {} -> tmdb{}",
-                            video.filename,
-                            tmdb_id
+                            "[PATH-ID] TV show file in folder with context: tvshow_info={}, season_number={:?}",
+                            context.tvshow_info.is_some(),
+                            context.season_number
                         );
                         return self
-                            .process_new_file_in_organized_folder(
+                            .process_file_with_folder_context(
                                 video,
                                 target,
-                                &folder_info,
+                                &context,
                                 season_cache,
                                 precomputed_ffprobe,
                             )
@@ -1019,16 +1037,16 @@ impl Planner {
 
                             // Get season metadata from TMDB (already fetched in parallel)
                             let season_metadata = if let Ok(season_details) = season_result {
-                                Some(SeasonMetadata {
-                                    season_number: season_details.season_number.unwrap_or_default(),
-                                    name: season_details.name.clone().unwrap_or_default(),
-                                    overview: season_details.overview,
-                                    air_date: season_details.air_date,
-                                    poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                    episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                                    tmdb_id: season_details.id.unwrap_or_default(),
-                                    imdb_id: show_metadata.imdb_id.clone(),
-                                })
+                                // Resolve season-level IMDB ID with priority fallback
+                                let season_imdb_id = self.resolve_season_imdb_id(
+                                    client,
+                                    None, // No folder_season_imdb_id in this path
+                                    show_metadata.tmdb_id,
+                                    season,
+                                    show_metadata.imdb_id.as_deref(),
+                                ).await;
+                                
+                                Some(SeasonMetadata::from_tmdb_details(&season_details, season_imdb_id, &self.config.poster_size))
                             } else {
                                 None
                             };
@@ -1454,16 +1472,17 @@ impl Planner {
                     // Get season metadata
                     let season_meta = if let Some(client) = &self.tmdb_client {
                         match client.get_season_details(show_meta.tmdb_id, season).await {
-                            Ok(season_details) => Some(SeasonMetadata {
-                                season_number: season_details.season_number.unwrap_or_default(),
-                                name: season_details.name.clone().unwrap_or_default(),
-                                overview: season_details.overview,
-                                air_date: season_details.air_date,
-                                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                                tmdb_id: season_details.id.unwrap_or_default(),
-                                imdb_id: show_meta.imdb_id.clone(),
-                            }),
+                            Ok(season_details) => {
+                                // Resolve season-level IMDB ID with priority fallback
+                                let season_imdb_id = self.resolve_season_imdb_id(
+                                    client,
+                                    None, // No folder_season_imdb_id in this path
+                                    show_meta.tmdb_id,
+                                    season,
+                                    show_meta.imdb_id.as_deref(),
+                                ).await;
+                                Some(SeasonMetadata::from_tmdb_details(&season_details, season_imdb_id, &self.config.poster_size))
+                            },
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
                                 None
@@ -1509,16 +1528,17 @@ impl Planner {
                     // Get season metadata
                     let season_meta = if let Some(client) = &self.tmdb_client {
                         match client.get_season_details(show_meta.tmdb_id, season).await {
-                            Ok(season_details) => Some(SeasonMetadata {
-                                season_number: season_details.season_number.unwrap_or_default(),
-                                name: season_details.name.clone().unwrap_or_default(),
-                                overview: season_details.overview,
-                                air_date: season_details.air_date,
-                                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                                tmdb_id: season_details.id.unwrap_or_default(),
-                                imdb_id: show_meta.imdb_id.clone(),
-                            }),
+                            Ok(season_details) => {
+                                // Resolve season-level IMDB ID with priority fallback
+                                let season_imdb_id = self.resolve_season_imdb_id(
+                                    client,
+                                    None, // No folder_season_imdb_id in this path
+                                    show_meta.tmdb_id,
+                                    season,
+                                    show_meta.imdb_id.as_deref(),
+                                ).await;
+                                Some(SeasonMetadata::from_tmdb_details(&season_details, season_imdb_id, &self.config.poster_size))
+                            },
                             Err(e) => {
                                 tracing::warn!("Failed to get season {} details for {}: {}", season, show_meta.name, e);
                                 None
@@ -1692,16 +1712,17 @@ impl Planner {
                 // Get season metadata
                 let season_meta = if let Some(client) = &self.tmdb_client {
                     match client.get_season_details(show_meta.tmdb_id, info.season).await {
-                        Ok(season_details) => Some(SeasonMetadata {
-                            season_number: season_details.season_number.unwrap_or_default(),
-                            name: season_details.name.clone().unwrap_or_default(),
-                            overview: season_details.overview,
-                            air_date: season_details.air_date,
-                            poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                            tmdb_id: season_details.id.unwrap_or_default(),
-                            imdb_id: show_meta.imdb_id.clone(),
-                        }),
+                        Ok(season_details) => {
+                            // Resolve season-level IMDB ID with priority fallback
+                            let season_imdb_id = self.resolve_season_imdb_id(
+                                client,
+                                None, // No folder_season_imdb_id in this path
+                                show_meta.tmdb_id,
+                                info.season,
+                                show_meta.imdb_id.as_deref(),
+                            ).await;
+                            Some(SeasonMetadata::from_tmdb_details(&season_details, season_imdb_id, &self.config.poster_size))
+                        },
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for {}: {}", info.season, show_meta.name, e);
                             None
@@ -2171,28 +2192,47 @@ impl Planner {
     /// - A TV show folder was already organized (e.g., `[罚罪2](2025)-tt36771056-tmdb296146/`)
     /// - User later added new episode files (e.g., `19.mp4`, `20.mp4`)
     /// - These new files need to be organized using the existing TMDB ID from the folder
-    async fn process_new_file_in_organized_folder(
+    /// Process a video file using folder context (TV Show info + Season number).
+    /// 
+    /// New logic:
+    /// - Season folders: ONLY use season number, ignore all IDs from folder name
+    /// - TV Show folders: use title, year, and IDs for API queries
+    /// - All Season metadata (IMDB ID, TMDB ID) obtained from API
+    async fn process_file_with_folder_context(
         &self,
         video: &VideoFile,
         target: &Path,
-        folder_info: &parser::OrganizedTvSeriesFolderInfo,
+        context: &parser::TvSeriesFolderContext,
         season_cache: &SeasonEpisodesCache,
         precomputed_ffprobe: Option<&VideoMetadata>,
     ) -> Result<Option<(PlanItem, Option<TvSeriesMetadata>)>> {
-        tracing::info!("[ORGANIZED-FOLDER] START: folder_info.title={}, tmdb_id={}, season_imdb_id={:?}", folder_info.title, folder_info.tmdb_id, folder_info.season_imdb_id);
+        tracing::info!(
+            "[CONTEXT-PROCESS] START: tvshow_info={}, season_number={:?}",
+            context.tvshow_info.is_some(),
+            context.season_number
+        );
+        
         // Extract season and episode from filename
         let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
 
         if episode.is_none() {
             tracing::warn!(
-                "[ORGANIZED-FOLDER] Cannot extract episode from: {} (in folder tmdb{})",
-                video.filename,
-                folder_info.tmdb_id
+                "[CONTEXT-PROCESS] Cannot extract episode from: {}",
+                video.filename
             );
             return Ok(None);
         }
 
-        // Try to extract season from parent directory name
+        // Use season from context (Season folder) if available
+        if let Some(context_season) = context.season_number {
+            season = Some(context_season);
+            tracing::info!(
+                "[CONTEXT-PROCESS] Using season {} from Season folder context",
+                context_season
+            );
+        }
+
+        // Try to extract season from parent directory name if still None or Some(1)
         if season.is_none() || season == Some(1) {
             let parent_name = video
                 .parent_dir
@@ -2207,36 +2247,90 @@ impl Planner {
         let season = season.unwrap_or(1);
         let episode = episode.unwrap();
 
-        println!(
-            "    [ORGANIZED-FOLDER] New file: {} -> {} S{:02}E{:02} (tmdb{})",
-            video.filename, folder_info.title, season, episode, folder_info.tmdb_id
-        );
-
-        // Fetch TV show details using TMDB ID from folder
+        // Get TMDB client
         let tmdb = match self.tmdb_client.as_ref() {
             Some(client) => client,
             None => {
-                tracing::warn!("[ORGANIZED-FOLDER] TMDB client not initialized");
+                tracing::warn!("[CONTEXT-PROCESS] TMDB client not initialized");
                 return Ok(None);
             }
         };
 
-        let show_meta = match self.get_tv_show_with_fallback(
-            tmdb,
-            folder_info.tmdb_id,
-            folder_info.imdb_id.as_deref(),
-            &folder_info.title,
-            folder_info.year,
-            folder_info.original_title.as_deref(),
-        ).await {
-            Ok(meta) => meta,
+        // Get TV Show metadata
+        // Priority: Use TV Show folder info if available, otherwise search by title
+        let show_meta = if let Some(ref tvshow_info) = context.tvshow_info {
+            // We have TV Show folder info - use it to get metadata
+            tracing::info!(
+                "[CONTEXT-PROCESS] Using TV Show folder info: title={}, tmdb={}, imdb={:?}",
+                tvshow_info.title,
+                tvshow_info.tmdb_id,
+                tvshow_info.imdb_id
+            );
+            
+            // If TMDB ID is valid (>0), use it directly
+            if tvshow_info.tmdb_id > 0 {
+                match self.get_tv_show_with_fallback(
+                    tmdb,
+                    tvshow_info.tmdb_id,
+                    tvshow_info.imdb_id.as_deref(),
+                    &tvshow_info.title,
+                    tvshow_info.year,
+                    tvshow_info.original_title.as_deref(),
+                ).await {
+                    Ok(meta) => {
+                        tracing::info!(
+                            "[CONTEXT-PROCESS] Got TV Show metadata via TMDB ID {}: {} (imdb={:?})",
+                            tvshow_info.tmdb_id,
+                            meta.name,
+                            meta.imdb_id
+                        );
+                        meta
+                    },
+                    Err(e) => {
+                        tracing::warn!(
+                            "[CONTEXT-PROCESS] Failed to get TV Show with tmdb{}: {}, searching by title...",
+                            tvshow_info.tmdb_id,
+                            e
+                        );
+                        // Fall back to search
+                        self.search_tv_show(tmdb, &tvshow_info.title, tvshow_info.year, tvshow_info.original_title.as_deref()).await?
+                    }
+                }
+            } else {
+                // No valid TMDB ID, search by title
+                self.search_tv_show(tmdb, &tvshow_info.title, tvshow_info.year, tvshow_info.original_title.as_deref()).await?
+            }
+        } else {
+            // No TV Show folder info - this shouldn't happen in normal flow
+            tracing::warn!("[CONTEXT-PROCESS] No TV Show folder info available");
+            return Ok(None);
+        };
+
+        // Get Season details from API (not from folder!)
+        tracing::info!(
+            "[CONTEXT-PROCESS] Fetching Season {} details from API for {} (tmdb{})",
+            season,
+            show_meta.name,
+            show_meta.tmdb_id
+        );
+        
+        let season_details = match tmdb.get_season_details(show_meta.tmdb_id, season).await {
+            Ok(details) => {
+                tracing::info!(
+                    "[CONTEXT-PROCESS] Got Season {} details: tmdb_id={:?}",
+                    season,
+                    details.id
+                );
+                Some(details)
+            },
             Err(e) => {
                 tracing::warn!(
-                    "[ORGANIZED-FOLDER] Failed to get TV metadata for {}: {}",
-                    folder_info.title,
+                    "[CONTEXT-PROCESS] Failed to get Season {} details for tmdb{}: {}",
+                    season,
+                    show_meta.tmdb_id,
                     e
                 );
-                return Ok(None);
+                None
             }
         };
 
@@ -2245,70 +2339,50 @@ impl Planner {
             .get_episode_from_cache(show_meta.tmdb_id, season, episode, season_cache)
             .await;
 
-        // Get season metadata
-        // Note: For anthology series (like "Love, Death & Robots"), each season has its own IMDB ID
-        // We need to fetch season external_ids to get the correct IMDB ID
-        let season_meta = match tmdb.get_season_details(show_meta.tmdb_id, season).await {
-            Ok(season_details) => {
-                // Use season from filename if TMDB season_number is 0 or None
-                let sn = if season_details.season_number.unwrap_or(0) == 0 {
-                    season
-                } else {
-                    season_details.season_number.unwrap_or(season)
-                };
-                
-                // Try to get season external_ids (important for anthology series)
-                // This will return season-specific IMDB ID if available
-                // Priority: folder_info.season_imdb_id > TMDB season external_ids > TV show IMDB ID
-                let season_imdb_id = if let Some(ref folder_season_imdb) = folder_info.season_imdb_id {
-                    tracing::info!("[ORGANIZED-FOLDER] Using season IMDB ID from folder: {}", folder_season_imdb);
-                    Some(folder_season_imdb.clone())
-                } else {
-                    tracing::warn!("[ORGANIZED-FOLDER] folder_info.season_imdb_id is None! Using TMDB API...");
-                    match tmdb.get_season_external_ids(show_meta.tmdb_id, season).await {
-                        Ok(external_ids) => {
-                            tracing::info!(
-                                "[ORGANIZED-FOLDER] Season {} external_ids: imdb={:?}, tvdb={:?}",
-                                season, external_ids.imdb_id, external_ids.tvdb_id
-                            );
-                            // Use season's IMDB ID if available (for anthology series)
-                            // Otherwise, fallback to TV show's IMDB ID
-                            external_ids.imdb_id.or_else(|| show_meta.imdb_id.clone())
-                        },
-                        Err(e) => {
-                            tracing::debug!("[ORGANIZED-FOLDER] No season external_ids for S{}: {}", season, e);
-                            // Fallback to TV show's IMDB ID
-                            show_meta.imdb_id.clone()
-                        }
-                    }
-                };
-                
-                Some(SeasonMetadata {
-                    season_number: sn,
-                    name: season_details.name.clone().unwrap_or_default(),
-                    overview: season_details.overview,
-                    air_date: season_details.air_date,
-                    poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                    episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                    tmdb_id: season_details.id.unwrap_or_default(),
-                    // Include season-specific IMDB ID for anthology series
-                    imdb_id: season_imdb_id,
-                })
+        // Get Season IMDB ID from API (important for anthology series!)
+        tracing::info!(
+            "[CONTEXT-PROCESS] Fetching Season {} external_ids from API for tmdb{}",
+            season,
+            show_meta.tmdb_id
+        );
+        
+        let season_imdb_id = match tmdb.get_season_external_ids(show_meta.tmdb_id, season).await {
+            Ok(external_ids) => {
+                tracing::info!(
+                    "[CONTEXT-PROCESS] Season {} external_ids from API: imdb={:?}",
+                    season,
+                    external_ids.imdb_id
+                );
+                // Use season-specific IMDB ID if available (for anthology series)
+                // Otherwise, fallback to TV show's IMDB ID
+                external_ids.imdb_id.or_else(|| show_meta.imdb_id.clone())
             },
             Err(e) => {
-                tracing::warn!("[ORGANIZED-FOLDER] Failed to get season {} details for tmdb{}: {}", season, folder_info.tmdb_id, e);
-                None
+                tracing::warn!(
+                    "[CONTEXT-PROCESS] Failed to get Season {} external_ids: {}, using TV Show IMDB ID",
+                    season,
+                    e
+                );
+                show_meta.imdb_id.clone()
             }
         };
 
+        // Build Season metadata
+        let season_meta = if let Some(details) = season_details {
+            Some(SeasonMetadata::from_tmdb_details(&details, season_imdb_id, &self.config.poster_size))
+        } else {
+            None
+        };
+
+        // Build parsed info
         let parsed = ParsedFilename {
-            title: Some(folder_info.title.clone()),
-            original_title: None,
-            year: folder_info.year,
+            title: context.tvshow_info.as_ref().map(|i| i.title.clone()),
+            original_title: context.tvshow_info.as_ref().and_then(|i| i.original_title.clone()),
+            year: context.tvshow_info.as_ref().and_then(|i| i.year),
             season: Some(season),
             episode: Some(episode),
             confidence: 1.0,
-            raw_response: Some("organized_folder".to_string()),
+            raw_response: Some("folder_context".to_string()),
         };
 
         // Get video metadata
@@ -2359,6 +2433,84 @@ impl Planner {
         };
 
         Ok(Some((plan_item, Some(show_meta))))
+    }
+
+    /// Search TV show by title with year tolerance.
+    async fn search_tv_show(
+        &self,
+        tmdb: &TmdbClient,
+        title: &str,
+        year: Option<u16>,
+        original_title: Option<&str>,
+    ) -> Result<TvSeriesMetadata> {
+        tracing::info!(
+            "[SEARCH-TV] Searching for '{}' (year={:?}, original={:?})",
+            title,
+            year,
+            original_title
+        );
+        
+        // Try with original year
+        let search_results = tmdb.search_tv(title, year).await.map_err(|e| crate::error::Error::Other(e.to_string()))?;
+        
+        if let Some(first_result) = search_results.first() {
+            let show_tmdb_id = first_result.id;
+            tracing::info!(
+                "[SEARCH-TV] Found TV show via search: {} (tmdb{})",
+                first_result.name,
+                show_tmdb_id
+            );
+            
+            return self.get_tv_show_with_fallback(
+                tmdb,
+                show_tmdb_id,
+                None,
+                title,
+                year,
+                original_title,
+            ).await.map_err(|e| crate::error::Error::Other(e));
+        }
+        
+        // Try with year-1 if original year failed
+        if let Some(y) = year {
+            if y > 0 {
+                tracing::info!("[SEARCH-TV] Trying with year-1: {}", y - 1);
+                let search_results = tmdb.search_tv(title, Some(y - 1)).await.map_err(|e| crate::error::Error::Other(e.to_string()))?;
+                
+                if let Some(first_result) = search_results.first() {
+                    let show_tmdb_id = first_result.id;
+                    return self.get_tv_show_with_fallback(
+                        tmdb,
+                        show_tmdb_id,
+                        None,
+                        title,
+                        Some(y - 1),
+                        original_title,
+                    ).await.map_err(|e| crate::error::Error::Other(e));
+                }
+            }
+            
+            // Try with year+1
+            tracing::info!("[SEARCH-TV] Trying with year+1: {}", y + 1);
+            let search_results = tmdb.search_tv(title, Some(y + 1)).await.map_err(|e| crate::error::Error::Other(e.to_string()))?;
+            
+            if let Some(first_result) = search_results.first() {
+                let show_tmdb_id = first_result.id;
+                return self.get_tv_show_with_fallback(
+                    tmdb,
+                    show_tmdb_id,
+                    None,
+                    title,
+                    Some(y + 1),
+                    original_title,
+                ).await.map_err(|e| crate::error::Error::Other(e));
+            }
+        }
+        
+        Err(crate::error::Error::Other(format!(
+            "No TV show found for title: {}",
+            title
+        )))
     }
 
     /// Process organized TV series folders that may not contain video files.
@@ -2425,16 +2577,17 @@ impl Planner {
                 for (season_num, season_path) in seasons {
                     // Fetch season metadata
                     let season_meta = match tmdb.get_season_details(show_meta.tmdb_id, season_num).await {
-                        Ok(season_details) => Some(SeasonMetadata {
-                            season_number: season_details.season_number.unwrap_or_default(),
-                            name: season_details.name.clone().unwrap_or_default(),
-                            overview: season_details.overview,
-                            air_date: season_details.air_date,
-                            poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                            tmdb_id: season_details.id.unwrap_or_default(),
-                            imdb_id: show_meta.imdb_id.clone(),
-                        }),
+                        Ok(season_details) => {
+                            // Resolve season-level IMDB ID with priority fallback
+                            let season_imdb_id = self.resolve_season_imdb_id(
+                                tmdb,
+                                None, // No folder_season_imdb_id in this path
+                                show_meta.tmdb_id,
+                                season_num,
+                                show_meta.imdb_id.as_deref(),
+                            ).await;
+                Some(SeasonMetadata::from_tmdb_details(&season_details, season_imdb_id, &self.config.poster_size))
+                        },
                         Err(e) => {
                             tracing::warn!("Failed to get season {} details for tmdb{}: {}", season_num, folder_info.tmdb_id, e);
                             continue;
@@ -2518,6 +2671,91 @@ impl Planner {
     /// Since organized TV shows may have structure like:
     /// `[Show](Year)-ttIMDB-tmdbID/Season 01/[Show]-S01E01-...mp4`
     /// We need to look at parent directories, not just the immediate parent.
+    /// Find TV series folder context (TV Show info + Season number).
+    /// 
+    /// New logic:
+    /// - Season folders: ONLY extract season number, ignore all IDs and titles
+    /// - TV Show folders: extract title, year, and IDs for API queries
+    /// - All Season metadata should be obtained from API, not from folder names
+    fn find_tv_series_folder_context(
+        &self,
+        start_dir: &Path,
+    ) -> Option<parser::TvSeriesFolderContext> {
+        tracing::info!("[FIND-CONTEXT] Called with start_dir: {:?}", start_dir);
+        
+        let mut season_number: Option<u16> = None;
+        let mut tvshow_info: Option<parser::OrganizedTvSeriesFolderInfo> = None;
+        
+        let mut current = Some(start_dir);
+
+        while let Some(dir) = current {
+            if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
+                tracing::debug!("[FIND-CONTEXT] Checking folder: {}", name);
+                
+                // Check if this is a Season folder
+                if parser::is_season_folder(name) {
+                    // Season folder: ONLY extract season number, ignore all IDs
+                    if season_number.is_none() {
+                        season_number = parser::parse_season_folder_number(name);
+                        tracing::info!(
+                            "[FIND-CONTEXT] Found Season folder '{}', extracted season number: {:?} (ignoring all IDs)",
+                            name, season_number
+                        );
+                    }
+                } else {
+                    // Try to parse as TV Show folder
+                    if let Some(info) = parser::parse_organized_tv_series_folder(name) {
+                        // This is TV Show level folder - extract title and IDs
+                        // But first check if the title looks valid (not just season number)
+                        if !info.title.starts_with("S") || info.title.len() > 3 {
+                            tvshow_info = Some(info.clone());
+                            tracing::info!(
+                                "[FIND-CONTEXT] Found TV Show folder '{}': title={}, tmdb={}, imdb={:?}",
+                                name, info.title, info.tmdb_id, info.imdb_id
+                            );
+                            break; // Found TV Show level, no need to continue
+                        }
+                    } else {
+                        // Try to parse as non-standard TV Show folder
+                        let is_likely_tvshow_folder = name.contains("Season") 
+                            || name.contains("Love, Death & Robots") 
+                            || name.contains("Terminal List");
+                        
+                        if is_likely_tvshow_folder {
+                            if let Some(title) = parser::extract_title_from_dirname(name) {
+                                let original_title = parser::extract_english_title_from_dirname(name);
+                                tracing::info!(
+                                    "[FIND-CONTEXT] Found non-standard TV Show folder '{}': title={}",
+                                    name, title
+                                );
+                                tvshow_info = Some(parser::OrganizedTvSeriesFolderInfo {
+                                    title,
+                                    original_title,
+                                    year: parser::extract_year_from_dirname(name),
+                                    imdb_id: None,
+                                    tmdb_id: 0,
+                                    season_imdb_id: None,
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            current = dir.parent();
+        }
+
+        // Return context if we found at least TV Show info or Season number
+        if tvshow_info.is_some() || season_number.is_some() {
+            Some(parser::TvSeriesFolderContext {
+                tvshow_info,
+                season_number,
+            })
+        } else {
+            None
+        }
+    }
+
     fn find_organized_tv_series_folder(
         &self,
         start_dir: &Path,
@@ -3314,437 +3552,6 @@ impl Planner {
     /// Process a single video file with optional cached TV show metadata.
     /// Returns the PlanItem and the TV show metadata (for caching).
     ///
-    /// OPTIMIZATION: For TV shows with cached metadata, we extract episode numbers
-    /// from filename using regex instead of calling AI for each file.
-    #[allow(dead_code)]
-    async fn process_single_video_with_cache(
-        &self,
-        video: &VideoFile,
-        target: &Path,
-        media_type: MediaType,
-        cached_show: Option<&(TvSeriesMetadata, Option<EpisodeMetadata>)>,
-    ) -> Result<Option<(PlanItem, Option<(TvSeriesMetadata, Option<EpisodeMetadata>, Option<SeasonMetadata>)>)>> {
-        // Step 1: Parse filename - use regex for TV shows with cache, AI otherwise
-        let parsed = if media_type == MediaType::TvSeries && cached_show.is_some() {
-            // FAST PATH: Extract episode number from filename using regex (no AI call)
-            let (mut season, episode) = parser::extract_episode_from_filename(&video.filename);
-            tracing::debug!(
-                "Regex extracted from {}: S{:?}E{:?}",
-                video.filename,
-                season,
-                episode
-            );
-
-            if episode.is_none() {
-                tracing::debug!("Could not extract episode number from: {}", video.filename);
-                return Ok(None);
-            }
-
-            // Try to extract season from parent directory name (e.g., "第一季", "Season 01", "S04")
-            if season.is_none() || season == Some(1) {
-                let parent_name = video
-                    .parent_dir
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
-                if let Some(dir_season) = parser::extract_season_from_dirname(parent_name) {
-                    tracing::debug!(
-                        "Extracted season {} from directory: {}",
-                        dir_season,
-                        parent_name
-                    );
-                    season = Some(dir_season);
-                }
-            }
-
-            // Try to extract Chinese title from parent directory name for fallback
-            // e.g., "终极名单 第一季 The Terminal List Season 1 (2022)" -> "终极名单"
-            // Search up the directory tree to find a directory with Chinese title
-            let mut parsed_title: Option<String> = None;
-            let mut current_path = Some(video.parent_dir.as_path());
-            
-            // Traverse up to 3 levels to find a directory with Chinese title
-            for _ in 0..3 {
-                if let Some(path) = current_path {
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if let Some(title) = parser::extract_title_from_dirname(name) {
-                            parsed_title = Some(title);
-                            break;
-                        }
-                    }
-                    current_path = path.parent();
-                } else {
-                    break;
-                }
-            }
-            
-            tracing::debug!(
-                "[FAST PATH] Extracted Chinese title from path: {:?}",
-                parsed_title
-            );
-
-            // Create a minimal parsed result with episode info
-            ParsedFilename {
-                title: parsed_title.or_else(|| cached_show.as_ref().map(|(s, _)| s.name.clone())),
-                original_title: cached_show.as_ref().map(|(s, _)| s.original_name.clone()),
-                year: cached_show.as_ref().map(|(s, _)| s.year),
-                season,
-                episode,
-                confidence: 1.0, // High confidence for regex match
-                raw_response: Some("regex_extracted".to_string()),
-            }
-        } else {
-            // NORMAL PATH: Use AI to parse filename
-            let parse_input = self.build_parse_input(video);
-            let parsed = self.parser.parse(&parse_input, media_type).await?;
-
-            if !self.parser.is_valid(&parsed) {
-                tracing::debug!("Low confidence parsing for: {}", video.filename);
-                return Ok(None);
-            }
-            parsed
-        };
-
-        // Step 2: Query TMDB based on media type
-        // For movies, try to extract IMDB ID from filename for priority lookup
-        let filename_imdb_id = metadata::extract_from_filename(&video.filename).imdb_id;
-
-        let (movie_metadata, tv_series_metadata) = match media_type {
-            MediaType::Movies => {
-                let movie = self
-                    .query_tmdb_movie_with_imdb(&parsed, filename_imdb_id.as_deref())
-                    .await?;
-                if movie.is_none() {
-                    tracing::debug!("No TMDB match for movie: {}", video.filename);
-                    return Ok(None);
-                }
-                (movie, None)
-            }
-            MediaType::TvSeries => {
-                // Use cached show metadata if available (same directory = same show)
-                if let Some((cached_show_meta, _)) = cached_show {
-                    tracing::info!(
-                        "Using cached TV show for {}: {} (S{:?}E{:?})",
-                        video.filename,
-                        cached_show_meta.name,
-                        parsed.season,
-                        parsed.episode
-                    );
-                    
-                    // If we extracted a Chinese title from directory name and cached name is not Chinese,
-                    // update the show name to use the Chinese title
-                    let mut show_meta = cached_show_meta.clone();
-                    if let Some(ref extracted_title) = parsed.title {
-                        if chinese::contains_chinese(extracted_title) && !chinese::contains_chinese(&show_meta.name) {
-                            tracing::info!(
-                                "[FAST PATH] Updating show name to Chinese: '{}' -> '{}'",
-                                show_meta.name,
-                                extracted_title
-                            );
-                            show_meta.name = extracted_title.clone();
-                        }
-                    }
-                    
-                    // Get episode info for this specific file using regex-extracted numbers
-                    let (episode, season_metadata) = if let (Some(season), Some(ep)) = (parsed.season, parsed.episode)
-                    {
-                        let mut season_meta: Option<SeasonMetadata> = None;
-                        let episode_meta = if let Some(client) = &self.tmdb_client {
-                            // Try to get season details first
-                            if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
-                                season_meta = Some(SeasonMetadata {
-                                    season_number: season_details.season_number.unwrap_or_default(),
-                                    name: season_details.name.clone().unwrap_or_default(),
-                                    overview: season_details.overview,
-                                    air_date: season_details.air_date,
-                                    poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                    episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                                    tmdb_id: season_details.id.unwrap_or_default(),
-                                    imdb_id: show_meta.imdb_id.clone(),
-                                });
-                            }
-                            
-                            match client
-                                .get_episode_details(show_meta.tmdb_id, season, ep)
-                                .await
-                            {
-                                Ok(ep_details) => Some(EpisodeMetadata {
-                                    season_number: season,
-                                    episode_number: ep,
-                                    name: ep_details.name,
-                                    original_name: None,
-                                    air_date: ep_details.air_date,
-                                    overview: ep_details.overview,
-                                    cast: ep_details
-                                        .credits
-                                        .as_ref()
-                                        .and_then(|c| Some(c.cast.iter().take(10).map(|a| Actor {
-                                            name: a.name.clone(),
-                                            role: a.character.clone(),
-                                            order: a.order,
-                                        }).collect()))
-                                        .unwrap_or_default(),
-                                    crew: ep_details
-                                        .credits
-                                        .as_ref()
-                                        .and_then(|c| Some(c.crew.iter().map(|cr| CrewMember {
-                                            name: cr.name.clone(),
-                                            job: cr.job.clone(),
-                                            department: cr.department.clone(),
-                                        }).collect()))
-                                        .unwrap_or_default(),
-                                }),
-                                Err(_) => Some(EpisodeMetadata {
-                                    season_number: season,
-                                    episode_number: ep,
-                                    name: format!("Episode {}", ep),
-                                    original_name: None,
-                                    air_date: None,
-                                    overview: None,
-                                    cast: Vec::new(),
-                                    crew: Vec::new(),
-                                }),
-                            }
-                        } else {
-                            Some(EpisodeMetadata {
-                                season_number: season,
-                                episode_number: ep,
-                                name: format!("Episode {}", ep),
-                                original_name: None,
-                                air_date: None,
-                                overview: None,
-                                cast: Vec::new(),
-                                crew: Vec::new(),
-                            })
-                        };
-                        (episode_meta, season_meta)
-                    } else {
-                        (None, None)
-                    };
-                    (None, Some((show_meta, episode, season_metadata)))
-                } else {
-                    // No cache, query TMDB with folder name as fallback
-                    // Try to get meaningful folder name (skip quality descriptors)
-                    let folder_name = self.get_meaningful_folder_name(&video.parent_dir);
-                    
-                    // Extract Chinese title from folder name as fallback
-                    let mut parsed_with_chinese = parsed.clone();
-                    if parsed_with_chinese.title.as_ref().map_or(true, |t| !chinese::contains_chinese(t)) {
-                        // If parsed title doesn't have Chinese, try to extract from folder name
-                        // Search up the directory tree to find a directory with Chinese title
-                        let mut current_path = Some(video.parent_dir.as_path());
-                        for _ in 0..3 {
-                            if let Some(path) = current_path {
-                                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                                    if let Some(chinese_title) = parser::extract_title_from_dirname(name) {
-                                        tracing::info!(
-                                            "[NORMAL PATH] Extracted Chinese title from folder: '{}'",
-                                            chinese_title
-                                        );
-                                        parsed_with_chinese.title = Some(chinese_title);
-                                        break;
-                                    }
-                                }
-                                current_path = path.parent();
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    
-                    let (show, mut episode) = self
-                        .query_tmdb_tv_series_with_folder(&parsed_with_chinese, folder_name.as_deref())
-                        .await?;
-                    if show.is_none() {
-                        tracing::debug!("No TMDB match for TV show: {}", video.filename);
-                        return Ok(None);
-                    }
-                    let show_meta = show.unwrap();
-
-                    // Track season metadata - always try to get it
-                    let mut season_metadata: Option<SeasonMetadata> = None;
-
-                    // Determine season number from episode metadata or parsed result
-                    let season_num = episode.as_ref().map(|e| e.season_number)
-                        .or_else(|| parsed.season)
-                        .or_else(|| {
-                            // Try to extract from filename
-                            let (season, _) = parser::extract_episode_from_filename(&video.filename);
-                            season
-                        });
-
-                    // Get season metadata if we have a season number
-                    if let (Some(season), Some(client)) = (season_num, &self.tmdb_client) {
-                        if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
-                            season_metadata = Some(SeasonMetadata {
-                                season_number: season_details.season_number.unwrap_or_default(),
-                                name: season_details.name.clone().unwrap_or_default(),
-                                overview: season_details.overview,
-                                air_date: season_details.air_date,
-                                poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                                tmdb_id: season_details.id.unwrap_or_default(),
-                                imdb_id: show_meta.imdb_id.clone(),
-                            });
-                        }
-                    }
-
-                    // If episode is None (AI didn't parse season/episode), try regex extraction
-                    if episode.is_none() {
-                        let (mut regex_season, regex_ep) =
-                            parser::extract_episode_from_filename(&video.filename);
-                        // Try to get season from parent directory name
-                        if regex_season.is_none() || regex_season == Some(1) {
-                            let parent_name = video
-                                .parent_dir
-                                .file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or("");
-                            if let Some(dir_s) = parser::extract_season_from_dirname(parent_name) {
-                                regex_season = Some(dir_s);
-                            }
-                        }
-                        tracing::debug!(
-                            "Regex extraction for first file {}: S{:?}E{:?}",
-                            video.filename,
-                            regex_season,
-                            regex_ep
-                        );
-
-                        if let (Some(season), Some(ep)) = (regex_season, regex_ep) {
-                            if let Some(client) = &self.tmdb_client {
-                                // Get season details if not already fetched
-                                if season_metadata.is_none() {
-                                    if let Ok(season_details) = client.get_season_details(show_meta.tmdb_id, season).await {
-                                        season_metadata = Some(SeasonMetadata {
-                                            season_number: season_details.season_number.unwrap_or_default(),
-                                            name: season_details.name.clone().unwrap_or_default(),
-                                            overview: season_details.overview,
-                                            air_date: season_details.air_date,
-                                            poster_url: season_details.poster_path.map(|p| format!("https://image.tmdb.org/t/p/{}{}", self.config.poster_size, p)),
-                                            episode_count: season_details.episodes.as_ref().map(|e| e.len() as u16).unwrap_or_default(),
-                                            tmdb_id: season_details.id.unwrap_or_default(),
-                                            imdb_id: show_meta.imdb_id.clone(),
-                                        });
-                                    }
-                                }
-
-                                match client
-                                    .get_episode_details(show_meta.tmdb_id, season, ep)
-                                    .await
-                                {
-                                    Ok(ep_details) => {
-                                        episode = Some(EpisodeMetadata {
-                                            season_number: season,
-                                            episode_number: ep,
-                                            name: ep_details.name,
-                                            original_name: None,
-                                            air_date: ep_details.air_date,
-                                            overview: ep_details.overview,
-                                            cast: ep_details
-                                                .credits
-                                                .as_ref()
-                                                .and_then(|c| Some(c.cast.iter().take(10).map(|a| Actor {
-                                                    name: a.name.clone(),
-                                                    role: a.character.clone(),
-                                                    order: a.order,
-                                                }).collect()))
-                                                .unwrap_or_default(),
-                                            crew: ep_details
-                                                .credits
-                                                .as_ref()
-                                                .and_then(|c| Some(c.crew.iter().map(|cr| CrewMember {
-                                                    name: cr.name.clone(),
-                                                    job: cr.job.clone(),
-                                                    department: cr.department.clone(),
-                                                }).collect()))
-                                                .unwrap_or_default(),
-                                        });
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!(
-                                            "Failed to get episode details for S{}E{}: {}",
-                                            season,
-                                            ep,
-                                            e
-                                        );
-                                        episode = Some(EpisodeMetadata {
-                                            season_number: season,
-                                            episode_number: ep,
-                                            name: format!("Episode {}", ep),
-                                            original_name: None,
-                                            air_date: None,
-                                            overview: None,
-                                            cast: Vec::new(),
-                                            crew: Vec::new(),
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    (None, Some((show_meta, episode, season_metadata)))
-                }
-            }
-        };
-
-        // Step 3: Extract video metadata with ffprobe + filename parsing
-        let ffprobe_metadata = ffprobe::extract_metadata(&video.path).unwrap_or_default();
-        let filename_metadata = ffprobe::parse_metadata_from_filename(&video.filename);
-
-        // Merge: prefer ffprobe data, but use filename data as fallback
-        let video_metadata = ffprobe::merge_metadata(ffprobe_metadata, filename_metadata);
-
-        tracing::debug!(
-            "Video metadata for {}: resolution={}, format={}, codec={}",
-            video.filename,
-            video_metadata.resolution,
-            video_metadata.format,
-            video_metadata.video_codec
-        );
-
-        // Step 4: Generate target paths
-        let (target_info, operations, poster_download) = match self.generate_target_info(
-            video,
-            &movie_metadata,
-            &tv_series_metadata,
-            &parsed,
-            &video_metadata,
-            target,
-            media_type,
-        )? {
-            Some(result) => result,
-            None => return Ok(None), // Skip: cannot determine country
-        };
-
-        // Step 5: Create plan item
-        let item = PlanItem {
-            id: Uuid::new_v4().to_string(),
-            status: PlanItemStatus::Pending,
-            source: video.clone(),
-            parsed: ParsedInfo {
-                title: parsed.title,
-                original_title: parsed.original_title,
-                year: parsed.year,
-                confidence: parsed.confidence,
-                raw_response: parsed.raw_response,
-            },
-            movie_metadata,
-            tv_series_metadata: tv_series_metadata.as_ref().map(|(show, _, _)| show.clone()),
-            episode_metadata: tv_series_metadata.as_ref().and_then(|(_, ep, _)| ep.clone()),
-            season_metadata: tv_series_metadata.as_ref().and_then(|(_, _, season)| season.clone()),
-            video_metadata,
-            target: target_info,
-            operations,
-            poster_download,
-        };
-
-        // Return item and tvshow metadata for caching
-        Ok(Some((item, tv_series_metadata)))
-    }
-
-    /// Get a meaningful folder name from the path, skipping quality descriptors.
     /// Returns the first ancestor directory that looks like a show name.
     fn get_meaningful_folder_name(&self, path: &Path) -> Option<String> {
         // Generic folder names to skip (not actual show titles)
@@ -6401,6 +6208,68 @@ impl Planner {
             target: target_info,
             operations,
             poster_download,
+        })
+    }
+
+    /// Resolve season-level IMDB ID with priority fallback.
+    ///
+    /// Priority (highest to lowest):
+    /// 1. `folder_season_imdb_id` - IMDB ID from folder name (e.g., `tt21661768` from Season 04 folder)
+    /// 2. TMDB `/tv/{id}/season/{season_number}/external_ids` API - season-specific IMDB ID
+    /// 3. `show_imdb_id` - TV show-level IMDB ID (fallback for non-anthology series)
+    async fn resolve_season_imdb_id(
+        &self,
+        tmdb: &crate::services::tmdb::TmdbClient,
+        folder_season_imdb_id: Option<&str>,
+        show_tmdb_id: u64,
+        season_number: u16,
+        show_imdb_id: Option<&str>,
+    ) -> Option<String> {
+        // Priority 1: folder name has explicit season IMDB ID (e.g., from organized folder parsing)
+        if let Some(id) = folder_season_imdb_id {
+            tracing::info!(
+                "[SEASON-IMDB] Using folder season IMDB ID: {}",
+                id
+            );
+            return Some(id.to_string());
+        }
+
+        // Priority 2: Try TMDB season external_ids API (important for anthology series)
+        tracing::debug!(
+            "[SEASON-IMDB] Querying TMDB season external_ids for tmdb{} S{:02}",
+            show_tmdb_id,
+            season_number
+        );
+        match tmdb.get_season_external_ids(show_tmdb_id, season_number).await {
+            Ok(external_ids) => {
+                if let Some(season_imdb) = &external_ids.imdb_id {
+                    tracing::info!(
+                        "[SEASON-IMDB] Found season-specific IMDB ID from TMDB: {}",
+                        season_imdb
+                    );
+                    return Some(season_imdb.clone());
+                }
+                tracing::debug!("[SEASON-IMDB] No season-specific IMDB ID from TMDB API");
+                // Fall through to Priority 3
+            }
+            Err(e) => {
+                tracing::debug!(
+                    "[SEASON-IMDB] Failed to get season external_ids for tmdb{} S{:02}: {}",
+                    show_tmdb_id,
+                    season_number,
+                    e
+                );
+                // Fall through to Priority 3
+            }
+        }
+
+        // Priority 3: TV show-level IMDB ID (fallback for non-anthology series)
+        show_imdb_id.map(|id| {
+            tracing::debug!(
+                "[SEASON-IMDB] Falling back to TV show IMDB ID: {}",
+                id
+            );
+            id.to_string()
         })
     }
 

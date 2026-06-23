@@ -3,7 +3,6 @@
 
 use media_organizer::core::parser::{parse_organized_tv_series_folder, OrganizedTvSeriesFolderInfo};
 use media_organizer::generators::folder::generate_season_folder;
-use media_organizer::models::media::SeasonMetadata;
 
 #[test]
 fn test_parse_anthology_season_folder_with_imdb_id() {

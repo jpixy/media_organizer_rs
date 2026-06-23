@@ -896,6 +896,73 @@ mod tests {
         assert_eq!(extract_season_from_dirname("Movie Name"), None);
     }
 
+    // ========================================================================
+    // is_season_folder 和 parse_season_folder_number 测试
+    // ========================================================================
+
+    #[test]
+    fn test_is_season_folder_valid() {
+        // Valid season folder patterns
+        assert!(is_season_folder("[S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots]-tmdb450504"));
+        assert!(is_season_folder("[S01][Season 01]"));
+        assert!(is_season_folder("[S10][Season 10]-..."));
+        assert!(is_season_folder("[S02][Season 02]-[Title](2025)-tt123-tmdb456"));
+    }
+
+    #[test]
+    fn test_is_season_folder_invalid() {
+        // Invalid patterns (TV Show folders, not Season folders)
+        assert!(!is_season_folder("[A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504"));
+        assert!(!is_season_folder("[Title](2025)-tt123-tmdb456"));
+        assert!(!is_season_folder("Season 01")); // No [S prefix
+        assert!(!is_season_folder("S04")); // No [Season suffix
+    }
+
+    #[test]
+    fn test_parse_season_folder_number_valid() {
+        // Valid season folder patterns
+        assert_eq!(parse_season_folder_number("[S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots]-tmdb450504"), Some(4));
+        assert_eq!(parse_season_folder_number("[S01][Season 01]"), Some(1));
+        assert_eq!(parse_season_folder_number("[S10][Season 10]-..."), Some(10));
+        assert_eq!(parse_season_folder_number("[S02][Season 02]-[Title](2025)-tt123-tmdb456"), Some(2));
+    }
+
+    #[test]
+    fn test_parse_season_folder_number_invalid() {
+        // Invalid patterns
+        assert_eq!(parse_season_folder_number("[A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504"), None);
+        assert_eq!(parse_season_folder_number("Season 01"), None);
+        assert_eq!(parse_season_folder_number("S04"), None);
+        assert_eq!(parse_season_folder_number("[Title](2025)-tt123-tmdb456"), None);
+    }
+
+    #[test]
+    fn test_tv_series_folder_context() {
+        // Test TvSeriesFolderContext structure
+        let tvshow_info = OrganizedTvSeriesFolderInfo {
+            title: "爱，死亡和机器人".to_string(),
+            original_title: Some("Love, Death & Robots".to_string()),
+            year: Some(2025),
+            imdb_id: Some("tt9561862".to_string()),
+            tmdb_id: 86831,
+            season_imdb_id: None,
+        };
+        
+        let context = TvSeriesFolderContext {
+            tvshow_info: Some(tvshow_info.clone()),
+            season_number: Some(4),
+        };
+        
+        assert!(context.tvshow_info.is_some());
+        assert_eq!(context.season_number, Some(4));
+        
+        // Verify TV Show info
+        let info = context.tvshow_info.unwrap();
+        assert_eq!(info.title, "爱，死亡和机器人");
+        assert_eq!(info.tmdb_id, 86831);
+        assert_eq!(info.imdb_id, Some("tt9561862".to_string()));
+    }
+
     /// Test the bug fix: when filename only has episode number (e.g., "01.mp4")
     /// but directory contains season info (e.g., "S04"), the season should be
     /// extracted from directory name, not default to 1.
@@ -1964,7 +2031,26 @@ pub struct OrganizedTvSeriesFolderInfo {
     /// TV Show level TMDB ID
     pub tmdb_id: u64,
     /// Season level IMDB ID (for anthology series where each season has its own IMDB ID)
+    /// NOTE: This field is DEPRECATED for Season folders. Season folders should only
+    /// extract season number, and all IDs should be obtained from API.
     pub season_imdb_id: Option<String>,
+}
+
+/// Context information for TV series folder processing.
+/// This separates TV Show level info from Season level info.
+/// 
+/// According to new logic:
+/// - Season folders should ONLY extract season number (ignore all IDs)
+/// - TV Show folders provide title, year, and IDs for API queries
+/// - All Season metadata (IMDB ID, TMDB ID) should be obtained from API
+#[derive(Debug, Clone)]
+pub struct TvSeriesFolderContext {
+    /// TV Show level folder info (if found)
+    /// Contains: title, original_title, year, imdb_id, tmdb_id
+    pub tvshow_info: Option<OrganizedTvSeriesFolderInfo>,
+    /// Season number extracted from Season folder (if found)
+    /// Season folders: [S04][Season 04]-... -> season_number = 4
+    pub season_number: Option<u16>,
 }
 
 /// Information extracted from an organized movie folder name.
@@ -2738,6 +2824,37 @@ pub fn extract_season_from_dirname(dirname: &str) -> Option<u16> {
         }
     }
 
+    None
+}
+
+/// Check if a folder name is a Season folder (starts with [S and contains [Season).
+/// Season folders follow the pattern: [S04][Season 04]-...
+/// 
+/// According to the new logic:
+/// - Season folders should ONLY extract the season number
+/// - All other information (title, IMDB ID, TMDB ID) should be obtained from API
+/// - This avoids using incorrect IDs from folder names
+pub fn is_season_folder(dirname: &str) -> bool {
+    dirname.starts_with("[S") && dirname.contains("][Season ")
+}
+
+/// Parse season number from a Season folder name.
+/// Only extracts the season number, ignoring all IDs and titles.
+/// 
+/// Examples:
+/// - "[S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots]-tmdb450504" -> Some(4)
+/// - "[S01][Season 01]" -> Some(1)
+/// - "[S10][Season 10]-..." -> Some(10)
+pub fn parse_season_folder_number(dirname: &str) -> Option<u16> {
+    // Pattern: [SXX][Season XX]-...
+    // We only care about the season number, ignore everything else
+    if let Ok(re) = regex::Regex::new(r"^\[S(\d+)\]\[Season \d+\]") {
+        if let Some(caps) = re.captures(dirname) {
+            if let Some(num) = caps.get(1).and_then(|m| m.as_str().parse().ok()) {
+                return Some(num);
+            }
+        }
+    }
     None
 }
 

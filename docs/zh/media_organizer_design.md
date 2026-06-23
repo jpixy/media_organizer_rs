@@ -329,46 +329,150 @@ TV Show Level ──────────────────────
    - Season Level: 使用独立 Season ID，若为 0 则回退到 Show ID
    - Episode Level: 继承自所属 Season 的 TMDB ID
 
-#### 4.4.5.1 单元剧（Anthology Series）特殊处理
+#### 4.4.5.1 Season 文件夹处理逻辑（2026-06-23 更新）
+
+**核心原则**：Season 文件夹只保留 season 编号，其他所有信息必须从 API 获取。
+
+**Season 文件夹命名规范**：
+```
+[S04][Season 04]                      # 只需包含 Season 编号，其他信息从 API 获取
+[S04][Season 04]-[Title]             # 可选保留标题（仅用于显示，解析时忽略）
+[S04][Season 04]-[Title]-tmdb450504  # 可选保留 TMDB ID（解析时忽略）
+```
+
+**解析逻辑**：
+1. **只提取 season 编号**：通过正则 `[S(\d+)]` 提取 `[S04]` 中的数字 `4`
+2. **忽略所有 ID**：无论是 IMDB ID 还是 TMDB ID，都不保留
+3. **忽略所有标题信息**：标题、年份等信息必须从 API 获取
+4. **TV Show 信息获取**：
+   - 如果 TV Show 文件夹中有 TMDB ID，优先使用
+   - 如果 TMDB ID 是 Season ID（导致 404），则通过标题搜索获取正确的 TV Show ID
+   - 如果搜索年份无结果，尝试 `year±1` 误差查询
+
+**实现位置**:
+- `src/core/parser.rs` - `is_season_folder()` 和 `parse_season_folder_number()` 函数
+- `src/core/planner.rs` - `find_tv_series_folder_context()` 函数
+
+**关键代码**：
+```rust
+// Season 文件夹识别：只匹配 [SXX][Season XX] 格式
+pub fn is_season_folder(dirname: &str) -> bool {
+    dirname.starts_with("[S") && dirname.contains("][Season ")
+}
+
+// Season 编号提取：只提取数字，忽略其他所有信息
+pub fn parse_season_folder_number(dirname: &str) -> Option<u16> {
+    if let Ok(re) = regex::Regex::new(r"^\[S(\d+)\]\[Season \d+\]") {
+        if let Some(caps) = re.captures(dirname) {
+            if let Some(num) = caps.get(1).and_then(|m| m.as_str().parse().ok()) {
+                return Some(num);
+            }
+        }
+    }
+    None
+}
+```
+
+**验证失败处理**：
+- 当所有 API 查询都失败时，文件会被标记为 `Unknown/failed`
+- 在 `plan` 子命令执行后，会输出失败列表供用户查看
+
+---
+
+### 4.4.5.2 单元剧（Anthology Series）特殊处理
 
 **定义**：单元剧是指每一季有独立故事线、角色和制作团队的电视剧，例如《爱，死亡和机器人》、《黑镜》等。这类剧集的每个 Season 都有独立的 IMDB ID。
 
 **IMDB ID 优先级规则**（从高到低）：
-1. **文件夹名中的 Season IMDB ID**：如果 Season 文件夹名中包含 IMDB ID（如 `tt21661768`），优先使用
-2. **TMDB Season External IDs**：通过 TMDB API `/tv/{series_id}/season/{season_number}/external_ids` 获取的 Season 级别 IMDB ID
-3. **TV Show IMDB ID**：回退到 TV Show 级别的 IMDB ID
+1. **TMDB Season External IDs**：通过 TMDB API `/tv/{series_id}/season/{season_number}/external_ids` 获取的 Season 级别 IMDB ID
+2. **TV Show IMDB ID**：回退到 TV Show 级别的 IMDB ID（普通电视剧共享 Show 级别 ID）
+
+**重要提示（TMDB数据源限制）**：
+
+| 剧集 | Season级别IMDB ID状态 | 说明 |
+|------|----------------------|------|
+| 爱，死亡和机器人 | Season 1-3有，Season 4无 | TMDB尚未收录Season 4的IMDB ID |
+| 黑镜 | 所有Season都无 | TMDB未收录任何Season级IMDB ID |
+| 普通电视剧 | 所有Season共享Show级别ID | 正常行为 |
+
+**常见问题排查**：
+- **问题**：单元剧Season文件夹使用了Show级别IMDB ID而非独立ID
+- **原因**：TMDB API未返回该Season的IMDB ID（数据缺失）
+- **解决方案**：等待TMDB社区更新数据，或手动编辑生成的文件夹名
+
+**重要提醒（Tips）**：
+
+> ⚠️ **TMDB数据源限制提醒**
+> 
+> | 剧集 | 单元剧类型 | Season级别IMDB ID状态 |
+> |------|-----------|----------------------|
+> | 爱，死亡和机器人 | 是 | Season 1-3有，Season 4 **TMDB未收录** |
+> | 黑镜 | 是 | 所有Season都没有（**TMDB未收录**） |
+> | 普通电视剧 | 否 | 所有Season共享Show级别ID（正常行为） |
+> 
+> **结论**：单元剧的Season级别IMDB ID可用性完全取决于TMDB社区的数据贡献。
 
 **实现位置**: 
-- `src/core/planner.rs` - `process_new_file_in_organized_folder` 函数
-- `src/core/parser.rs` - `parse_organized_tv_series_folder` 函数（新增 Pattern 0a 支持）
+- `src/core/planner.rs` - Season IMDB ID获取逻辑
+- `src/services/tmdb.rs` - `get_season_external_ids` 函数
 
-**关键代码逻辑**:
+**问题根源分析**:
+
+文件夹名中的 `tmdb450504` 实际上是 **Season 4 的 TMDB ID**，而不是 TV Show 的 TMDB ID。当使用这个 ID 查询 TV Show 信息时，会收到 404 错误。
+
+**当前处理流程**:
+
+```
+文件夹 TMDB ID (450504)
+        │
+        ▼
+ 尝试调用 TV Show API
+        │
+        ├─► 404 错误
+        │         │
+        │         ▼
+        │   通过标题搜索获取 TV Show ID (86831)
+        │         │
+        │         ▼
+        │   获取 TV Show 元数据 (含正确的 IMDB ID)
+        │         │
+        │         ▼
+        │   使用 TV Show ID + Season Number 获取 Season 元数据
+        │         │
+        │         ▼
+        └─► 成功获取 Season details
+
+---
+
+#### 4.4.5.3 代码优化：提取公共搜索函数
+
+为消除 Movie 和 TV 搜索逻辑中的冗余代码，提取了公共的 URL 构建函数：
+
+**位置**: `src/services/tmdb.rs`
+
 ```rust
-// Priority: folder_info.season_imdb_id > TMDB season external_ids > TV show IMDB ID
-let season_imdb_id = if let Some(ref folder_season_imdb) = folder_info.season_imdb_id {
-    folder_season_imdb.clone()
-} else {
-    match tmdb.get_season_external_ids(show_meta.tmdb_id, season).await {
-        Ok(external_ids) => {
-            external_ids.imdb_id.or_else(|| show_meta.imdb_id.clone())
-        },
-        Err(e) => {
-            show_meta.imdb_id.clone()
-        }
-    }
-};
+/// Build URL with custom language parameter for localized search results.
+/// This is a helper function to avoid code duplication between movie and TV search.
+fn build_search_url(&self, endpoint: &str, query: &str, year_param: &str, language: &str) -> String {
+    let api_key_param = if self.config.use_bearer {
+        String::new()
+    } else {
+        format!("api_key={}&", self.config.api_key)
+    };
+    format!(
+        "{}/{}?{}{}&language={}{}",
+        TMDB_BASE_URL, endpoint, api_key_param, 
+        format!("query={}", urlencoding::encode(query)),
+        language,
+        year_param
+    )
+}
 ```
 
-**Season 文件夹命名规范**（支持单元剧）：
-```
-[S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots](2025)-tt21661768-tmdb450504
-                                                              ↑           ↑
-                                                         Season IMDB ID  Season TMDB ID
-```
-
-**测试覆盖**:
-- 单元测试: `tests/anthology_series_tests.rs` - 测试文件夹解析和 IMDB ID 优先级逻辑
-- 单元测试: `tests/tv_metadata_validation_tests.rs` - 测试 TV 元数据验证逻辑
+**优化效果**:
+- 消除了 `search_movie_with_language` 和 `search_tv_with_language` 之间约 15 行重复代码
+- 统一了 URL 构建逻辑，便于维护和修改
+- 提高了代码可读性和一致性
 
 ### 4.4.6 ID 搜索与验证逻辑
 
