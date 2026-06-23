@@ -7,6 +7,7 @@
 //! - `OLLAMA_TIMEOUT`: Request timeout in seconds (default: 120)
 
 use crate::Result;
+use crate::utils::http_client::{create_http_client, HttpClientConfig};
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_BASE_URL: &str = "http://localhost:11434";
@@ -133,11 +134,12 @@ impl OllamaClient {
 
     /// Create a new Ollama client with custom configuration.
     pub fn with_config(config: OllamaConfig) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(config.timeout_secs))
-            .build()
-            .expect("Failed to create HTTP client");
-
+        let http_client_config = HttpClientConfig {
+            timeout_secs: config.timeout_secs,
+            proxy_enabled: false,
+            proxy: None,
+        };
+        let client = create_http_client(&http_client_config);
         Self { config, client }
     }
 

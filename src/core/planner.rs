@@ -1142,6 +1142,24 @@ impl Planner {
                     }
                 }
             }
+        } else if media_type == MediaType::TvSeries {
+            // No TMDB ID in path - try to find TV show context from folder structure
+            if let Some(context) = self.find_tv_series_folder_context(&video.parent_dir) {
+                tracing::info!(
+                    "[PATH-ID] No path TMDB ID, but found folder context: tvshow_info={}, season_number={:?}",
+                    context.tvshow_info.is_some(),
+                    context.season_number
+                );
+                return self
+                    .process_file_with_folder_context(
+                        video,
+                        target,
+                        &context,
+                        season_cache,
+                        precomputed_ffprobe,
+                    )
+                    .await;
+            }
         }
 
         // ============================================================
@@ -1660,31 +1678,64 @@ impl Planner {
 
                 // OPTIMIZATION: Use cached show if available and TMDB ID matches
                 let show_meta = if let Some(cached) = cached_show {
-                    // Verify TMDB ID matches (if we have folder info)
+                    // Verify TMDB ID matches (if we have folder info with TMDB ID)
                     if let Some(ref folder) = folder_info {
-                        if cached.tmdb_id == folder.tmdb_id {
-                            tracing::debug!(
-                                "[ORGANIZED] Using cached show for: {} S{:02}E{:02}",
-                                info.title,
-                                info.season,
-                                info.episode
-                            );
-                            cached.clone()
+                        if let Some(folder_tmdb_id) = folder.tmdb_id {
+                            if cached.tmdb_id == folder_tmdb_id {
+                                tracing::debug!(
+                                    "[ORGANIZED] Using cached show for: {} S{:02}E{:02}",
+                                    info.title,
+                                    info.season,
+                                    info.episode
+                                );
+                                cached.clone()
+                            } else {
+                                // TMDB ID mismatch, fetch fresh data
+                                self.fetch_tv_series_by_id(folder_tmdb_id).await?
+                            }
                         } else {
-                            // TMDB ID mismatch, fetch fresh data
-                            self.fetch_tv_series_by_id(folder.tmdb_id).await?
+                            // Folder has no TMDB ID, trust the cache
+                            cached.clone()
                         }
                     } else {
                         // No folder info, trust the cache
                         cached.clone()
                     }
                 } else if let Some(ref folder) = folder_info {
-                    // No cache, fetch by TMDB ID from folder
-                    println!(
-                        "    [ORGANIZED] Re-indexing TV via ID: {} S{:02}E{:02} (tmdb{})",
-                        folder.title, info.season, info.episode, folder.tmdb_id
-                    );
-                    self.fetch_tv_series_by_id(folder.tmdb_id).await?
+                    // No cache, fetch by TMDB ID from folder if available
+                    if let Some(tmdb_id) = folder.tmdb_id {
+                        println!(
+                            "    [ORGANIZED] Re-indexing TV via ID: {} S{:02}E{:02} (tmdb{})",
+                            folder.title, info.season, info.episode, tmdb_id
+                        );
+                        self.fetch_tv_series_by_id(tmdb_id).await?
+                    } else {
+                        // No TMDB ID in folder, fall through to title search
+                        println!(
+                            "    [ORGANIZED] Re-indexing TV: {} S{:02}E{:02}",
+                            info.title, info.season, info.episode
+                        );
+
+                        let parent_folder = self.get_meaningful_folder_name(&video.parent_dir);
+                        let parsed_search = ParsedFilename {
+                            title: Some(info.title.clone()),
+                            original_title: None,
+                            year: None,
+                            season: Some(info.season),
+                            episode: Some(info.episode),
+                            confidence: 1.0,
+                            raw_response: Some("organized_format".to_string()),
+                        };
+
+                        let (show, _) = self
+                            .query_tmdb_tv_series_with_folder(&parsed_search, parent_folder.as_deref())
+                            .await?;
+                        if show.is_none() {
+                            tracing::warn!("[ORGANIZED] TMDB search failed for: {}", info.title);
+                            return Ok(None);
+                        }
+                        show.unwrap()
+                    }
                 } else {
                     // Fall back to searching by title
                     println!(
@@ -2288,17 +2339,17 @@ impl Planner {
         let show_meta = if let Some(ref tvshow_info) = context.tvshow_info {
             // We have TV Show folder info - use it to get metadata
             tracing::info!(
-                "[CONTEXT-PROCESS] Using TV Show folder info: title={}, tmdb={}, imdb={:?}",
+                "[CONTEXT-PROCESS] Using TV Show folder info: title={}, tmdb={:?}, imdb={:?}",
                 tvshow_info.title,
                 tvshow_info.tmdb_id,
                 tvshow_info.imdb_id
             );
             
-            // If TMDB ID is valid (>0), use it directly
-            if tvshow_info.tmdb_id > 0 {
+            // If TMDB ID is available, use it directly
+            if let Some(tmdb_id) = tvshow_info.tmdb_id {
                 match self.get_tv_show_with_fallback(
                     tmdb,
-                    tvshow_info.tmdb_id,
+                    tmdb_id,
                     tvshow_info.imdb_id.as_deref(),
                     &tvshow_info.title,
                     tvshow_info.year,
@@ -2307,7 +2358,7 @@ impl Planner {
                     Ok(meta) => {
                         tracing::info!(
                             "[CONTEXT-PROCESS] Got TV Show metadata via TMDB ID {}: {} (imdb={:?})",
-                            tvshow_info.tmdb_id,
+                            tmdb_id,
                             meta.name,
                             meta.imdb_id
                         );
@@ -2316,7 +2367,7 @@ impl Planner {
                     Err(e) => {
                         tracing::warn!(
                             "[CONTEXT-PROCESS] Failed to get TV Show with tmdb{}: {}, searching by title...",
-                            tvshow_info.tmdb_id,
+                            tmdb_id,
                             e
                         );
                         // Fall back to search
@@ -2324,7 +2375,12 @@ impl Planner {
                     }
                 }
             } else {
-                // No valid TMDB ID, search by title
+                // No TMDB ID available, search by title and year
+                tracing::info!(
+                    "[CONTEXT-PROCESS] No TMDB ID available, searching by title '{}' with year {:?}",
+                    tvshow_info.title,
+                    tvshow_info.year
+                );
                 self.search_tv_show(tmdb, &tvshow_info.title, tvshow_info.year, tvshow_info.original_title.as_deref()).await?
             }
         } else {
@@ -2568,16 +2624,28 @@ impl Planner {
             let folder_name = folder_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if let Some(folder_info) = parser::parse_organized_tv_series_folder(folder_name) {
                 tracing::info!(
-                    "[ORGANIZED-TV-FOLDER] Processing: {} (tmdb{})",
+                    "[ORGANIZED-TV-FOLDER] Processing: {} (tmdb={:?})",
                     folder_info.title, folder_info.tmdb_id
                 );
                 
-                // Fetch TV show details
-                let show_meta = match self.fetch_tv_series_by_id(folder_info.tmdb_id).await {
-                    Ok(meta) => meta,
-                    Err(e) => {
-                        tracing::warn!("Failed to fetch TV series info for tmdb{}: {}", folder_info.tmdb_id, e);
-                        continue;
+                // Fetch TV show details - use TMDB ID if available, otherwise search by title
+                let show_meta = match folder_info.tmdb_id {
+                    Some(tmdb_id) => match self.fetch_tv_series_by_id(tmdb_id).await {
+                        Ok(meta) => meta,
+                        Err(e) => {
+                            tracing::warn!("Failed to fetch TV series info for tmdb{}: {}", tmdb_id, e);
+                            continue;
+                        }
+                    },
+                    None => {
+                        // No TMDB ID, search by title
+                        match self.search_tv_show(self.tmdb_client.as_ref().unwrap(), &folder_info.title, folder_info.year, folder_info.original_title.as_deref()).await {
+                            Ok(meta) => meta,
+                            Err(e) => {
+                                tracing::warn!("Failed to search TV series '{}': {}", folder_info.title, e);
+                                continue;
+                            }
+                        }
                     }
                 };
                 
@@ -2618,7 +2686,7 @@ impl Planner {
                 Some(SeasonMetadata::from_tmdb_details(&season_details, season_imdb_id, &self.config.poster_size))
                         },
                         Err(e) => {
-                            tracing::warn!("Failed to get season {} details for tmdb{}: {}", season_num, folder_info.tmdb_id, e);
+                            tracing::warn!("Failed to get season {} details for tmdb={:?}: {}", season_num, folder_info.tmdb_id, e);
                             continue;
                         }
                     };
@@ -2739,7 +2807,7 @@ impl Planner {
                         if !info.title.starts_with("S") || info.title.len() > 3 {
                             tvshow_info = Some(info.clone());
                             tracing::info!(
-                                "[FIND-CONTEXT] Found TV Show folder '{}': title={}, tmdb={}, imdb={:?}",
+                                "[FIND-CONTEXT] Found TV Show folder '{}': title={}, tmdb={:?}, imdb={:?}",
                                 name, info.title, info.tmdb_id, info.imdb_id
                             );
                             break; // Found TV Show level, no need to continue
@@ -2762,7 +2830,7 @@ impl Planner {
                                     original_title,
                                     year: parser::extract_year_from_dirname(name),
                                     imdb_id: None,
-                                    tmdb_id: 0,
+                                    tmdb_id: None,
                                     season_imdb_id: None,
                                 });
                                 break;
@@ -2801,7 +2869,7 @@ impl Planner {
                 println!("[FIND-FOLDER] Checking folder: {}", name);
                 // Try to parse as organized folder
                 if let Some(info) = parser::parse_organized_tv_series_folder(name) {
-                    println!("[FIND-FOLDER] Parsed folder '{}': tmdb={}, season_imdb={:?}", name, info.tmdb_id, info.season_imdb_id);
+                    println!("[FIND-FOLDER] Parsed folder '{}': tmdb={:?}, season_imdb={:?}", name, info.tmdb_id, info.season_imdb_id);
                     // Check if this is a Season folder (starts with [S or [Season)
                     let is_season_folder = name.starts_with("[S") && name.contains("][Season ");
                     
@@ -2809,7 +2877,7 @@ impl Planner {
                         // Store season folder info as fallback
                         if season_folder_info.is_none() {
                             season_folder_info = Some(info.clone());
-                            tracing::debug!("[FIND-FOLDER] Found Season folder: {} (tmdb{})", name, info.tmdb_id);
+                            tracing::debug!("[FIND-FOLDER] Found Season folder: {} (tmdb={:?})", name, info.tmdb_id);
                         }
                     } else {
                         // This is TV Show level folder - use this preferentially
@@ -2817,13 +2885,13 @@ impl Planner {
                         if !info.title.starts_with("S") || info.title.len() > 3 {
                             // Valid TV Show title (not just "S01", "S02", etc.)
                             tvshow_folder_info = Some(info.clone());
-                            tracing::debug!("[FIND-FOLDER] Found TV Show folder: {} (tmdb{})", name, info.tmdb_id);
+                            tracing::debug!("[FIND-FOLDER] Found TV Show folder: {} (tmdb={:?})", name, info.tmdb_id);
                             break; // Found TV Show level, no need to continue
                         } else {
                             // Title looks like just a season number, treat as season folder
                             if season_folder_info.is_none() {
                                 season_folder_info = Some(info.clone());
-                                tracing::debug!("[FIND-FOLDER] Found Season folder (title looks like season): {} (tmdb{})", name, info.tmdb_id);
+                                tracing::debug!("[FIND-FOLDER] Found Season folder (title looks like season): {} (tmdb={:?})", name, info.tmdb_id);
                             }
                         }
                     }
@@ -2861,7 +2929,7 @@ impl Planner {
                                     original_title,
                                     year: parser::extract_year_from_dirname(name),
                                     imdb_id: None,
-                                    tmdb_id: 0, // Will be overridden by TMDB ID from filename
+                                    tmdb_id: None, // Will be overridden by TMDB ID from filename
                                     season_imdb_id: None,
                                 });
                                 break;
@@ -4162,6 +4230,22 @@ impl Planner {
     /// - "A-剧名" → "剧名"
     /// - "1.标题" → "标题"
     fn strip_sorting_prefix(name: &str) -> &str {
+        // Pattern 0: Square bracket prefix + separator (_, -, .)
+        // e.g., "[A]_剧名", "[X]-电影", "[Z].标题", "[A][中文][英文](2022)"
+        if let Ok(re) = regex::Regex::new(r"^\[[A-Za-z0-9]+\]\[") {
+            if re.is_match(name) {
+                // Find the closing bracket of the first bracket group
+                if let Some(end) = name.find("][") {
+                    // Only add 1 to keep the opening bracket of the next group
+                    let stripped = &name[end + 1..];
+                    if !stripped.is_empty() {
+                        tracing::debug!("Stripped sorting prefix from '{}' -> '{}'", name, stripped);
+                        return stripped;
+                    }
+                }
+            }
+        }
+
         // Pattern 1: Single ASCII letter + separator (_, -, .)
         // e.g., "A_剧名", "X-电影", "Z.标题"
         if let Ok(re) = regex::Regex::new(r"^[A-Za-z][_\-.]") {
@@ -5168,14 +5252,21 @@ impl Planner {
                 let cleaned = year_re.replace_all(folder, "").to_string();
                 // Strip sorting prefix (A_, X_, 01_, etc.)
                 let cleaned = Self::strip_sorting_prefix(&cleaned);
-                // Replace separators with spaces for better parsing
-                let cleaned = cleaned.replace(['.', '_', '-'], " ").trim().to_string();
+                // Remove brackets and replace separators with spaces for better parsing
+                let cleaned = cleaned
+                    .chars()
+                    .filter(|c| *c != '[' && *c != ']')
+                    .collect::<String>()
+                    .replace(['.', '_', '-'], " ")
+                    .trim()
+                    .to_string();
 
                 tracing::debug!("[FOLDER] Cleaned folder name: '{}'", cleaned);
 
                 // Extract Chinese portion (consecutive CJK characters and punctuation)
+                // Include comma (,) for cases like "爱，死亡和机器人"
                 let chinese_re =
-                    regex::Regex::new(r"[\u4e00-\u9fff\u3000-\u303f\u00b7\uff01-\uff5e]+").unwrap();
+                    regex::Regex::new(r"[\u4e00-\u9fff\u3000-\u303f\u00b7\uff01-\uff5e,，]+").unwrap();
                 let folder_chinese: String = chinese_re
                     .find_iter(&cleaned)
                     .map(|m| m.as_str())
@@ -5239,9 +5330,11 @@ impl Planner {
             async {
                 let mut results: Vec<crate::services::tmdb::TvSearchItem> = Vec::new();
                 if let Some(ref title) = chinese_title_clone {
-                    if let Ok(r) = client.search_tv(title, search_year).await {
+                    // Use language-specific search for Chinese titles
+                    if let Ok(r) = client.search_tv_with_language(title, search_year, "zh-CN").await {
                         if r.is_empty() {
-                            if let Ok(r2) = client.search_tv(title, None).await {
+                            // Try with year removed if no results
+                            if let Ok(r2) = client.search_tv_with_language(title, None, "zh-CN").await {
                                 results = r2;
                             }
                         } else {
@@ -5349,13 +5442,18 @@ impl Planner {
                 || ('\u{3400}'..='\u{4DBF}').contains(&c) // CJK Extension A
                 || ('\u{AC00}'..='\u{D7AF}').contains(&c) // Korean Hangul
                 || ('\u{3040}'..='\u{30FF}').contains(&c) // Japanese Hiragana/Katakana
+                || ('\u{FF01}'..='\u{FF5E}').contains(&c) // Full-width ASCII variants (including Chinese comma)
+                || ('\u{3000}'..='\u{303F}').contains(&c) // CJK punctuation
         }) && query.chars().any(|c| !c.is_whitespace());
 
-        if is_pure_cjk && results.len() == 1 {
+        // For pure CJK queries with few results, trust TMDB's matching
+        // TMDB's language-specific search already filters results
+        if is_pure_cjk && results.len() <= 3 {
             tracing::info!(
-                "TMDB single result for CJK query '{}': trusting result '{}'",
+                "TMDB CJK query '{}': trusting top result '{}' ({} results total)",
                 query,
-                results[0].name
+                results[0].name,
+                results.len()
             );
             return Some(&results[0]);
         }
@@ -5508,7 +5606,9 @@ impl Planner {
         tv_id: u64,
         parsed: &ParsedFilename,
     ) -> Result<(Option<TvSeriesMetadata>, Option<EpisodeMetadata>)> {
+        tracing::info!("[GET_TV_DETAILS] Fetching TMDB details for tv_id={}", tv_id);
         let details = client.get_tv_details(tv_id).await?;
+        tracing::info!("[GET_TV_DETAILS] Got details for tv_id={}: name={}", tv_id, details.name.as_deref().unwrap_or("N/A"));
 
         // Check if response has valid data
         if details.id.is_none() {
@@ -5746,6 +5846,8 @@ impl Planner {
             None
         };
 
+        tracing::info!("[GET_TV_DETAILS] Returning show={:?}, episode.is_some()={}", 
+            show.name, episode.is_some());
         Ok((Some(show), episode))
     }
 
@@ -8010,5 +8112,197 @@ mod tests {
 
         assert!(result.is_some());
         assert_eq!(result.unwrap().id, 634649);
+    }
+
+    #[test]
+    fn test_select_best_tv_match_with_chinese_comma() {
+        // Test case: "爱，死亡和机器人" - title with Chinese comma (，)
+        // This tests that the is_pure_cjk logic correctly handles full-width punctuation
+        let planner = Planner::new().unwrap();
+
+        // Create mock TV search results similar to what TMDB would return for "Love, Death & Robots"
+        let results = vec![
+            crate::services::tmdb::TvSearchItem {
+                id: 86831,
+                name: "Love, Death & Robots".to_string(),
+                original_name: "Love, Death & Robots".to_string(),
+                first_air_date: Some("2019-03-15".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+        ];
+
+        // Query with Chinese title containing full-width comma (，)
+        // This is the key test case: the query contains U+FF0C (full-width comma)
+        let result = planner.select_best_tv_match("爱，死亡和机器人", &results);
+
+        // Should return the result because it's a pure CJK query with ≤3 results
+        assert!(result.is_some(), "Should match '爱，死亡和机器人' to 'Love, Death & Robots'");
+        assert_eq!(result.unwrap().id, 86831);
+    }
+
+    #[test]
+    fn test_select_best_tv_match_with_various_chinese_punctuation() {
+        let planner = Planner::new().unwrap();
+
+        let results = vec![
+            crate::services::tmdb::TvSearchItem {
+                id: 12345,
+                name: "Test Show".to_string(),
+                original_name: "Test Show".to_string(),
+                first_air_date: Some("2020-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+        ];
+
+        // Test various full-width punctuation characters that are commonly used in Chinese titles
+        // Note: Middle dot (·) is U+00B7, which is not in the CJK ranges, so it's not treated as pure CJK
+        // The full-width punctuation range (U+FF01-U+FF5E) and CJK punctuation (U+3000-U+303F) are supported
+        let test_cases = vec![
+            "测试！标题",       // Full-width exclamation (U+FF01) - pure CJK
+            "测试，标题",       // Full-width comma (U+FF0C) - pure CJK
+            "测试。标题",       // Full-width period (U+FF0E) - pure CJK
+            "测试？标题",       // Full-width question mark (U+FF1F) - pure CJK
+            "测试：标题",       // Full-width colon (U+FF1A) - pure CJK
+        ];
+
+        for query in test_cases {
+            let result = planner.select_best_tv_match(query, &results);
+            assert!(result.is_some(), "Should match query '{}' with Chinese punctuation", query);
+        }
+    }
+
+    #[test]
+    fn test_select_best_tv_match_mixed_cjk_english() {
+        // Test case: Mixed CJK and ASCII is NOT treated as pure CJK
+        // This test verifies that mixed queries are rejected (score too low)
+        // because the scoring algorithm doesn't handle mixed language well
+        let planner = Planner::new().unwrap();
+
+        let results = vec![
+            crate::services::tmdb::TvSearchItem {
+                id: 86831,
+                name: "Love, Death & Robots".to_string(),
+                original_name: "Love, Death & Robots".to_string(),
+                first_air_date: Some("2019-03-15".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+        ];
+
+        // Query with mixed CJK and English - should NOT be treated as pure CJK
+        // and should fail to match because the query doesn't match the result well
+        let result = planner.select_best_tv_match("爱，死亡和 Robots", &results);
+
+        // This should return None because mixed CJK+English queries don't match well
+        // The is_pure_cjk check will fail (due to "Robots"), and the scoring will be low
+        assert!(result.is_none(), "Mixed CJK+English queries should not match well with English results");
+    }
+
+    #[test]
+    fn test_select_best_tv_match_pure_cjk_trusts_result() {
+        // Test case: Pure CJK query should trust TMDB result even with very different names
+        // This is the key scenario: searching "爱，死亡和机器人" should trust TMDB's mapping
+        let planner = Planner::new().unwrap();
+
+        // Create a single result - TMDB will map Chinese title to the correct English show
+        let results = vec![
+            crate::services::tmdb::TvSearchItem {
+                id: 86831,
+                name: "Love, Death & Robots".to_string(),
+                original_name: "Love, Death & Robots".to_string(),
+                first_air_date: Some("2019-03-15".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+        ];
+
+        // Pure CJK query - should trust the result (TMDB handles the mapping)
+        let result = planner.select_best_tv_match("爱，死亡和机器人", &results);
+
+        assert!(result.is_some(), "Pure CJK query should trust TMDB result");
+        assert_eq!(result.unwrap().id, 86831);
+    }
+
+    #[test]
+    fn test_select_best_tv_match_pure_cjk_with_multiple_results() {
+        // Test that pure CJK queries with ≤3 results trust the first result
+        let planner = Planner::new().unwrap();
+
+        // Create multiple results (but ≤3)
+        let results = vec![
+            crate::services::tmdb::TvSearchItem {
+                id: 11111,
+                name: "Chinese Show".to_string(),
+                original_name: "中文节目".to_string(),
+                first_air_date: Some("2020-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+            crate::services::tmdb::TvSearchItem {
+                id: 22222,
+                name: "Another Show".to_string(),
+                original_name: "另一个节目".to_string(),
+                first_air_date: Some("2021-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+        ];
+
+        // Pure CJK query with ≤3 results should trust first result
+        let result = planner.select_best_tv_match("中文节目", &results);
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 11111, "Should trust first result for pure CJK query with ≤3 results");
+    }
+
+    #[test]
+    fn test_select_best_tv_match_pure_cjk_with_many_results() {
+        // Test that pure CJK queries with >3 results still use scoring
+        let planner = Planner::new().unwrap();
+
+        // Create more than 3 results
+        let results = vec![
+            crate::services::tmdb::TvSearchItem {
+                id: 11111,
+                name: "Show One".to_string(),
+                original_name: "节目一".to_string(),
+                first_air_date: Some("2020-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+            crate::services::tmdb::TvSearchItem {
+                id: 22222,
+                name: "Show Two".to_string(),
+                original_name: "节目二".to_string(),
+                first_air_date: Some("2021-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+            crate::services::tmdb::TvSearchItem {
+                id: 33333,
+                name: "Show Three".to_string(),
+                original_name: "节目三".to_string(),
+                first_air_date: Some("2022-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+            crate::services::tmdb::TvSearchItem {
+                id: 44444,
+                name: "Show Four".to_string(),
+                original_name: "节目四".to_string(),
+                first_air_date: Some("2023-01-01".to_string()),
+                overview: None,
+                poster_path: None,
+            },
+        ];
+
+        // Query that matches "Show One" exactly
+        let result = planner.select_best_tv_match("节目一", &results);
+
+        // With >3 results, should use scoring and find exact match
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, 11111, "Should find exact match with scoring");
     }
 }

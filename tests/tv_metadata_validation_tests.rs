@@ -18,7 +18,7 @@ fn test_tv_folder_parsing_pattern_0a_anthology() {
     assert_eq!(info.title, "爱，死亡和机器人");
     assert_eq!(info.original_title, Some("Love, Death & Robots".to_string()));
     assert_eq!(info.year, Some(2025));
-    assert_eq!(info.tmdb_id, 86831); // TMDB TV Show ID
+    assert_eq!(info.tmdb_id, Some(86831)); // TMDB TV Show ID
     assert_eq!(info.season_imdb_id, Some("tt21661768".to_string())); // Season 4 IMDB ID
     assert!(info.imdb_id.is_none());
     
@@ -39,7 +39,7 @@ fn test_tv_folder_parsing_pattern_0_regular() {
     let info = result.unwrap();
     // Pattern 0 prefers longer title, so it selects "绝命毒师" (4 chars) over "L" (1 char)
     assert_eq!(info.title, "绝命毒师"); 
-    assert_eq!(info.tmdb_id, 1396);
+    assert_eq!(info.tmdb_id, Some(1396));
     assert_eq!(info.season_imdb_id, Some("tt0903747".to_string())); // TV Show IMDB ID
     
     println!("✓ Test passed: Parsed regular season folder correctly");
@@ -82,7 +82,7 @@ fn test_imdb_id_priority_logic() {
         original_title: Some("Love, Death & Robots".to_string()),
         year: Some(2025),
         imdb_id: None,
-        tmdb_id: 86831,
+        tmdb_id: Some(86831),
         season_imdb_id: Some("tt21661768".to_string()), // Season-level IMDB ID
     };
     
@@ -107,7 +107,7 @@ fn test_imdb_id_priority_logic() {
         original_title: Some("Breaking Bad".to_string()),
         year: Some(2008),
         imdb_id: None,
-        tmdb_id: 1396,
+        tmdb_id: Some(1396),
         season_imdb_id: None, // No season-level IMDB ID
     };
     
@@ -179,7 +179,7 @@ fn test_folder_consistency_validation() {
     assert_eq!(info.year, Some(2025));
     
     // Validate TMDB ID is present
-    assert_ne!(info.tmdb_id, 0);
+    assert!(info.tmdb_id.is_some());
     
     println!("✓ Test passed: Folder parsing consistency validated");
 }

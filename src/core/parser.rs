@@ -914,8 +914,7 @@ mod tests {
         // Invalid patterns (TV Show folders, not Season folders)
         assert!(!is_season_folder("[A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504"));
         assert!(!is_season_folder("[Title](2025)-tt123-tmdb456"));
-        assert!(!is_season_folder("Season 01")); // No [S prefix
-        assert!(!is_season_folder("S04")); // No [Season suffix
+        // Note: "Season 01" and "S04" are now VALID season folder patterns
     }
 
     #[test]
@@ -925,14 +924,19 @@ mod tests {
         assert_eq!(parse_season_folder_number("[S01][Season 01]"), Some(1));
         assert_eq!(parse_season_folder_number("[S10][Season 10]-..."), Some(10));
         assert_eq!(parse_season_folder_number("[S02][Season 02]-[Title](2025)-tt123-tmdb456"), Some(2));
+        // Simple season folder patterns
+        assert_eq!(parse_season_folder_number("S04"), Some(4));
+        assert_eq!(parse_season_folder_number("Season 01"), Some(1));
+        assert_eq!(parse_season_folder_number("Season.2"), Some(2));
+        assert_eq!(parse_season_folder_number("Season-3"), Some(3));
+        assert_eq!(parse_season_folder_number("第4季"), Some(4));
+        assert_eq!(parse_season_folder_number("第10季"), Some(10));
     }
 
     #[test]
     fn test_parse_season_folder_number_invalid() {
         // Invalid patterns
         assert_eq!(parse_season_folder_number("[A][爱，死亡和机器人][Love, Death & Robots](2025)-tmdb450504"), None);
-        assert_eq!(parse_season_folder_number("Season 01"), None);
-        assert_eq!(parse_season_folder_number("S04"), None);
         assert_eq!(parse_season_folder_number("[Title](2025)-tt123-tmdb456"), None);
     }
 
@@ -944,7 +948,7 @@ mod tests {
             original_title: Some("Love, Death & Robots".to_string()),
             year: Some(2025),
             imdb_id: Some("tt9561862".to_string()),
-            tmdb_id: 86831,
+            tmdb_id: Some(86831),
             season_imdb_id: None,
         };
         
@@ -959,7 +963,7 @@ mod tests {
         // Verify TV Show info
         let info = context.tvshow_info.unwrap();
         assert_eq!(info.title, "爱，死亡和机器人");
-        assert_eq!(info.tmdb_id, 86831);
+        assert_eq!(info.tmdb_id, Some(86831));
         assert_eq!(info.imdb_id, Some("tt9561862".to_string()));
     }
 
@@ -1291,7 +1295,7 @@ mod tests {
         assert_eq!(info.title, "爱我");
         assert_eq!(info.year, Some(2025));
         assert_eq!(info.imdb_id, Some("tt35451747".to_string()));
-        assert_eq!(info.tmdb_id, 275989);
+        assert_eq!(info.tmdb_id, Some(275989));
     }
 
     #[test]
@@ -1299,7 +1303,7 @@ mod tests {
         let info = parse_organized_tv_series_folder("[러브 미][爱我]-tt35451747-tmdb275989").unwrap();
         assert_eq!(info.title, "爱我");
         assert_eq!(info.year, None);
-        assert_eq!(info.tmdb_id, 275989);
+        assert_eq!(info.tmdb_id, Some(275989));
     }
 
     #[test]
@@ -1307,14 +1311,14 @@ mod tests {
         let info = parse_organized_tv_series_folder("[罚罪2](2025)-tt36771056-tmdb296146").unwrap();
         assert_eq!(info.title, "罚罪2");
         assert_eq!(info.year, Some(2025));
-        assert_eq!(info.tmdb_id, 296146);
+        assert_eq!(info.tmdb_id, Some(296146));
     }
 
     #[test]
     fn test_parse_organized_tv_series_folder_no_imdb() {
         let info = parse_organized_tv_series_folder("[罚罪2](2025)-tmdb296146").unwrap();
         assert_eq!(info.imdb_id, None);
-        assert_eq!(info.tmdb_id, 296146);
+        assert_eq!(info.tmdb_id, Some(296146));
     }
 
     #[test]
@@ -1325,7 +1329,7 @@ mod tests {
         assert_eq!(info.original_title, Some("Love, Death & Robots".to_string()));
         assert_eq!(info.year, Some(2025));
         assert_eq!(info.imdb_id, None);
-        assert_eq!(info.tmdb_id, 450504);
+        assert_eq!(info.tmdb_id, Some(450504));
     }
 
     #[test]
@@ -1336,7 +1340,7 @@ mod tests {
         assert_eq!(info.original_title, None);
         assert_eq!(info.year, Some(2024));
         assert_eq!(info.imdb_id, None);
-        assert_eq!(info.tmdb_id, 12345);
+        assert_eq!(info.tmdb_id, Some(12345));
     }
 
     #[test]
@@ -2028,8 +2032,8 @@ pub struct OrganizedTvSeriesFolderInfo {
     pub year: Option<u16>,
     /// TV Show level IMDB ID
     pub imdb_id: Option<String>,
-    /// TV Show level TMDB ID
-    pub tmdb_id: u64,
+    /// TV Show level TMDB ID (Optional - if not present, will search by title)
+    pub tmdb_id: Option<u64>,
     /// Season level IMDB ID (for anthology series where each season has its own IMDB ID)
     /// NOTE: This field is DEPRECATED for Season folders. Season folders should only
     /// extract season number, and all IDs should be obtained from API.
@@ -2497,7 +2501,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title,
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: None, // TV Show IMDB ID (not available in this format)
-            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(5)?.as_str().parse().ok(),
             season_imdb_id,
         });
     }
@@ -2531,7 +2535,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title,
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: None, // TV Show IMDB ID (not available in this format)
-            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(5)?.as_str().parse().ok(),
             season_imdb_id,
         });
     }
@@ -2561,7 +2565,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title,
             year: None,
             imdb_id: None,
-            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(3)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2589,7 +2593,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title,
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(4)?.as_str())),
-            tmdb_id: caps.get(5)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(5)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2616,7 +2620,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title,
             year: None,
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
-            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(4)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2630,7 +2634,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title: None, // Single title, unknown if it's original or translated
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: Some(format!("tt{}", caps.get(3)?.as_str())),
-            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(4)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2644,7 +2648,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title: None, // Single title, unknown if it's original or translated
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: None,
-            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(3)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2673,7 +2677,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title,
             year: caps.get(3)?.as_str().parse().ok(),
             imdb_id: None,
-            tmdb_id: caps.get(4)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(4)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2688,7 +2692,7 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
             original_title: None,
             year: caps.get(2)?.as_str().parse().ok(),
             imdb_id: None,
-            tmdb_id: caps.get(3)?.as_str().parse().ok()?,
+            tmdb_id: caps.get(3)?.as_str().parse().ok(),
             season_imdb_id: None,
         });
     }
@@ -2705,13 +2709,13 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
 
     let smart = extract_smart_metadata(dirname);
 
-    // Must have at least TMDB ID for TV shows
-    if let Some(tmdb_id) = smart.tmdb_id {
-        // Get primary title (prefer second title if available, as it's usually Chinese)
-        let title = smart
-            .primary_title()
-            .unwrap_or_else(|| "Unknown".to_string());
+    // Get primary title (prefer second title if available, as it's usually Chinese)
+    let title = smart
+        .primary_title()
+        .unwrap_or_else(|| "Unknown".to_string());
 
+    // If we have TMDB ID, use it (higher priority)
+    if let Some(tmdb_id) = smart.tmdb_id {
         tracing::debug!(
             "[SMART] TV folder extracted: tmdb={}, year={:?}, imdb={:?}, title={}",
             tmdb_id,
@@ -2721,11 +2725,31 @@ pub fn parse_organized_tv_series_folder(dirname: &str) -> Option<OrganizedTvSeri
         );
 
         return Some(OrganizedTvSeriesFolderInfo {
-            title,
+            title: title.clone(),
             original_title: smart.original_title(), // May return English title if available
             year: smart.year,
             imdb_id: smart.imdb_id,
-            tmdb_id,
+            tmdb_id: Some(tmdb_id),
+            season_imdb_id: None,
+        });
+    }
+
+    // If no TMDB ID but have title and year, return info for API search
+    // This allows searching by title + year when no ID is present
+    if !title.is_empty() && title != "Unknown" {
+        tracing::debug!(
+            "[SMART] TV folder extracted without TMDB ID: year={:?}, imdb={:?}, title={}",
+            smart.year,
+            smart.imdb_id,
+            title
+        );
+
+        return Some(OrganizedTvSeriesFolderInfo {
+            title,
+            original_title: smart.original_title(),
+            year: smart.year,
+            imdb_id: smart.imdb_id,
+            tmdb_id: None,
             season_imdb_id: None,
         });
     }
@@ -2834,8 +2858,44 @@ pub fn extract_season_from_dirname(dirname: &str) -> Option<u16> {
 /// - Season folders should ONLY extract the season number
 /// - All other information (title, IMDB ID, TMDB ID) should be obtained from API
 /// - This avoids using incorrect IDs from folder names
+/// Check if a directory is a Season folder.
+/// Season folders can be in various formats:
+/// - "[S04][Season 04]-..." (organized format)
+/// - "S04" or "Season 4" (simple format)
+///
+/// Returns true for any folder that represents a season number.
 pub fn is_season_folder(dirname: &str) -> bool {
-    dirname.starts_with("[S") && dirname.contains("][Season ")
+    // Check organized format: [SXX][Season XX]
+    if dirname.starts_with("[S") && dirname.contains("][Season ") {
+        return true;
+    }
+    // Check simple format: S04, Season 4, Season.4, 第4季, etc.
+    let lower = dirname.to_lowercase();
+    if lower == "s01" || lower == "s02" || lower == "s03" || lower == "s04" 
+        || lower == "s05" || lower == "s06" || lower == "s07" || lower == "s08"
+        || lower == "s09" || lower == "s10" || lower == "s11" || lower == "s12"
+        || lower == "s13" || lower == "s14" || lower == "s15" || lower == "s16"
+        || lower == "s17" || lower == "s18" || lower == "s19" || lower == "s20"
+        || lower == "s21" || lower == "s22" || lower == "s23" || lower == "s24"
+        || lower.starts_with("s") && dirname[1..].chars().all(|c| c.is_ascii_digit())
+    {
+        return true;
+    }
+    // Check "Season X" pattern
+    if regex::Regex::new(r"(?i)^season[\s._-]?\d{1,2}$")
+        .map(|re| re.is_match(dirname))
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    // Check Chinese season pattern
+    if regex::Regex::new(r"^第\d{1,2}季$")
+        .map(|re| re.is_match(dirname))
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    false
 }
 
 /// Parse season number from a Season folder name.
@@ -2845,9 +2905,11 @@ pub fn is_season_folder(dirname: &str) -> bool {
 /// - "[S04][Season 04]-[A][爱，死亡和机器人][Love, Death & Robots]-tmdb450504" -> Some(4)
 /// - "[S01][Season 01]" -> Some(1)
 /// - "[S10][Season 10]-..." -> Some(10)
+/// - "S04" -> Some(4)
+/// - "Season 4" -> Some(4)
+/// - "第4季" -> Some(4)
 pub fn parse_season_folder_number(dirname: &str) -> Option<u16> {
-    // Pattern: [SXX][Season XX]-...
-    // We only care about the season number, ignore everything else
+    // Pattern 1: [SXX][Season XX]-... (organized format)
     if let Ok(re) = regex::Regex::new(r"^\[S(\d+)\]\[Season \d+\]") {
         if let Some(caps) = re.captures(dirname) {
             if let Some(num) = caps.get(1).and_then(|m| m.as_str().parse().ok()) {
@@ -2855,6 +2917,33 @@ pub fn parse_season_folder_number(dirname: &str) -> Option<u16> {
             }
         }
     }
+    
+    // Pattern 2: S04 or S4 (simple format)
+    let lower = dirname.to_lowercase();
+    if lower.starts_with("s") && lower.len() >= 2 && lower.len() <= 3 {
+        if let Ok(num) = lower[1..].parse::<u16>() {
+            return Some(num);
+        }
+    }
+    
+    // Pattern 3: Season X or Season.X or Season-4 (English format)
+    if let Ok(re) = regex::Regex::new(r"(?i)^season[\s._-]?(\d{1,2})$") {
+        if let Some(caps) = re.captures(dirname) {
+            if let Some(num) = caps.get(1).and_then(|m| m.as_str().parse().ok()) {
+                return Some(num);
+            }
+        }
+    }
+    
+    // Pattern 4: 第4季 (Chinese format)
+    if let Ok(re) = regex::Regex::new(r"^第(\d{1,2})季$") {
+        if let Some(caps) = re.captures(dirname) {
+            if let Some(num) = caps.get(1).and_then(|m| m.as_str().parse().ok()) {
+                return Some(num);
+            }
+        }
+    }
+    
     None
 }
 

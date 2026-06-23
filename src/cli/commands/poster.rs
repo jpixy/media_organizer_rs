@@ -1,8 +1,9 @@
 //! Poster download command implementation.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use crate::models::config::Config;
 use crate::services::tmdb::{TmdbClient, TmdbConfig};
+use crate::utils::download::DownloadConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -231,9 +232,22 @@ async fn download_single_movie_poster(
     };
     
     let poster_url = format!("https://image.tmdb.org/t/p/{}{}", poster_size, poster_path);
-    
-    // Download poster
-    match download_file_with_size(&poster_url, &poster_full_path, proxy_enabled, proxy).await {
+
+    // Download poster with retry mechanism
+    let download_config = DownloadConfig {
+        max_retries: 3,
+        retry_delay_ms: 1000,
+        exponential_backoff: true,
+        timeout_secs: 30,
+    };
+
+    match crate::utils::download::download_file_with_retry(
+        &poster_url,
+        &poster_full_path,
+        &download_config,
+        proxy_enabled,
+        proxy,
+    ).await {
         Ok(size) => {
             tracing::info!("Downloaded poster: {}", poster_full_path.display());
             DownloadResult::Downloaded(size)
@@ -612,9 +626,22 @@ async fn download_single_tv_season_poster(
     };
     
     let poster_url = format!("https://image.tmdb.org/t/p/{}{}", poster_size, poster_path);
-    
-    // Download poster
-    match download_file_with_size(&poster_url, &poster_full_path, proxy_enabled, &proxy).await {
+
+    // Download poster with retry mechanism
+    let download_config = DownloadConfig {
+        max_retries: 3,
+        retry_delay_ms: 1000,
+        exponential_backoff: true,
+        timeout_secs: 30,
+    };
+
+    match crate::utils::download::download_file_with_retry(
+        &poster_url,
+        &poster_full_path,
+        &download_config,
+        proxy_enabled,
+        &proxy,
+    ).await {
         Ok(size) => {
             tracing::info!("Downloaded poster: {}", poster_full_path.display());
             DownloadResult::Downloaded(size)
@@ -674,47 +701,6 @@ pub fn extract_season_from_dirname(dir_name: &str) -> Option<u32> {
     } else {
         None
     }
-}
-
-/// Download a file from URL to path.
-pub async fn download_file(url: &str, path: &Path, proxy_enabled: bool, proxy: &Option<String>) -> Result<()> {
-    let mut client_builder = reqwest::Client::builder();
-    
-    if proxy_enabled {
-        if let Some(proxy_url) = proxy {
-            if let Ok(proxy) = reqwest::Proxy::all(proxy_url) {
-                client_builder = client_builder.proxy(proxy);
-            }
-        }
-    }
-    
-    let client = client_builder.build().unwrap_or_else(|_| reqwest::Client::new());
-    
-    let response = client.get(url).send().await.context("Failed to fetch URL")?;
-    let bytes = response.bytes().await.context("Failed to read response bytes")?;
-    fs::write(path, bytes).context("Failed to write file")?;
-    Ok(())
-}
-
-/// Download a file from URL to path and return the size in bytes.
-pub async fn download_file_with_size(url: &str, path: &Path, proxy_enabled: bool, proxy: &Option<String>) -> Result<u64> {
-    let mut client_builder = reqwest::Client::builder();
-    
-    if proxy_enabled {
-        if let Some(proxy_url) = proxy {
-            if let Ok(proxy) = reqwest::Proxy::all(proxy_url) {
-                client_builder = client_builder.proxy(proxy);
-            }
-        }
-    }
-    
-    let client = client_builder.build().unwrap_or_else(|_| reqwest::Client::new());
-    
-    let response = client.get(url).send().await.context("Failed to fetch URL")?;
-    let bytes = response.bytes().await.context("Failed to read response bytes")?;
-    let size = bytes.len() as u64;
-    fs::write(path, bytes).context("Failed to write file")?;
-    Ok(size)
 }
 
 /// Format byte size to human readable string.

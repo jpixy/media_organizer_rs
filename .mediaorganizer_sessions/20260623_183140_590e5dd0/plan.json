@@ -1,0 +1,3990 @@
+{
+  "version": "1.0",
+  "created_at": "2026-06-23T18:31:40.354999116+00:00",
+  "media_type": "tv_series",
+  "source_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP",
+  "target_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized",
+  "items": [
+    {
+      "id": "da2bbc0a-ba67-4841-8074-c6fa03742420",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 221222141,
+        "modified": "2026-06-23T07:49:58.240598790Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 8,
+        "name": "祝有好收获",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "猎鬼人的儿子与一只会变形的狐狸精之间建立起了感情",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E08-[祝有好收获]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E08-[祝有好收获]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E08-[祝有好收获]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E08-[祝有好收获]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[A][爱、死亡 & 机器人][Love, Death & Robots]-tvshow.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E08-[祝有好收获]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/[A][爱、死亡 & 机器人][Love, Death & Robots]-season01.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/[爱、死亡 & 机器人]-season01.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "54460938-1620-409d-829b-6a20d1dce70e",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 78139633,
+        "modified": "2026-06-23T07:47:39.417699508Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 6,
+        "name": "当酸奶统治世界",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "试验发生了一点意外，奇迹般的使酸奶拥有了智慧······",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E06-[当酸奶统治世界]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E06-[当酸奶统治世界]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E06-[当酸奶统治世界]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E06-[当酸奶统治世界]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E06-[当酸奶统治世界]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "5cf2c129-540a-4552-a576-d61789eae7e9",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 331230441,
+        "modified": "2026-06-23T07:56:37.380184379Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 1,
+        "name": "桑尼的优势",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "在地下「野兽」竞技场里，桑尼是势不可挡的勇猛战士，只要她能一直保持自己的「优势」，就能战无不胜。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E01-[桑尼的优势]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E01-[桑尼的优势]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E01-[桑尼的优势]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E01-[桑尼的优势]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E01-[桑尼的优势]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "0af219b0-5856-422f-9eed-2065741b1704",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 247910379,
+        "modified": "2026-06-23T07:47:51.892780320Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 7,
+        "name": "裂缝以外",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "在一次意外偏离航线以后，船员们醒来，发现自己身处离家几光年以外的宇宙深处。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E07-[裂缝以外]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E07-[裂缝以外]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E07-[裂缝以外]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E07-[裂缝以外]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E07-[裂缝以外]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "f800ee96-369d-48ed-aacb-6b4e9ded6b92",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E10 - 第 10 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E10 - 第 10 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 308862912,
+        "modified": "2026-06-23T07:56:26.818115958Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 10,
+        "name": "变形者",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "在阿富汗深处，两名具有超自然力量的海军陆战队员面临着来自他们自己种族的威胁。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E10-[变形者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E10-[变形者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E10-[变形者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E10 - 第 10 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E10-[变形者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E10-[变形者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "746d0ef7-da18-45d5-b84a-153d6603ee43",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 315128910,
+        "modified": "2026-06-23T07:51:12.888082347Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 4,
+        "name": "机动装甲",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "在外太空，人类殖民一个星球后，其中一个社区的农民们使用他们自制的机器来保护他们的家人免受外星“原住民”的入侵。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E04-[机动装甲]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E04-[机动装甲]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E04-[机动装甲]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E04-[机动装甲]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E04-[机动装甲]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "c2580368-96d1-4926-b970-c99270d4c438",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 184219078,
+        "modified": "2026-06-23T07:49:49.281540754Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 2,
+        "name": "三个机器人",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "人类灭亡以后，三个机器人踏上了末世观光之旅。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E02-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E02-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E02-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E02-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E02-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "d7b815db-8794-4474-802a-1e3e7422a46c",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E13 - 第 13 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E13 - 第 13 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 313815097,
+        "modified": "2026-06-23T07:51:32.933212198Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 13,
+        "name": "幸运十三",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "在失去两组船员后，没人愿意驾驶「幸运十三号」飞船，可新人通常没有选择权",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E13-[幸运十三]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E13-[幸运十三]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E13-[幸运十三]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E13 - 第 13 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E13-[幸运十三]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E13-[幸运十三]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "7d46a2db-51c3-4155-9984-9eed1dae6dd0",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E15 - 第 15 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E15 - 第 15 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 105749963,
+        "modified": "2026-06-23T08:01:45.342179333Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 15,
+        "name": "盲点",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "一伙机器人盗贼发动了对一个重型装甲车队的高速抢劫。然而只有一名队员活了下来，其余队友都死了。但万万没想到的是他们都有大脑备份。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E15-[盲点]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E15-[盲点]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E15-[盲点]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E15 - 第 15 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E15-[盲点]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E15-[盲点]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "6ad9ba4d-7218-4bc1-a180-c404554a4462",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E18 - 第 18 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E18 - 第 18 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 589070026,
+        "modified": "2026-06-23T08:03:44.882966741Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 18,
+        "name": "秘密战争",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "一小队苏联红军穿过一个被屠杀的镇子，他们奉命来解决神秘的魔鬼袭击事件",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E18-[秘密战争]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E18-[秘密战争]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E18-[秘密战争]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E18 - 第 18 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E18-[秘密战争]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E18-[秘密战争]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "aad2e4f7-8e2b-4265-8515-2b3a43a1f91d",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E17 - 第 17 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E17 - 第 17 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 192595933,
+        "modified": "2026-06-23T08:00:20.857632047Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 17,
+        "name": "不一样的历史",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "想要看到希特勒以各种奇妙的方式死去吗？现在可以展开想象了。核弹会掉在柏林，也许德国会第一个登月，不，也许是苏联。不，也许是性感的女人第一个登月。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E17-[不一样的历史]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E17-[不一样的历史]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E17-[不一样的历史]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E17 - 第 17 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E17-[不一样的历史]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E17-[不一样的历史]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "1caad594-2433-4c4d-b0ca-0b2841e5dd64",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E11 - 第 11 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E11 - 第 11 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 149175992,
+        "modified": "2026-06-23T07:49:42.782498653Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 11,
+        "name": "帮手",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "修理卫星的宇航员因为太空垃圾的撞击，宇航服破损，飘向太空，被困在地球轨道上。动力装置损坏，空气也快速流失，救援时间是红线的几倍。她必须在氧气耗尽之前在生命和肢体之间做出选择。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E11-[帮手]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E11-[帮手]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E11-[帮手]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E11 - 第 11 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E11-[帮手]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E11-[帮手]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "53389f5c-7175-4d8c-b79b-e965ac9f2dc7",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E16 - 第 16 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E16 - 第 16 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 151996852,
+        "modified": "2026-06-23T08:01:44.723175323Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 16,
+        "name": "冰河时代",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "一对年轻情侣搬进一座公寓，在他们的古董冰箱里发现了一个失落的文明",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E16-[冰河时代]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E16-[冰河时代]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E16-[冰河时代]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E16 - 第 16 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E16-[冰河时代]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E16-[冰河时代]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "e4b42bfc-a664-4e9d-b750-e45c15025547",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 426528165,
+        "modified": "2026-06-23T07:54:53.515511552Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 3,
+        "name": "证人",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "舞女目击对面大楼一幕杀人案，她与凶手在城市中展开追逐，他必须让这个女人停下来。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E03-[证人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E03-[证人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E03-[证人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E03-[证人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E03-[证人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "615fc14e-38fd-4f13-a7eb-974379549d8c",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 362143980,
+        "modified": "2026-06-23T07:42:58.086105643Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 2,
+        "name": "冰",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "一对远离家乡的兄弟加入基因被改造的当地人，经历了一场生死奔跑。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E02-[冰]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E02-[冰]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E02-[冰]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E02-[冰]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E02-[冰]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/[A][爱、死亡 & 机器人][Love, Death & Robots]-season02.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/[爱、死亡 & 机器人]-season02.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "6b7d6509-d124-4556-a474-7b2a4997e22c",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E14 - 第 14 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E14 - 第 14 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 152147107,
+        "modified": "2026-06-23T07:53:00.224777667Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 14,
+        "name": "齐马的作品",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "著名艺术家齐马对一位记者讲述了他神秘的过去。并且在揭开他最后的作品之前，他的艺术成就已经到达了巅峰。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E14-[齐马的作品]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E14-[齐马的作品]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E14-[齐马的作品]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E14 - 第 14 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E14-[齐马的作品]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E14-[齐马的作品]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "9e05e6d5-4f99-4eef-a656-61f20fc826e8",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 434337168,
+        "modified": "2026-06-23T07:57:35.747562479Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 7,
+        "name": "救生舱",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "在一个崎岖不平的星球上迫降后，飞行员设法避难，却面临着内部的威胁。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E07-[救生舱]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E07-[救生舱]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E07-[救生舱]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E07-[救生舱]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E07-[救生舱]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "8b591841-f599-4ced-b4f8-3e82a1fc0a4f",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 392843874,
+        "modified": "2026-06-23T08:03:52.197015389Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 8,
+        "name": "溺水的巨人",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "一个年轻巨人的尸体被冲上岸，深深地吸引着当地人的注意。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E08-[溺水的巨人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E08-[溺水的巨人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E08-[溺水的巨人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E08-[溺水的巨人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E08-[溺水的巨人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "178ab417-6330-48d9-94b5-c523c8a78e75",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E12 - 第 12 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E12 - 第 12 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 169004269,
+        "modified": "2026-06-23T07:52:12.950471427Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 12,
+        "name": "古鱼复苏",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "大峡谷公路上，因为汽车抛锚两名推销员受困，两人在梦寐以求的航行中度过了一段时光。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E12-[古鱼复苏]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E12-[古鱼复苏]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E12-[古鱼复苏]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E12 - 第 12 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E12-[古鱼复苏]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E12-[古鱼复苏]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "9aba151c-be77-4d77-a207-672c83144b1d",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 195521032,
+        "modified": "2026-06-23T07:58:28.170902074Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 6,
+        "name": "整个房子",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "平安夜，两个孩子蹑手蹑脚地走下楼，只为偷瞄一眼圣诞老人。一个仅适合成人观看的扭曲故事。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E06-[整个房子]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E06-[整个房子]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E06-[整个房子]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E06-[整个房子]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E06-[整个房子]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "8f90a64d-fe60-4f15-9951-e556cf5b140f",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E09 - 第 9 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E09 - 第 9 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 164644182,
+        "modified": "2026-06-23T07:54:32.115372923Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 9,
+        "name": "垃圾场",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "凶神恶煞的戴夫以垃圾场为家，且不打算把它让给任何人",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E09-[垃圾场]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E09-[垃圾场]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E09-[垃圾场]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E09 - 第 9 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E09-[垃圾场]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E09-[垃圾场]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "9c3427fb-8bbd-4b3d-b6b1-4f0b4cb1ed72",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 735355624,
+        "modified": "2026-06-23T07:42:46.785043335Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 3,
+        "name": "恰是那台机器脉冲的颤跳",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "对木星的探索任务以灾难告终，唯一的幸存者不得不开始一段危险而又难以置信的旅程。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E03-[恰是那台机器脉冲的颤跳]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E03-[恰是那台机器脉冲的颤跳]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E03-[恰是那台机器脉冲的颤跳]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E03-[恰是那台机器脉冲的颤跳]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E03-[恰是那台机器脉冲的颤跳]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/[A][爱、死亡 & 机器人][Love, Death & Robots]-season03.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/[爱、死亡 & 机器人]-season03.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "003ff22a-1053-443b-8b5c-c69502c5d27b",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 673442775,
+        "modified": "2026-06-23T07:46:45.561359840Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 6,
+        "name": "虫群",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "两名人类科学家研究一个古老外星球的秘密，但很快认识到在一个充满敌意的宇宙中生存的可怕代价。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E06-[虫群]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E06-[虫群]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E06-[虫群]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E06 - 第 6 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E06-[虫群]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E06-[虫群]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "834c1234-8641-42c5-bafd-dfa433d93876",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 377146011,
+        "modified": "2026-06-23T08:04:16.622177828Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 1,
+        "name": "自动化客服",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "如果您的家庭吸尘机器人想要谋杀您，请按 3。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E01-[自动化客服]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E01-[自动化客服]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E01-[自动化客服]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E01-[自动化客服]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E01-[自动化客服]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "729b3d5b-4941-47c0-8039-36c271ca3c9f",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 901694052,
+        "modified": "2026-06-23T07:43:17.586213159Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 2,
+        "name": "糟糕之旅",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "释放巨蟹怪！在外星海洋航行的船员与一只贪婪的深海怪物达成协议。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E02-[糟糕之旅]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E02-[糟糕之旅]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E02-[糟糕之旅]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E02 - 第 2 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E02-[糟糕之旅]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E02-[糟糕之旅]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "84acf10b-a5e1-4f65-80ec-7ffaac51a7fb",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S01E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 296113294,
+        "modified": "2026-06-23T07:49:12.142300168Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 1,
+        "episode_number": 5,
+        "name": "吸魂者",
+        "original_name": null,
+        "air_date": "2019-03-15",
+        "overview": "亡命奔逃，雇佣兵和科学家躲避着来着黑暗的威胁。不久前他们打破地下墓穴释放了它，它嗜血残暴",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 1,
+        "name": "第 1 季",
+        "overview": "这部动画选集由提姆·米勒和大卫·芬奇联手打造，充满了吓人生物、恶毒惊喜和黑色幽默，千万别在办公室看！",
+        "air_date": "2019-03-15",
+        "poster_url": "https://image.tmdb.org/t/p/w780/rlrRI2b6RvM9I9xOBTKqcTaehkE.jpg",
+        "episode_count": 18,
+        "tmdb_id": 118866,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866",
+        "filename": "S01E05-[吸魂者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E05-[吸魂者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S01E05-[吸魂者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S01/Love, Death & Robots S01E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E05-[吸魂者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S01][Season 01]-[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb118866/S01E05-[吸魂者]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "6177b9e1-76f1-4ac6-8b08-b2e0adc2ddc7",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E09 - 第 9 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E09 - 第 9 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 807306054,
+        "modified": "2026-06-23T07:53:07.609825507Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 9,
+        "name": "吉巴罗",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "失聪的骑士和神话中的海妖在一场夺命舞蹈中纠缠在一起。这场致命诱惑充满了血腥、死亡和宝藏。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E09-[吉巴罗]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E09-[吉巴罗]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E09-[吉巴罗]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E09 - 第 9 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E09-[吉巴罗]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E09-[吉巴罗]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "4dd67295-644a-45ac-87ca-5cbbaf1a6dc7",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 391354547,
+        "modified": "2026-06-23T07:47:10.171510053Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 7,
+        "name": "梅森的老鼠",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "欢迎来到老鼠末日！当老鼠开始反击时，农夫梅森才知道他遇到了真正的虫害问题。这可真要命！",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E07-[梅森的老鼠]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E07-[梅森的老鼠]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E07-[梅森的老鼠]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E07 - 第 7 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E07-[梅森的老鼠]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E07-[梅森的老鼠]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "67c02d9d-059a-47a3-88bf-a31e71160f72",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 593991416,
+        "modified": "2026-06-23T07:56:17.917058298Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 3,
+        "name": "突击小队",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "一名警察负责解决人口过剩问题，而那些被他夺去的生命也成为了他的心魔",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E03-[突击小队]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E03-[突击小队]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E03-[突击小队]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E03 - 第 3 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E03-[突击小队]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E03-[突击小队]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "c558141f-bc16-4de8-b108-f3b1b9aea906",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 233427167,
+        "modified": "2026-06-23T07:40:39.478341429Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 4,
+        "name": "迷你亡灵之夜",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "一段不洁的墓地性爱以糟糕的结局收场，引发了一场全球僵尸瘟疫。这将是你见过的最可爱的世界末日。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E04-[迷你亡灵之夜]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E04-[迷你亡灵之夜]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E04-[迷你亡灵之夜]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E04-[迷你亡灵之夜]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E04-[迷你亡灵之夜]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "758ede5f-5a84-4918-a1f8-5b6428da206a",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 341826395,
+        "modified": "2026-06-23T07:47:35.829676265Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 5,
+        "name": "高草丛",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "在一趟穿越高草丛的旅行期间，一名男子被远处朦胧的亮光所吸引。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E05-[高草丛]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E05-[高草丛]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E05-[高草丛]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E05-[高草丛]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E05-[高草丛]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "4135fa58-9c1b-4660-9b2d-d281c6ec9b9e",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 417159074,
+        "modified": "2026-06-23T07:42:53.981083010Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 1,
+        "name": "三个机器人",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "三个机器人来到后末日时代，并在旋风般的旅行中了解到人类为了拯救自己做出的最后努力。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E01-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E01-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E01-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E01 - 第 1 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E01-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E01-[三个机器人]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "0bbff51a-b363-4600-aa63-02a43f24b340",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 585294052,
+        "modified": "2026-06-23T07:46:51.148390645Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "爱、死亡 & 机器人",
+        "original_title": "Love, Death & Robots",
+        "year": 2019,
+        "confidence": 1.0,
+        "raw_response": "regex_extracted"
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 8,
+        "name": "葬于拱形大厅之内",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "现代战争遇到上古之神：一个特种部队小队在执行人质营救任务时发现自己被困在一个关押着古老恶魔的监狱中。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E08-[葬于拱形大厅之内]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E08-[葬于拱形大厅之内]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E08-[葬于拱形大厅之内]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E08 - 第 8 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E08-[葬于拱形大厅之内]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E08-[葬于拱形大厅之内]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "892e9e64-49fc-4b98-8881-9d6e15b9a2ef",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S03E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 560624812,
+        "modified": "2026-06-23T07:44:52.919738787Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 3,
+        "episode_number": 5,
+        "name": "杀戮小队开杀",
+        "original_name": null,
+        "air_date": "2022-05-20",
+        "overview": "经过训练的美国特种部队可以消除任何威胁 — 甚至是中央情报局制造的控制论杀戮机器。而他们的秘密武器是幽默感。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 3,
+        "name": "第 3 季",
+        "overview": "这部荣获艾美奖的动画系列剧由蒂姆·米勒和大卫·芬奇联袂打造，即将上映的第三季将带来离奇的世界、奇怪的生物和曲折的故事。",
+        "air_date": "2022-05-20",
+        "poster_url": "https://image.tmdb.org/t/p/w780/cRiDlzzZC5lL7fvImuSjs04SUIJ.jpg",
+        "episode_count": 9,
+        "tmdb_id": 288278,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 960,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "eac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278",
+        "filename": "S03E05-[杀戮小队开杀]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E05-[杀戮小队开杀]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv",
+        "nfo": "S03E05-[杀戮小队开杀]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S03/Love, Death & Robots S03E05 - 第 5 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E05-[杀戮小队开杀]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S03][Season 03]-[A][爱、死亡 & 机器人][Love, Death & Robots](2022)-tt9561862-tmdb288278/S03E05-[杀戮小队开杀]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x960(1080p)-WEB-DL-hevc-10bit-eac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "141f7ecd-03a8-4865-ad63-0ea0718009e3",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+        "filename": "Love, Death & Robots S02E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+        "size": 537831813,
+        "modified": "2026-06-23T07:58:01.199727356Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02"
+      },
+      "parsed": {
+        "title": "Love, Death & Robots",
+        "original_title": null,
+        "year": null,
+        "confidence": 0.9000001
+      },
+      "tv_series_metadata": {
+        "tmdb_id": 86831,
+        "imdb_id": "tt9561862",
+        "original_name": "Love, Death & Robots",
+        "name": "爱、死亡 & 机器人",
+        "original_language": "en",
+        "year": 2019,
+        "first_air_date": "2019-03-15",
+        "overview": "融合恐怖、想象力和美，从揭示古老的邪恶力量到喜剧般的末日，剧集以标志性的巧思和创造性的视觉效果，为观众带来令人震惊的奇幻、恐怖和科幻短篇故事。",
+        "tagline": "　　这部名为《爱，死亡和机器人》的动画短片合集由18部分组成，每部分时长5-15分钟。这些短片涵盖多种类型，包括科幻、奇幻、恐怖和喜剧；这些短片也将包含多种形式，包括传统2D和3DCGI短片。",
+        "genres": [
+          "动画",
+          "Sci-Fi & Fantasy"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "networks": [
+          "Netflix"
+        ],
+        "rating": 8.208,
+        "votes": 4025,
+        "number_of_seasons": 4,
+        "number_of_episodes": 45,
+        "status": "Returning Series",
+        "creators": [
+          "蒂姆·米勒"
+        ],
+        "actors": [],
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ooSYCehJ3nJh3UywyKSmHXALDyA.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/nBrkOZyI75artyizuBFeya48KbO.jpg"
+      },
+      "episode_metadata": {
+        "season_number": 2,
+        "episode_number": 4,
+        "name": "沙漠中的斯诺",
+        "original_name": null,
+        "air_date": "2021-05-14",
+        "overview": "银河系里的每个赏金猎手都想要分得斯诺的一杯羹。",
+        "cast": [],
+        "crew": []
+      },
+      "season_metadata": {
+        "season_number": 2,
+        "name": "第 2 季",
+        "overview": "从遥远星球上的疯狂冒险，到身边令人不安的经历：这部荣获艾美奖的系列剧集再度回归，带来了许多引人深思的故事。",
+        "air_date": "2021-05-14",
+        "poster_url": "https://image.tmdb.org/t/p/w780/maxhu2EhK7oCwxexeGI3rCuLOJW.jpg",
+        "episode_count": 8,
+        "tmdb_id": 191339,
+        "imdb_id": "tt9561862"
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEB-DL",
+        "video_codec": "hevc",
+        "bit_depth": 10,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339",
+        "filename": "S02E04-[沙漠中的斯诺]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E04-[沙漠中的斯诺]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv",
+        "nfo": "S02E04-[沙漠中的斯诺]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S02/Love, Death & Robots S02E04 - 第 4 集 - 1080p WEB-DL X265 10bit.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E04-[沙漠中的斯诺]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP_organized/EN_English/[A][爱、死亡 & 机器人][Love, Death & Robots](2019)-tt9561862-tmdb86831/[S02][Season 02]-[A][爱、死亡 & 机器人][Love, Death & Robots](2021)-tt9561862-tmdb191339/S02E04-[沙漠中的斯诺]-[A][爱、死亡 & 机器人][Love, Death & Robots]-1920x1080(1080p)-WEB-DL-hevc-10bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        }
+      ],
+      "poster_download": "Download"
+    }
+  ],
+  "samples": [],
+  "unknown": [
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E02.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E02.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 181231607,
+        "modified": "2026-06-23T07:35:58.405780311Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E01.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E01.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 435120783,
+        "modified": "2026-06-23T07:39:07.776835830Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E03.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E03.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 520253599,
+        "modified": "2026-06-23T07:40:18.156223868Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E04.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E04.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 501717092,
+        "modified": "2026-06-23T08:00:20.012626573Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E05.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E05.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 256569710,
+        "modified": "2026-06-23T07:59:28.696294149Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E06.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E06.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 351521874,
+        "modified": "2026-06-23T07:38:42.188694748Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E07.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E07.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 388923637,
+        "modified": "2026-06-23T08:00:42.366771382Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E08.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E08.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 690529087,
+        "modified": "2026-06-23T08:04:52.519416561Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E10.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E10.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 590492068,
+        "modified": "2026-06-23T08:03:57.063047750Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    },
+    {
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04/Love.Death.and.Robots.S04E09.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "filename": "Love.Death.and.Robots.S04E09.2025.1080p.NF.WEB-DL.H265.DV.HDR.DDP5.1.Atmos-Nest.mkv",
+        "size": 182582266,
+        "modified": "2026-06-23T07:35:59.768788201Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/TV_00_TMP/[A][爱，死亡和机器人][Love, Death & Robots](2019)/S04"
+      },
+      "reason": "Failed to find TMDB match"
+    }
+  ],
+  "poster_stats": {
+    "download_count": 35,
+    "skipped_count": 0
+  }
+}

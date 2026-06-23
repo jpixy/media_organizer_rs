@@ -15,7 +15,7 @@ fn test_parse_anthology_season_folder_with_imdb_id() {
     
     let info = result.unwrap();
     assert_eq!(info.title, "爱，死亡和机器人");
-    assert_eq!(info.tmdb_id, 86831);
+    assert_eq!(info.tmdb_id, Some(86831));
     assert_eq!(info.season_imdb_id, Some("tt21661768".to_string()));
     assert!(info.imdb_id.is_none(), "TV Show IMDB ID should be None for season folders");
     
@@ -33,7 +33,7 @@ fn test_parse_regular_season_folder() {
     
     let info = result.unwrap();
     assert_eq!(info.title, "绝命毒师");
-    assert_eq!(info.tmdb_id, 1396);
+    assert_eq!(info.tmdb_id, Some(1396));
     assert_eq!(info.season_imdb_id, Some("tt0903747".to_string()));
     
     println!("✓ Test passed: Parsed regular season folder correctly");
@@ -91,7 +91,7 @@ fn test_season_imdb_id_priority() {
         original_title: Some("Love, Death & Robots".to_string()),
         year: Some(2025),
         imdb_id: None, // TV Show IMDB ID not available in season folder
-        tmdb_id: 86831,
+        tmdb_id: Some(86831),
         season_imdb_id: Some("tt21661768".to_string()), // Season-level IMDB ID
     };
     

@@ -1,0 +1,2409 @@
+{
+  "version": "1.0",
+  "created_at": "2026-06-23T18:49:59.393165812+00:00",
+  "media_type": "movies",
+  "source_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP",
+  "target_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized",
+  "items": [
+    {
+      "id": "faf0b702-0395-4d8f-ba2c-5aae9a08a4e9",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/女士优先 Ladies First (2026) tt34611082.mp4",
+        "filename": "女士优先 Ladies First (2026) tt34611082.mp4",
+        "size": 1498696097,
+        "modified": "2026-06-22T14:12:23.888170315Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "女士优先",
+        "original_title": "Ladies First",
+        "year": 2026,
+        "confidence": 1.0,
+        "raw_response": "path_id_lookup"
+      },
+      "movie_metadata": {
+        "tmdb_id": 1368881,
+        "imdb_id": "tt34611082",
+        "original_title": "Ladies First",
+        "title": "女士优先",
+        "original_language": "en",
+        "year": 2026,
+        "release_date": "2026-05-21",
+        "overview": "达米安看似拥有一切：金钱、权力，和源源不断的艳遇。但就在即将升任顶尖广告公司的首席执行官之际，人生突然遭逢剧变。他苏醒过来，发现竟置身于自己最害怕的恶梦：一个由女性主宰的平行世界。曾经他在董事会议室里呼风唤雨，如今却人微言轻，还和变得强悍大胆的同事艾莉克斯起了冲突。随着游戏规则改变，艾莉克斯大权在握，这两人激烈争斗，共同演绎出这部想象权力结构翻转的趣味讽刺喜剧。",
+        "tagline": "",
+        "runtime": 94,
+        "genres": [
+          "喜剧",
+          "奇幻"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "studios": [
+          "3dot Productions",
+          "Netflix"
+        ],
+        "rating": 6.003,
+        "votes": 354,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/zeYO2Hy6UOeYpWrBLNjugAn5FaB.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/bOy625BjpCskOWnx3tD09MsKVCb.jpg",
+        "directors": [
+          "西娅·沙洛克"
+        ],
+        "writers": [
+          "Natalie Krinsky",
+          "辛科·保罗",
+          "凯蒂·西尔伯曼"
+        ],
+        "actors": [
+          "萨莎·拜伦·科恩",
+          "裴淳华",
+          "汤姆·戴维斯",
+          "艾米莉·莫迪默",
+          "韦鲁切·欧皮亚",
+          "查尔斯·丹斯",
+          "菲奥娜·肖",
+          "理查德·E·格兰特",
+          "Red Tennant",
+          "凯瑟琳·亨特",
+          "卡迪夫·柯万",
+          "比尔·帕特森",
+          "保罗·查希迪",
+          "Jordan Metcalfe",
+          "Danny Ashok"
+        ],
+        "actor_roles": [
+          "Damien Sachs",
+          "Alex Fox",
+          "Chris Black",
+          "Sunny Black",
+          "Ruby",
+          "Fred Powell",
+          "Felicity Chase",
+          "Pigeon Man",
+          "Charlie",
+          "Glenda Cartwright",
+          "Austin",
+          "Louis",
+          "Harry",
+          "Marlon",
+          "Nick"
+        ],
+        "actors_info": [
+          {
+            "name": "萨莎·拜伦·科恩",
+            "role": "Damien Sachs",
+            "order": 0
+          },
+          {
+            "name": "裴淳华",
+            "role": "Alex Fox",
+            "order": 1
+          },
+          {
+            "name": "汤姆·戴维斯",
+            "role": "Chris Black",
+            "order": 2
+          },
+          {
+            "name": "艾米莉·莫迪默",
+            "role": "Sunny Black",
+            "order": 3
+          },
+          {
+            "name": "韦鲁切·欧皮亚",
+            "role": "Ruby",
+            "order": 4
+          },
+          {
+            "name": "查尔斯·丹斯",
+            "role": "Fred Powell",
+            "order": 5
+          },
+          {
+            "name": "菲奥娜·肖",
+            "role": "Felicity Chase",
+            "order": 6
+          },
+          {
+            "name": "理查德·E·格兰特",
+            "role": "Pigeon Man",
+            "order": 7
+          },
+          {
+            "name": "Red Tennant",
+            "role": "Charlie",
+            "order": 8
+          },
+          {
+            "name": "凯瑟琳·亨特",
+            "role": "Glenda Cartwright",
+            "order": 9
+          },
+          {
+            "name": "卡迪夫·柯万",
+            "role": "Austin",
+            "order": 10
+          },
+          {
+            "name": "比尔·帕特森",
+            "role": "Louis",
+            "order": 11
+          },
+          {
+            "name": "保罗·查希迪",
+            "role": "Harry",
+            "order": 12
+          },
+          {
+            "name": "Jordan Metcalfe",
+            "role": "Marlon",
+            "order": 13
+          },
+          {
+            "name": "Danny Ashok",
+            "role": "Nick",
+            "order": 14
+          }
+        ],
+        "certification": "R",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 802,
+        "resolution": "1080p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[N][女士优先][Ladies First](2026)-tt34611082-tmdb1368881",
+        "filename": "[N][女士优先][Ladies First](2026)-1920x802(1080p)-h264-8bit-aac-2.0.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[N][女士优先][Ladies First](2026)-tt34611082-tmdb1368881/[N][女士优先][Ladies First](2026)-1920x802(1080p)-h264-8bit-aac-2.0.mp4",
+        "nfo": "[N][女士优先][Ladies First](2026)-1920x802(1080p)-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[N][女士优先][Ladies First](2026)-tt34611082-tmdb1368881"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/女士优先 Ladies First (2026) tt34611082.mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[N][女士优先][Ladies First](2026)-tt34611082-tmdb1368881/[N][女士优先][Ladies First](2026)-1920x802(1080p)-h264-8bit-aac-2.0.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[N][女士优先][Ladies First](2026)-tt34611082-tmdb1368881/[N][女士优先][Ladies First](2026)-1920x802(1080p)-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[N][女士优先][Ladies First](2026)-tt34611082-tmdb1368881/[N][女士优先][Ladies First](2026)-1920x802(1080p)-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/zeYO2Hy6UOeYpWrBLNjugAn5FaB.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "6d5466be-5006-4dc0-831e-27967b0b8189",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/就是这样 This Is It (2009) tt1477715.mkv",
+        "filename": "就是这样 This Is It (2009) tt1477715.mkv",
+        "size": 2201404811,
+        "modified": "2026-06-19T14:36:44.951552522Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "就是这样",
+        "original_title": "This Is It",
+        "year": 2009,
+        "confidence": 1.0,
+        "raw_response": "path_id_lookup"
+      },
+      "movie_metadata": {
+        "tmdb_id": 13576,
+        "imdb_id": "tt1477715",
+        "original_title": "This Is It",
+        "title": "就是这样",
+        "original_language": "en",
+        "year": 2009,
+        "release_date": "2009-10-28",
+        "overview": "2009年6月25日，这可以说是全球音乐界的巨大损失。迈克尔·杰克逊（迈克尔·杰克逊 Michael Jackson 饰），全球瞩目的流行音乐巨星在这一天就此陨落。原本，计划在2009年夏天举行的名为“This is it”告别演唱会，也无法如期与歌迷们见面。不过，在此之前迈克尔•杰克逊为了此次的演唱会，进行了大量的彩排工作，并亲力亲为的为选曲、编排、舞蹈、灯光等多个环节把关。整个过程，都被详实的记录了下来。没有了现场的演唱会，导演肯尼•奥特加就利用这些排练片段搭配上天王的传世名曲，为全球的乐迷们在大银幕上呈现出了一场完全不一样的演唱会。  这不单单是一部纪录片，这是对这位天皇巨星献上的最后的缅怀……用平凡的片段，展现着巨星真实、超越常人的一面。",
+        "tagline": "迈克尔·杰克逊：就是这样",
+        "runtime": 111,
+        "genres": [
+          "音乐",
+          "纪录"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "studios": [
+          "Columbia Pictures",
+          "AEG Live",
+          "The Michael Jackson Company"
+        ],
+        "rating": 7.349,
+        "votes": 1064,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/9Hke7uiaVTPWymZ0YdMquJEke2S.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/mqAuLsN6oOme6lSKoTb6yyP4U8E.jpg",
+        "directors": [
+          "肯尼斯·奥尔特加"
+        ],
+        "writers": [
+          "肯尼斯·奥尔特加",
+          "迈克尔·杰克逊"
+        ],
+        "actors": [
+          "迈克尔·杰克逊",
+          "奥里安蒂",
+          "肯尼斯·奥尔特加",
+          "多里安·霍利",
+          "帕特里克·伍德罗夫",
+          "Bashiri Johnson",
+          "Mo Pleasure",
+          "Jonathan Moffett",
+          "Tommy Organ",
+          "Jasmine Alveran",
+          "梅基亚·考克斯",
+          "Timor Steffens"
+        ],
+        "actor_roles": [
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self",
+          "Self (dancer)",
+          "Self (dancer)"
+        ],
+        "actors_info": [
+          {
+            "name": "迈克尔·杰克逊",
+            "role": "Self",
+            "order": 0
+          },
+          {
+            "name": "奥里安蒂",
+            "role": "Self",
+            "order": 1
+          },
+          {
+            "name": "肯尼斯·奥尔特加",
+            "role": "Self",
+            "order": 2
+          },
+          {
+            "name": "多里安·霍利",
+            "role": "Self",
+            "order": 3
+          },
+          {
+            "name": "帕特里克·伍德罗夫",
+            "role": "Self",
+            "order": 4
+          },
+          {
+            "name": "Bashiri Johnson",
+            "role": "Self",
+            "order": 5
+          },
+          {
+            "name": "Mo Pleasure",
+            "role": "Self",
+            "order": 6
+          },
+          {
+            "name": "Jonathan Moffett",
+            "role": "Self",
+            "order": 7
+          },
+          {
+            "name": "Tommy Organ",
+            "role": "Self",
+            "order": 8
+          },
+          {
+            "name": "Jasmine Alveran",
+            "role": "Self",
+            "order": 9
+          },
+          {
+            "name": "梅基亚·考克斯",
+            "role": "Self (dancer)",
+            "order": 10
+          },
+          {
+            "name": "Timor Steffens",
+            "role": "Self (dancer)",
+            "order": 11
+          }
+        ],
+        "certification": "PG",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1280,
+        "height": 720,
+        "resolution": "720p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[J][就是这样][This Is It](2009)-tt1477715-tmdb13576",
+        "filename": "[J][就是这样][This Is It](2009)-1280x720(720p)-h264-8bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[J][就是这样][This Is It](2009)-tt1477715-tmdb13576/[J][就是这样][This Is It](2009)-1280x720(720p)-h264-8bit-ac3-5.1.mkv",
+        "nfo": "[J][就是这样][This Is It](2009)-1280x720(720p)-h264-8bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[J][就是这样][This Is It](2009)-tt1477715-tmdb13576"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/就是这样 This Is It (2009) tt1477715.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[J][就是这样][This Is It](2009)-tt1477715-tmdb13576/[J][就是这样][This Is It](2009)-1280x720(720p)-h264-8bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[J][就是这样][This Is It](2009)-tt1477715-tmdb13576/[J][就是这样][This Is It](2009)-1280x720(720p)-h264-8bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[J][就是这样][This Is It](2009)-tt1477715-tmdb13576/[J][就是这样][This Is It](2009)-1280x720(720p)-h264-8bit-ac3-5.1.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/9Hke7uiaVTPWymZ0YdMquJEke2S.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "d8adbb5a-7256-4d86-99ed-490ff43d29a2",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列/大决战之平津战役 (1992) tt0099340.mkv",
+        "filename": "大决战之平津战役 (1992) tt0099340.mkv",
+        "size": 5722881936,
+        "modified": "2026-06-22T15:11:33.479898606Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列"
+      },
+      "parsed": {
+        "title": "大决战之平津战役",
+        "original_title": "大决战之平津战役",
+        "year": 1992,
+        "confidence": 1.0,
+        "raw_response": "path_id_lookup"
+      },
+      "movie_metadata": {
+        "tmdb_id": 364533,
+        "imdb_id": "tt0099340",
+        "original_title": "大决战之平津战役",
+        "title": "大决战之平津战役",
+        "original_language": "zh",
+        "year": 1992,
+        "release_date": "1992-01-01",
+        "overview": "20世纪40年代末，古老的中华民族迎来了决定命运的重要时刻。国共两党的抗争进入攻坚阶段，辽沈战役和淮海战役后，蒋介石受到极大触动，意图撤回华北六十万国军进入淮海，构筑一条坚固的江淮防线。在此危急关头，毛泽东主席在西柏坡发出指令，授意林彪率领东北野战军秘密跨越长城，会同聂荣臻的华北野战军发起平津战役，分割傅作义军团以作各个歼灭。傅一面婉拒美国势力入住华北的请求，一面说服总统打消军队南撤的念头，顺利在华北取得空前的权力。谁知在此期间，解放军已悄悄完成对平津的包围。傅作义感到大势已去，决定通过身为共产党员的女儿冬菊与对手和谈。只是和平的果实来之不易，在此之前还要经受更多的考验……",
+        "tagline": "",
+        "runtime": 218,
+        "genres": [
+          "战争",
+          "历史"
+        ],
+        "countries": [
+          "China"
+        ],
+        "country_codes": [
+          "CN"
+        ],
+        "studios": [
+          "August 1st Film Studio 八一电影制片厂 (A1FS)"
+        ],
+        "rating": 8.0,
+        "votes": 11,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/apZ5FFhgCxoYOMaVeceKdEnIq7K.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/838H5QfXkxhTSzWuEVvpMKasA9n.jpg",
+        "directors": [
+          "翟俊杰",
+          "景慕逵",
+          "李俊",
+          "蔡继渭",
+          "韦廉",
+          "杨光远"
+        ],
+        "writers": [
+          "史超",
+          "李平分",
+          "王军"
+        ],
+        "actors": [
+          "古月",
+          "苏林",
+          "赵恒多",
+          "刘怀正",
+          "郭法曾",
+          "路希",
+          "卢奇",
+          "马绍信",
+          "鲁继先",
+          "张卫国",
+          "李定保",
+          "里坡",
+          "徐光明",
+          "张安安",
+          "吴志远"
+        ],
+        "actor_roles": [
+          "毛泽东",
+          "周恩来",
+          "蒋介石",
+          "朱德",
+          "刘少奇",
+          "任弼时",
+          "邓小平",
+          "林彪",
+          "罗荣桓",
+          "刘亚楼",
+          "傅作义",
+          "邓宝珊",
+          "陈长捷",
+          "江青",
+          "宋美龄"
+        ],
+        "actors_info": [
+          {
+            "name": "古月",
+            "role": "毛泽东",
+            "order": 0
+          },
+          {
+            "name": "苏林",
+            "role": "周恩来",
+            "order": 1
+          },
+          {
+            "name": "赵恒多",
+            "role": "蒋介石",
+            "order": 2
+          },
+          {
+            "name": "刘怀正",
+            "role": "朱德",
+            "order": 3
+          },
+          {
+            "name": "郭法曾",
+            "role": "刘少奇",
+            "order": 4
+          },
+          {
+            "name": "路希",
+            "role": "任弼时",
+            "order": 5
+          },
+          {
+            "name": "卢奇",
+            "role": "邓小平",
+            "order": 6
+          },
+          {
+            "name": "马绍信",
+            "role": "林彪",
+            "order": 7
+          },
+          {
+            "name": "鲁继先",
+            "role": "罗荣桓",
+            "order": 8
+          },
+          {
+            "name": "张卫国",
+            "role": "刘亚楼",
+            "order": 9
+          },
+          {
+            "name": "李定保",
+            "role": "傅作义",
+            "order": 10
+          },
+          {
+            "name": "里坡",
+            "role": "邓宝珊",
+            "order": 11
+          },
+          {
+            "name": "徐光明",
+            "role": "陈长捷",
+            "order": 12
+          },
+          {
+            "name": "张安安",
+            "role": "江青",
+            "order": 13
+          },
+          {
+            "name": "吴志远",
+            "role": "宋美龄",
+            "order": 14
+          }
+        ],
+        "certification": null,
+        "collection_id": 823927,
+        "collection_name": "大决战（系列）",
+        "collection_overview": null,
+        "collection_total_movies": 3
+      },
+      "video_metadata": {
+        "width": 1894,
+        "height": 786,
+        "resolution": "720p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[D][大决战之平津战役](1992)-tt0099340-tmdb364533",
+        "filename": "[D][大决战之平津战役](1992)-1894x786(720p)-h264-8bit-aac-2.0.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之平津战役](1992)-tt0099340-tmdb364533/[D][大决战之平津战役](1992)-1894x786(720p)-h264-8bit-aac-2.0.mkv",
+        "nfo": "[D][大决战之平津战役](1992)-1894x786(720p)-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之平津战役](1992)-tt0099340-tmdb364533"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列/大决战之平津战役 (1992) tt0099340.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之平津战役](1992)-tt0099340-tmdb364533/[D][大决战之平津战役](1992)-1894x786(720p)-h264-8bit-aac-2.0.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之平津战役](1992)-tt0099340-tmdb364533/[D][大决战之平津战役](1992)-1894x786(720p)-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之平津战役](1992)-tt0099340-tmdb364533/[D][大决战之平津战役](1992)-1894x786(720p)-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/apZ5FFhgCxoYOMaVeceKdEnIq7K.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "32e97491-c511-4cbf-9ae9-59a0b69af698",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/许三观 허삼관 (2015) tt3797004.mp4",
+        "filename": "许三观 허삼관 (2015) tt3797004.mp4",
+        "size": 2573798964,
+        "modified": "2026-06-22T14:30:10.206978466Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "许三观",
+        "original_title": "허삼관",
+        "year": 2015,
+        "confidence": 1.0,
+        "raw_response": "path_id_lookup"
+      },
+      "movie_metadata": {
+        "tmdb_id": 321191,
+        "imdb_id": "tt3797004",
+        "original_title": "허삼관",
+        "title": "许三观",
+        "original_language": "ko",
+        "year": 2015,
+        "release_date": "2015-01-14",
+        "overview": "故事发生在20世纪60年代的韩国，居住在某个乡村的贫穷青年许三观喜欢上了同村最美丽的姑娘许玉兰。传闻玉兰是小混混何小勇的女朋友，但是三观凭借锲而不舍的精神和憨皮赖脸的劲头说服了未来的老丈人，如愿抱得美人归。婚后数年，夫妻二人先后育有一乐、二乐、三乐三个机灵调皮的儿子，一家人的生活也有滋有味。但是一乐越来越像何小勇，引来村里人议论纷纷，这让许三观坐立不安，而他对玉兰、一乐的感情似乎也由此发生了变化。在那个卖血成风的年代，三观曾经用自己的血换来了钱。令他想不到的是，在接下来的人生里，他将不得不为了家人们一次次卖血，苍白羸弱，命在旦夕……",
+        "tagline": "",
+        "runtime": 124,
+        "genres": [
+          "剧情"
+        ],
+        "countries": [
+          "South Korea"
+        ],
+        "country_codes": [
+          "KR"
+        ],
+        "studios": [
+          "Next Entertainment World",
+          "Fantagio",
+          "Dhutayeon"
+        ],
+        "rating": 7.1,
+        "votes": 35,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/cz1ya6yjS2SSgwjEpuwGIbJpI8B.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/sRdGwlWVhfawITSgCQm87sPCKOB.jpg",
+        "directors": [
+          "河正宇"
+        ],
+        "writers": [
+          "河正宇",
+          "金周镐"
+        ],
+        "actors": [
+          "河正宇",
+          "河智苑",
+          "南多凛",
+          "卢康民",
+          "全慧珍",
+          "张光",
+          "闵武济",
+          "朱进模",
+          "成东日",
+          "郑万植",
+          "赵震雄",
+          "金成均",
+          "김재영",
+          "李知勋",
+          "金英爱"
+        ],
+        "actor_roles": [
+          "Heo Sam-gwan",
+          "Heo Ok-ran",
+          "Heo Il-rak",
+          "Heo Yi-rak",
+          "Ms. Song",
+          "Dr. Choi",
+          "Ha So-yong",
+          "Sam-gwan's Uncle",
+          "Mr. Bang",
+          "Mr. Shim",
+          "Mr. Ahn",
+          "Geun-ryong",
+          "Mr. Cho",
+          "Mr. Gye",
+          "Gye-hwa's Mother"
+        ],
+        "actors_info": [
+          {
+            "name": "河正宇",
+            "role": "Heo Sam-gwan",
+            "order": 0
+          },
+          {
+            "name": "河智苑",
+            "role": "Heo Ok-ran",
+            "order": 1
+          },
+          {
+            "name": "南多凛",
+            "role": "Heo Il-rak",
+            "order": 2
+          },
+          {
+            "name": "卢康民",
+            "role": "Heo Yi-rak",
+            "order": 3
+          },
+          {
+            "name": "全慧珍",
+            "role": "Ms. Song",
+            "order": 4
+          },
+          {
+            "name": "张光",
+            "role": "Dr. Choi",
+            "order": 5
+          },
+          {
+            "name": "闵武济",
+            "role": "Ha So-yong",
+            "order": 6
+          },
+          {
+            "name": "朱进模",
+            "role": "Sam-gwan's Uncle",
+            "order": 7
+          },
+          {
+            "name": "成东日",
+            "role": "Mr. Bang",
+            "order": 8
+          },
+          {
+            "name": "郑万植",
+            "role": "Mr. Shim",
+            "order": 9
+          },
+          {
+            "name": "赵震雄",
+            "role": "Mr. Ahn",
+            "order": 10
+          },
+          {
+            "name": "金成均",
+            "role": "Geun-ryong",
+            "order": 11
+          },
+          {
+            "name": "김재영",
+            "role": "Mr. Cho",
+            "order": 12
+          },
+          {
+            "name": "李知勋",
+            "role": "Mr. Gye",
+            "order": 13
+          },
+          {
+            "name": "金英爱",
+            "role": "Gye-hwa's Mother",
+            "order": 14
+          }
+        ],
+        "certification": null,
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1280,
+        "height": 720,
+        "resolution": "720p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[X][许三观][허삼관](2015)-tt3797004-tmdb321191",
+        "filename": "[X][许三观][허삼관](2015)-1280x720(720p)-h264-8bit-aac-2.0.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/KO_Korean/[X][许三观][허삼관](2015)-tt3797004-tmdb321191/[X][许三观][허삼관](2015)-1280x720(720p)-h264-8bit-aac-2.0.mp4",
+        "nfo": "[X][许三观][허삼관](2015)-1280x720(720p)-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/KO_Korean/[X][许三观][허삼관](2015)-tt3797004-tmdb321191"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/许三观 허삼관 (2015) tt3797004.mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/KO_Korean/[X][许三观][허삼관](2015)-tt3797004-tmdb321191/[X][许三观][허삼관](2015)-1280x720(720p)-h264-8bit-aac-2.0.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/KO_Korean/[X][许三观][허삼관](2015)-tt3797004-tmdb321191/[X][许三观][허삼관](2015)-1280x720(720p)-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/KO_Korean/[X][许三观][허삼관](2015)-tt3797004-tmdb321191/[X][许三观][허삼관](2015)-1280x720(720p)-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/cz1ya6yjS2SSgwjEpuwGIbJpI8B.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "876a64e0-c0b7-4249-a547-ed5b87bc313f",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/The.Fifth.Estate.2013.危机解密.双语字幕.HR-HDTV.AC3.1024X576.x264.mkv",
+        "filename": "The.Fifth.Estate.2013.危机解密.双语字幕.HR-HDTV.AC3.1024X576.x264.mkv",
+        "size": 2102724322,
+        "modified": "2026-06-19T14:02:48.852068145Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "The Fifth Estate",
+        "original_title": null,
+        "year": 2013,
+        "confidence": 0.70000005
+      },
+      "movie_metadata": {
+        "tmdb_id": 162903,
+        "imdb_id": "tt1837703",
+        "original_title": "The Fifth Estate",
+        "title": "危机解密",
+        "original_language": "en",
+        "year": 2013,
+        "release_date": "2013-10-11",
+        "overview": "本尼迪克特·康伯巴奇饰演“维基解密”创始人朱利安·保罗·阿桑奇（Julian Paul Assange）。维基解密是一个大型文档泄露及分析网站，曾经在2010年公开了多达9.2万份的驻阿美军秘密文件而引起轩然大波。康伯巴奇将要饰演的朱利安·保罗·阿桑奇是网站的董事与发言人，曾主修过物理、数学，做过程序员和黑客。阿桑奇本人和网站一样都备受争议，他曾经因为解密工作获得过多项荣誉，也曾收到过国际刑警组织的逮捕令。2010年阿桑奇因涉嫌在瑞典强奸及性侵犯2名女性被通缉，2010年12月7日他向伦敦警方自首，随即被押送到威斯敏斯特地方法院出席引渡聆讯，保释申请被驳回。2012年8月16日，阿桑奇获厄瓜多尔政治庇护。",
+        "tagline": "",
+        "runtime": 128,
+        "genres": [
+          "剧情",
+          "惊悚"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "studios": [
+          "Participant",
+          "Reliance Entertainment",
+          "Anonymous Content"
+        ],
+        "rating": 6.017,
+        "votes": 1085,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/h9qSi5dL6ovsSObflmsYAoy64ZM.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/iOjnDSrGvimvk4jpPLZSzDWSP47.jpg",
+        "directors": [
+          "威廉·康登"
+        ],
+        "writers": [
+          "乔希·辛格"
+        ],
+        "actors": [
+          "本尼迪克特·康伯巴奇",
+          "丹尼尔·布鲁赫",
+          "安东尼·麦凯",
+          "大卫·休里斯",
+          "艾丽西亚·维坎德",
+          "丹·史蒂文斯",
+          "斯坦利·图齐",
+          "劳拉·琳妮",
+          "卡里斯·范·侯登",
+          "彼得·卡帕尔蒂",
+          "莫里茲·布雷布奇",
+          "亚历山大·拜尔",
+          "杰米·布莱克利",
+          "安纳托·陶布曼",
+          "Michael Culkin"
+        ],
+        "actor_roles": [
+          "Julian Assange",
+          "Daniel Domscheit-Berg",
+          "Sam Coulson",
+          "Nick Davies",
+          "Anke Domscheit-Berg",
+          "Ian Katz",
+          "James Boswell",
+          "Sarah Shaw",
+          "Birgitta Jonsdottir",
+          "Alan Rusbridger",
+          "Marcus",
+          "Marcel Rosenbach",
+          "Ziggy",
+          "Holger Stark",
+          "Ralph Zilke"
+        ],
+        "actors_info": [
+          {
+            "name": "本尼迪克特·康伯巴奇",
+            "role": "Julian Assange",
+            "order": 0
+          },
+          {
+            "name": "丹尼尔·布鲁赫",
+            "role": "Daniel Domscheit-Berg",
+            "order": 1
+          },
+          {
+            "name": "安东尼·麦凯",
+            "role": "Sam Coulson",
+            "order": 2
+          },
+          {
+            "name": "大卫·休里斯",
+            "role": "Nick Davies",
+            "order": 3
+          },
+          {
+            "name": "艾丽西亚·维坎德",
+            "role": "Anke Domscheit-Berg",
+            "order": 4
+          },
+          {
+            "name": "丹·史蒂文斯",
+            "role": "Ian Katz",
+            "order": 5
+          },
+          {
+            "name": "斯坦利·图齐",
+            "role": "James Boswell",
+            "order": 6
+          },
+          {
+            "name": "劳拉·琳妮",
+            "role": "Sarah Shaw",
+            "order": 7
+          },
+          {
+            "name": "卡里斯·范·侯登",
+            "role": "Birgitta Jonsdottir",
+            "order": 8
+          },
+          {
+            "name": "彼得·卡帕尔蒂",
+            "role": "Alan Rusbridger",
+            "order": 9
+          },
+          {
+            "name": "莫里茲·布雷布奇",
+            "role": "Marcus",
+            "order": 10
+          },
+          {
+            "name": "亚历山大·拜尔",
+            "role": "Marcel Rosenbach",
+            "order": 11
+          },
+          {
+            "name": "杰米·布莱克利",
+            "role": "Ziggy",
+            "order": 12
+          },
+          {
+            "name": "安纳托·陶布曼",
+            "role": "Holger Stark",
+            "order": 13
+          },
+          {
+            "name": "Michael Culkin",
+            "role": "Ralph Zilke",
+            "order": 14
+          }
+        ],
+        "certification": "R",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1024,
+        "height": 576,
+        "resolution": "480p",
+        "format": "HDTV",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "ac3",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[W][危机解密][The Fifth Estate](2013)-tt1837703-tmdb162903",
+        "filename": "[W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[W][危机解密][The Fifth Estate](2013)-tt1837703-tmdb162903/[W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.mkv",
+        "nfo": "[W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[W][危机解密][The Fifth Estate](2013)-tt1837703-tmdb162903"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/The.Fifth.Estate.2013.危机解密.双语字幕.HR-HDTV.AC3.1024X576.x264.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[W][危机解密][The Fifth Estate](2013)-tt1837703-tmdb162903/[W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[W][危机解密][The Fifth Estate](2013)-tt1837703-tmdb162903/[W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[W][危机解密][The Fifth Estate](2013)-tt1837703-tmdb162903/[W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/h9qSi5dL6ovsSObflmsYAoy64ZM.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "686d9381-eefd-40f1-8b6e-7ad3533cb54f",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/三线轮洄.2023.mp4",
+        "filename": "三线轮洄.2023.mp4",
+        "size": 1969428556,
+        "modified": "2026-06-20T07:14:27.819526443Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "三线轮洄",
+        "original_title": null,
+        "year": 2023,
+        "confidence": 0.70000005
+      },
+      "movie_metadata": {
+        "tmdb_id": 1107397,
+        "imdb_id": "tt28282465",
+        "original_title": "三线轮洄",
+        "title": "三线轮洄",
+        "original_language": "zh",
+        "year": 2023,
+        "release_date": "2023-04-01",
+        "overview": "古代权贵之人，将传世之宝存于水下，后人持凭据即可继承。一存一取均在水底完成，可简单理解为水下银行。水下银行从古至今都由易、丁、姜三姓家族掌舵，时至今日，他们仍大隐隐于市从事此行当。但20年前，一次寻常的“开金汤”中，意外翻锅，湖中突然出现的巨大触手将在场三姓好手几近灭门，只有年幼的易飒存活。二十年后，已经成为易家水魈的易飒身体出现异常，为找回当年翻锅的真相和拯救自己，联手丁家水魈丁玉蝶以及半路闯入却携带姜家祖牌的宗杭，再次入水开金汤",
+        "tagline": "开金汤·破死局",
+        "runtime": 110,
+        "genres": [
+          "冒险",
+          "爱情",
+          "剧情",
+          "悬疑"
+        ],
+        "countries": [
+          "China"
+        ],
+        "country_codes": [
+          "CN"
+        ],
+        "studios": [],
+        "rating": 5.4,
+        "votes": 5,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/mFMkdtZdyj4UcC6X5VAA1QqIqyS.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/ahU3XKlwSLVvizLExdAjNNHb2Zs.jpg",
+        "directors": [
+          "崔炎龙"
+        ],
+        "writers": [
+          "鹿迅"
+        ],
+        "actors": [
+          "姜珮瑶",
+          "张亚奇",
+          "谢茗宇",
+          "许睿浩",
+          "梁国荣",
+          "库都斯江·艾尼娃尔",
+          "Zhu Xiang",
+          "Lu Yu",
+          "董千瑀",
+          "张雅梦",
+          "张熙唯"
+        ],
+        "actor_roles": [
+          "Yi Sa",
+          "Ding Yudie",
+          "Ding Qi",
+          "Zong Hang",
+          "Wing",
+          "Jiang Jun",
+          "Ding Wei",
+          "Ding Tuo",
+          "Yi Xiao",
+          "Jin Xiu",
+          "Young Yi Sa"
+        ],
+        "actors_info": [
+          {
+            "name": "姜珮瑶",
+            "role": "Yi Sa",
+            "order": 0
+          },
+          {
+            "name": "张亚奇",
+            "role": "Ding Yudie",
+            "order": 1
+          },
+          {
+            "name": "谢茗宇",
+            "role": "Ding Qi",
+            "order": 2
+          },
+          {
+            "name": "许睿浩",
+            "role": "Zong Hang",
+            "order": 3
+          },
+          {
+            "name": "梁国荣",
+            "role": "Wing",
+            "order": 4
+          },
+          {
+            "name": "库都斯江·艾尼娃尔",
+            "role": "Jiang Jun",
+            "order": 5
+          },
+          {
+            "name": "Zhu Xiang",
+            "role": "Ding Wei",
+            "order": 6
+          },
+          {
+            "name": "Lu Yu",
+            "role": "Ding Tuo",
+            "order": 7
+          },
+          {
+            "name": "董千瑀",
+            "role": "Yi Xiao",
+            "order": 8
+          },
+          {
+            "name": "张雅梦",
+            "role": "Jin Xiu",
+            "order": 9
+          },
+          {
+            "name": "张熙唯",
+            "role": "Young Yi Sa",
+            "order": 10
+          }
+        ],
+        "certification": null,
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 3840,
+        "height": 1632,
+        "resolution": "2160p",
+        "format": "Unknown",
+        "video_codec": "hevc",
+        "bit_depth": 0,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[S][三线轮洄](2023)-tt28282465-tmdb1107397",
+        "filename": "[S][三线轮洄](2023)-3840x1632(2160p)-hevc-aac-2.0.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[S][三线轮洄](2023)-tt28282465-tmdb1107397/[S][三线轮洄](2023)-3840x1632(2160p)-hevc-aac-2.0.mp4",
+        "nfo": "[S][三线轮洄](2023)-3840x1632(2160p)-hevc-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[S][三线轮洄](2023)-tt28282465-tmdb1107397"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/三线轮洄.2023.mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[S][三线轮洄](2023)-tt28282465-tmdb1107397/[S][三线轮洄](2023)-3840x1632(2160p)-hevc-aac-2.0.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[S][三线轮洄](2023)-tt28282465-tmdb1107397/[S][三线轮洄](2023)-3840x1632(2160p)-hevc-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[S][三线轮洄](2023)-tt28282465-tmdb1107397/[S][三线轮洄](2023)-3840x1632(2160p)-hevc-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/mFMkdtZdyj4UcC6X5VAA1QqIqyS.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "c35cd588-dd67-46a2-89b9-4de7dfd61a84",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/洗浴天堂 (2024) .mp4",
+        "filename": "洗浴天堂 (2024) .mp4",
+        "size": 703184340,
+        "modified": "2026-06-22T13:15:14.728240895Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "洗浴天堂",
+        "original_title": null,
+        "year": 2024,
+        "confidence": 0.70000005
+      },
+      "movie_metadata": {
+        "tmdb_id": 1382667,
+        "imdb_id": null,
+        "original_title": "洗浴天堂",
+        "title": "洗浴天堂",
+        "original_language": "zh",
+        "year": 2024,
+        "release_date": "2024-11-08",
+        "overview": "在东北这片充满活力和挑战的土地上，有一对冤家父子，儿子陆甲全因为和陆天一父子经营理念不同而离家出走。为了证明自己，当上洗浴中心经理的儿子急于求成，最终作茧自缚。在父亲的帮助下，陆甲全解决了问题，二人和解。",
+        "tagline": "",
+        "runtime": 95,
+        "genres": [
+          "喜剧"
+        ],
+        "countries": [
+          "China"
+        ],
+        "country_codes": [
+          "CN"
+        ],
+        "studios": [],
+        "rating": 0.0,
+        "votes": 0,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/ld7uTF4rURiW5XVHuZb2UtkxgMi.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/gfByMLa12z7iNEL2UYsWbjLntdO.jpg",
+        "directors": [
+          "王丰"
+        ],
+        "writers": [
+          "王丰"
+        ],
+        "actors": [
+          "文松",
+          "杜建桥",
+          "刘美钰",
+          "姚诺",
+          "闫露姶"
+        ],
+        "actor_roles": [
+          "Lu Jiaquan",
+          "Lu Tianyi",
+          "Chen Moli",
+          "",
+          ""
+        ],
+        "actors_info": [
+          {
+            "name": "文松",
+            "role": "Lu Jiaquan",
+            "order": 0
+          },
+          {
+            "name": "杜建桥",
+            "role": "Lu Tianyi",
+            "order": 1
+          },
+          {
+            "name": "刘美钰",
+            "role": "Chen Moli",
+            "order": 2
+          },
+          {
+            "name": "姚诺",
+            "role": "",
+            "order": 3
+          },
+          {
+            "name": "闫露姶",
+            "role": "",
+            "order": 4
+          }
+        ],
+        "certification": null,
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 800,
+        "resolution": "1080p",
+        "format": "Unknown",
+        "video_codec": "hevc",
+        "bit_depth": 0,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[X][洗浴天堂](2024)-tmdb1382667",
+        "filename": "[X][洗浴天堂](2024)-1920x800(1080p)-hevc-aac-2.0.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[X][洗浴天堂](2024)-tmdb1382667/[X][洗浴天堂](2024)-1920x800(1080p)-hevc-aac-2.0.mp4",
+        "nfo": "[X][洗浴天堂](2024)-1920x800(1080p)-hevc-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[X][洗浴天堂](2024)-tmdb1382667"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/洗浴天堂 (2024) .mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[X][洗浴天堂](2024)-tmdb1382667/[X][洗浴天堂](2024)-1920x800(1080p)-hevc-aac-2.0.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[X][洗浴天堂](2024)-tmdb1382667/[X][洗浴天堂](2024)-1920x800(1080p)-hevc-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[X][洗浴天堂](2024)-tmdb1382667/[X][洗浴天堂](2024)-1920x800(1080p)-hevc-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/ld7uTF4rURiW5XVHuZb2UtkxgMi.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "0f052a5b-9678-475a-b224-dc28e1331493",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/狂怒.特效中英字幕.Fury.2014.BD1080P.X264.AAC.English.CHS-ENG.Mp4Ba.mp4",
+        "filename": "狂怒.特效中英字幕.Fury.2014.BD1080P.X264.AAC.English.CHS-ENG.Mp4Ba.mp4",
+        "size": 5994269301,
+        "modified": "2026-06-22T14:34:26.182528376Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "狂怒 特效中英字幕",
+        "original_title": "Fury",
+        "year": 2014,
+        "confidence": 0.70000005
+      },
+      "movie_metadata": {
+        "tmdb_id": 228150,
+        "imdb_id": "tt2713180",
+        "original_title": "Fury",
+        "title": "狂怒",
+        "original_language": "en",
+        "year": 2014,
+        "release_date": "2014-10-15",
+        "overview": "情节设定在1945年二战硝烟即将消散之时，同盟国军队准备在欧洲战场发动最后一轮猛烈攻击。在以寡敌众、弹尽粮绝的不利条件下，身经百战的陆军中士Wardaddy指挥谢尔曼坦克的几名坦克手以及二等兵Norman深入纳粹德国的中心地带，执行一项死亡任务。",
+        "tagline": "狂怒",
+        "runtime": 135,
+        "genres": [
+          "战争",
+          "剧情",
+          "动作"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "studios": [
+          "Columbia Pictures",
+          "QED International",
+          "LStar Capital"
+        ],
+        "rating": 7.547,
+        "votes": 12955,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/x3ic2FleYmpELq9Yve63b9MhDQH.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/95ckrV6wQgbffurAVmETQ5YKASL.jpg",
+        "directors": [
+          "大卫·阿耶"
+        ],
+        "writers": [
+          "大卫·阿耶"
+        ],
+        "actors": [
+          "布拉德·皮特",
+          "希亚·拉博夫",
+          "罗根·勒曼",
+          "迈克尔·佩纳",
+          "乔·博恩瑟",
+          "吉姆·派瑞克",
+          "布拉德·威廉·亨克",
+          "凯文·万斯",
+          "沙维尔·塞缪尔",
+          "杰森·艾萨克斯",
+          "安娜玛丽亚·马林卡",
+          "Alicia von Rittberg",
+          "斯科特·伊斯特伍德",
+          "劳伦斯·斯佩尔曼",
+          "丹尼尔·贝茨"
+        ],
+        "actor_roles": [
+          "Don 'Wardaddy' Collier",
+          "Boyd 'Bible' Swan",
+          "Norman Ellison",
+          "Trini 'Gordo' Garcia",
+          "Grady 'Coon-Ass' Travis",
+          "Sergeant Binkowski",
+          "Sergeant Davis",
+          "Sergeant Peterson",
+          "Lieutenant Parker",
+          "Captain Waggoner",
+          "Irma",
+          "Emma",
+          "Sergeant Miles",
+          "Sergeant Dillard",
+          "Burgermeister"
+        ],
+        "actors_info": [
+          {
+            "name": "布拉德·皮特",
+            "role": "Don 'Wardaddy' Collier",
+            "order": 0
+          },
+          {
+            "name": "希亚·拉博夫",
+            "role": "Boyd 'Bible' Swan",
+            "order": 1
+          },
+          {
+            "name": "罗根·勒曼",
+            "role": "Norman Ellison",
+            "order": 2
+          },
+          {
+            "name": "迈克尔·佩纳",
+            "role": "Trini 'Gordo' Garcia",
+            "order": 3
+          },
+          {
+            "name": "乔·博恩瑟",
+            "role": "Grady 'Coon-Ass' Travis",
+            "order": 4
+          },
+          {
+            "name": "吉姆·派瑞克",
+            "role": "Sergeant Binkowski",
+            "order": 5
+          },
+          {
+            "name": "布拉德·威廉·亨克",
+            "role": "Sergeant Davis",
+            "order": 6
+          },
+          {
+            "name": "凯文·万斯",
+            "role": "Sergeant Peterson",
+            "order": 7
+          },
+          {
+            "name": "沙维尔·塞缪尔",
+            "role": "Lieutenant Parker",
+            "order": 8
+          },
+          {
+            "name": "杰森·艾萨克斯",
+            "role": "Captain Waggoner",
+            "order": 9
+          },
+          {
+            "name": "安娜玛丽亚·马林卡",
+            "role": "Irma",
+            "order": 10
+          },
+          {
+            "name": "Alicia von Rittberg",
+            "role": "Emma",
+            "order": 11
+          },
+          {
+            "name": "斯科特·伊斯特伍德",
+            "role": "Sergeant Miles",
+            "order": 12
+          },
+          {
+            "name": "劳伦斯·斯佩尔曼",
+            "role": "Sergeant Dillard",
+            "order": 13
+          },
+          {
+            "name": "丹尼尔·贝茨",
+            "role": "Burgermeister",
+            "order": 14
+          }
+        ],
+        "certification": "R",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[K][狂怒][Fury](2014)-tt2713180-tmdb228150",
+        "filename": "[K][狂怒][Fury](2014)-1920x1080(1080p)-h264-8bit-aac-2.0.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[K][狂怒][Fury](2014)-tt2713180-tmdb228150/[K][狂怒][Fury](2014)-1920x1080(1080p)-h264-8bit-aac-2.0.mp4",
+        "nfo": "[K][狂怒][Fury](2014)-1920x1080(1080p)-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[K][狂怒][Fury](2014)-tt2713180-tmdb228150"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/狂怒.特效中英字幕.Fury.2014.BD1080P.X264.AAC.English.CHS-ENG.Mp4Ba.mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[K][狂怒][Fury](2014)-tt2713180-tmdb228150/[K][狂怒][Fury](2014)-1920x1080(1080p)-h264-8bit-aac-2.0.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[K][狂怒][Fury](2014)-tt2713180-tmdb228150/[K][狂怒][Fury](2014)-1920x1080(1080p)-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[K][狂怒][Fury](2014)-tt2713180-tmdb228150/[K][狂怒][Fury](2014)-1920x1080(1080p)-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/x3ic2FleYmpELq9Yve63b9MhDQH.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "69dc13b3-c4fd-4ab0-b676-fe34cfa4ab95",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列/大决战之淮海战役 (1991) tt0099339.mkv",
+        "filename": "大决战之淮海战役 (1991) tt0099339.mkv",
+        "size": 5661381441,
+        "modified": "2026-06-22T15:01:25.999261018Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列"
+      },
+      "parsed": {
+        "title": "大决战之淮海战役",
+        "original_title": "大决战之淮海战役",
+        "year": 1991,
+        "confidence": 1.0,
+        "raw_response": "path_id_lookup"
+      },
+      "movie_metadata": {
+        "tmdb_id": 364532,
+        "imdb_id": "tt0099339",
+        "original_title": "大决战之淮海战役",
+        "title": "大决战之淮海战役",
+        "original_language": "zh",
+        "year": 1991,
+        "release_date": "1991-08-01",
+        "overview": "1948年9—10月间，辽沈战役和济南战役相继胜利，标志着解放战争决定性转折点的到来。在此危急关头，蒋介石紧急调配旗下三个兵团17万人的优势兵力固守中原，同年11月，华东野战军向黄百韬兵团发动攻击，最大规模的淮海战役正式打响。地下党员何张防线的临场起义，为时间占下风的粟裕赢得战机，顺利切断了黄百韬的退路。在此之后，国共双方调兵遣将，各逞其能，中原战场顿时变成规模宏大、破坏力极强的巨大漩涡，淮海战役朝向令人始料未及的规模迅速扩大。这是一场决定中华民族命运的关键战役，势将永远载入史册……",
+        "tagline": "",
+        "runtime": 219,
+        "genres": [
+          "战争",
+          "历史"
+        ],
+        "countries": [
+          "China"
+        ],
+        "country_codes": [
+          "CN"
+        ],
+        "studios": [
+          "August 1st Film Studio 八一电影制片厂 (A1FS)",
+          "中国电影发行放映公司"
+        ],
+        "rating": 7.5,
+        "votes": 10,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/d2lMDF5BqOFgQ21bg3F89x5RWQL.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/rINxixdkMKdEQUFSkvEfEXiQdv7.jpg",
+        "directors": [
+          "韦廉",
+          "景慕逵",
+          "蔡继渭",
+          "李俊",
+          "杨光远",
+          "翟俊杰"
+        ],
+        "writers": [
+          "李平分",
+          "史超",
+          "王军"
+        ],
+        "actors": [
+          "古月",
+          "苏林",
+          "赵恒多",
+          "刘怀正",
+          "郭法曾",
+          "路希",
+          "卢奇",
+          "傅学诚",
+          "刘锡田",
+          "谢伟才",
+          "徐正运",
+          "许还山",
+          "宁晓志",
+          "张安安",
+          "吴志远"
+        ],
+        "actor_roles": [
+          "毛泽东",
+          "周恩来",
+          "蒋介石",
+          "朱德",
+          "刘少奇",
+          "任弼时",
+          "邓小平",
+          "刘伯承",
+          "陈毅",
+          "粟裕",
+          "杜聿明",
+          "黄百韬",
+          "杜义德",
+          "江青",
+          "宋美龄"
+        ],
+        "actors_info": [
+          {
+            "name": "古月",
+            "role": "毛泽东",
+            "order": 0
+          },
+          {
+            "name": "苏林",
+            "role": "周恩来",
+            "order": 1
+          },
+          {
+            "name": "赵恒多",
+            "role": "蒋介石",
+            "order": 2
+          },
+          {
+            "name": "刘怀正",
+            "role": "朱德",
+            "order": 3
+          },
+          {
+            "name": "郭法曾",
+            "role": "刘少奇",
+            "order": 4
+          },
+          {
+            "name": "路希",
+            "role": "任弼时",
+            "order": 5
+          },
+          {
+            "name": "卢奇",
+            "role": "邓小平",
+            "order": 6
+          },
+          {
+            "name": "傅学诚",
+            "role": "刘伯承",
+            "order": 7
+          },
+          {
+            "name": "刘锡田",
+            "role": "陈毅",
+            "order": 8
+          },
+          {
+            "name": "谢伟才",
+            "role": "粟裕",
+            "order": 9
+          },
+          {
+            "name": "徐正运",
+            "role": "杜聿明",
+            "order": 10
+          },
+          {
+            "name": "许还山",
+            "role": "黄百韬",
+            "order": 11
+          },
+          {
+            "name": "宁晓志",
+            "role": "杜义德",
+            "order": 12
+          },
+          {
+            "name": "张安安",
+            "role": "江青",
+            "order": 13
+          },
+          {
+            "name": "吴志远",
+            "role": "宋美龄",
+            "order": 14
+          }
+        ],
+        "certification": null,
+        "collection_id": 823927,
+        "collection_name": "大决战（系列）",
+        "collection_overview": null,
+        "collection_total_movies": 3
+      },
+      "video_metadata": {
+        "width": 1902,
+        "height": 808,
+        "resolution": "720p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[D][大决战之淮海战役](1991)-tt0099339-tmdb364532",
+        "filename": "[D][大决战之淮海战役](1991)-1902x808(720p)-h264-8bit-aac-2.0.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之淮海战役](1991)-tt0099339-tmdb364532/[D][大决战之淮海战役](1991)-1902x808(720p)-h264-8bit-aac-2.0.mkv",
+        "nfo": "[D][大决战之淮海战役](1991)-1902x808(720p)-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之淮海战役](1991)-tt0099339-tmdb364532"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列/大决战之淮海战役 (1991) tt0099339.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之淮海战役](1991)-tt0099339-tmdb364532/[D][大决战之淮海战役](1991)-1902x808(720p)-h264-8bit-aac-2.0.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之淮海战役](1991)-tt0099339-tmdb364532/[D][大决战之淮海战役](1991)-1902x808(720p)-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之淮海战役](1991)-tt0099339-tmdb364532/[D][大决战之淮海战役](1991)-1902x808(720p)-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/d2lMDF5BqOFgQ21bg3F89x5RWQL.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "2c7660fc-c22e-498f-aba9-c824d9175e7e",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列/大决战之辽沈战役 (1991) tt0099338.mkv",
+        "filename": "大决战之辽沈战役 (1991) tt0099338.mkv",
+        "size": 6269178632,
+        "modified": "2026-06-22T15:05:00.664546431Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列"
+      },
+      "parsed": {
+        "title": "大决战之辽沈战役",
+        "original_title": "大决战之辽沈战役",
+        "year": 1991,
+        "confidence": 1.0,
+        "raw_response": "path_id_lookup"
+      },
+      "movie_metadata": {
+        "tmdb_id": 283033,
+        "imdb_id": "tt0099338",
+        "original_title": "大决战之辽沈战役",
+        "title": "大决战之辽沈战役",
+        "original_language": "zh",
+        "year": 1991,
+        "release_date": "1991-01-01",
+        "overview": "1945年8月，日本帝国主义宣布投降，饱经战乱之苦的中华民族在短暂的胜利喜悦过后，即将迎来决定民族命运的重要时刻。随着蒋介石撕毁停战协定，国共两党内战全面爆发。经过两年的正面对决，国共双方的差距逐渐缩小，战局终于迎来决定性的时刻。1948年初，毛泽东、周恩来、任弼时等共产党重要领导人离开陕北根据地，与刘少奇、朱德率领的中央工作委员会在河北会合。经过一番审慎的考量与讨论，领导人们命令林彪所率领的五十万东北野战军全面发起夺取东北辽沈战役。对东北去留举棋不定的蒋介石被迫应战，中华民族的命运之战拉开序幕……  本片为中国共产党诞生七十周年纪念作品，是大决战三部曲的第一部。",
+        "tagline": "",
+        "runtime": 222,
+        "genres": [
+          "战争",
+          "历史"
+        ],
+        "countries": [
+          "China"
+        ],
+        "country_codes": [
+          "CN"
+        ],
+        "studios": [
+          "August 1st Film Studio 八一电影制片厂 (A1FS)"
+        ],
+        "rating": 8.0,
+        "votes": 17,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/n3L4zHEd6XKJrx6cVYgnlWRdO6m.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/qIaCSHIJXskiezHlfAamsTc3D70.jpg",
+        "directors": [
+          "杨光远",
+          "翟俊杰",
+          "李俊",
+          "韦廉",
+          "蔡继渭",
+          "景慕逵"
+        ],
+        "writers": [
+          "史超",
+          "王军",
+          "李平分"
+        ],
+        "actors": [
+          "古月",
+          "苏林",
+          "赵恒多",
+          "刘怀正",
+          "郭法曾",
+          "路希",
+          "卢奇",
+          "马绍信",
+          "鲁继先",
+          "张卫国",
+          "卢学公",
+          "徐正运",
+          "张安安",
+          "吴志远",
+          "周志宇"
+        ],
+        "actor_roles": [
+          "毛泽东",
+          "周恩来",
+          "蒋介石",
+          "朱德",
+          "刘少奇",
+          "任弼时",
+          "邓小平",
+          "林彪",
+          "罗荣桓",
+          "刘亚楼",
+          "卫立煌",
+          "杜聿明",
+          "江青",
+          "宋美龄",
+          "廖耀湘"
+        ],
+        "actors_info": [
+          {
+            "name": "古月",
+            "role": "毛泽东",
+            "order": 0
+          },
+          {
+            "name": "苏林",
+            "role": "周恩来",
+            "order": 1
+          },
+          {
+            "name": "赵恒多",
+            "role": "蒋介石",
+            "order": 2
+          },
+          {
+            "name": "刘怀正",
+            "role": "朱德",
+            "order": 3
+          },
+          {
+            "name": "郭法曾",
+            "role": "刘少奇",
+            "order": 4
+          },
+          {
+            "name": "路希",
+            "role": "任弼时",
+            "order": 5
+          },
+          {
+            "name": "卢奇",
+            "role": "邓小平",
+            "order": 6
+          },
+          {
+            "name": "马绍信",
+            "role": "林彪",
+            "order": 7
+          },
+          {
+            "name": "鲁继先",
+            "role": "罗荣桓",
+            "order": 8
+          },
+          {
+            "name": "张卫国",
+            "role": "刘亚楼",
+            "order": 9
+          },
+          {
+            "name": "卢学公",
+            "role": "卫立煌",
+            "order": 10
+          },
+          {
+            "name": "徐正运",
+            "role": "杜聿明",
+            "order": 11
+          },
+          {
+            "name": "张安安",
+            "role": "江青",
+            "order": 12
+          },
+          {
+            "name": "吴志远",
+            "role": "宋美龄",
+            "order": 13
+          },
+          {
+            "name": "周志宇",
+            "role": "廖耀湘",
+            "order": 14
+          }
+        ],
+        "certification": null,
+        "collection_id": 823927,
+        "collection_name": "大决战（系列）",
+        "collection_overview": null,
+        "collection_total_movies": 3
+      },
+      "video_metadata": {
+        "width": 1900,
+        "height": 812,
+        "resolution": "720p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[D][大决战之辽沈战役](1991)-tt0099338-tmdb283033",
+        "filename": "[D][大决战之辽沈战役](1991)-1900x812(720p)-h264-8bit-aac-2.0.mkv",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之辽沈战役](1991)-tt0099338-tmdb283033/[D][大决战之辽沈战役](1991)-1900x812(720p)-h264-8bit-aac-2.0.mkv",
+        "nfo": "[D][大决战之辽沈战役](1991)-1900x812(720p)-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之辽沈战役](1991)-tt0099338-tmdb283033"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/电影《大决战》三部曲全系列/大决战之辽沈战役 (1991) tt0099338.mkv",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之辽沈战役](1991)-tt0099338-tmdb283033/[D][大决战之辽沈战役](1991)-1900x812(720p)-h264-8bit-aac-2.0.mkv"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之辽沈战役](1991)-tt0099338-tmdb283033/[D][大决战之辽沈战役](1991)-1900x812(720p)-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/ZH_Chinese/[D][大决战之辽沈战役](1991)-tt0099338-tmdb283033/[D][大决战之辽沈战役](1991)-1900x812(720p)-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/n3L4zHEd6XKJrx6cVYgnlWRdO6m.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "073d45b3-f19c-4d32-85c7-54f46d9af3cb",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/杀手正在召唤.The.Killer.Is.Calling.2025.1080p.WEBRip.CHS-HAN.CHAOSPACE.mp4",
+        "filename": "杀手正在召唤.The.Killer.Is.Calling.2025.1080p.WEBRip.CHS-HAN.CHAOSPACE.mp4",
+        "size": 2787138517,
+        "modified": "2026-06-20T17:31:15.005952454Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP"
+      },
+      "parsed": {
+        "title": "杀手正在召唤",
+        "original_title": "The Killer Is Calling",
+        "year": 2025,
+        "confidence": 0.70000005
+      },
+      "movie_metadata": {
+        "tmdb_id": 1420361,
+        "imdb_id": "tt35325519",
+        "original_title": "The Killer Is Calling",
+        "title": "杀手正在召唤",
+        "original_language": "en",
+        "year": 2025,
+        "release_date": "2025-01-19",
+        "overview": "",
+        "tagline": "",
+        "runtime": 88,
+        "genres": [
+          "惊悚",
+          "电视电影"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "studios": [
+          "CME Spring Productions",
+          "Lifetime"
+        ],
+        "rating": 6.5,
+        "votes": 7,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/gGKjGdHZFFjmMjfR3noOyfL8azd.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/rKc2xa0L2LmBDEYAjsrvRQHNXkG.jpg",
+        "directors": [
+          "Craig Pryce"
+        ],
+        "writers": [
+          "Troup Wood",
+          "Alyssa Kramer"
+        ],
+        "actors": [
+          "Janaya Stephens",
+          "Rob Stewart",
+          "Duane Keogh",
+          "Robert Bazzocchi",
+          "Bree Wasylenko",
+          "Alex Hook",
+          "乔·平格",
+          "Emily Stranges"
+        ],
+        "actor_roles": [
+          "Faye Byrne",
+          "Michael Draper",
+          "Chris",
+          "Jake",
+          "Stella",
+          "Alex",
+          "Ed",
+          "Lucy"
+        ],
+        "actors_info": [
+          {
+            "name": "Janaya Stephens",
+            "role": "Faye Byrne",
+            "order": 0
+          },
+          {
+            "name": "Rob Stewart",
+            "role": "Michael Draper",
+            "order": 1
+          },
+          {
+            "name": "Duane Keogh",
+            "role": "Chris",
+            "order": 2
+          },
+          {
+            "name": "Robert Bazzocchi",
+            "role": "Jake",
+            "order": 3
+          },
+          {
+            "name": "Bree Wasylenko",
+            "role": "Stella",
+            "order": 4
+          },
+          {
+            "name": "Alex Hook",
+            "role": "Alex",
+            "order": 5
+          },
+          {
+            "name": "乔·平格",
+            "role": "Ed",
+            "order": 6
+          },
+          {
+            "name": "Emily Stranges",
+            "role": "Lucy",
+            "order": 7
+          }
+        ],
+        "certification": "PG-13",
+        "collection_id": null,
+        "collection_name": null,
+        "collection_overview": null,
+        "collection_total_movies": null
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1080,
+        "resolution": "1080p",
+        "format": "WEBRip",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "2.0"
+      },
+      "target": {
+        "folder": "[S][杀手正在召唤][The Killer Is Calling](2025)-tt35325519-tmdb1420361",
+        "filename": "[S][杀手正在召唤][The Killer Is Calling](2025)-1920x1080(1080p)-WEBRip-h264-8bit-aac-2.0.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[S][杀手正在召唤][The Killer Is Calling](2025)-tt35325519-tmdb1420361/[S][杀手正在召唤][The Killer Is Calling](2025)-1920x1080(1080p)-WEBRip-h264-8bit-aac-2.0.mp4",
+        "nfo": "[S][杀手正在召唤][The Killer Is Calling](2025)-1920x1080(1080p)-WEBRip-h264-8bit-aac-2.0.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[S][杀手正在召唤][The Killer Is Calling](2025)-tt35325519-tmdb1420361"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/杀手正在召唤.The.Killer.Is.Calling.2025.1080p.WEBRip.CHS-HAN.CHAOSPACE.mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[S][杀手正在召唤][The Killer Is Calling](2025)-tt35325519-tmdb1420361/[S][杀手正在召唤][The Killer Is Calling](2025)-1920x1080(1080p)-WEBRip-h264-8bit-aac-2.0.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[S][杀手正在召唤][The Killer Is Calling](2025)-tt35325519-tmdb1420361/[S][杀手正在召唤][The Killer Is Calling](2025)-1920x1080(1080p)-WEBRip-h264-8bit-aac-2.0.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[S][杀手正在召唤][The Killer Is Calling](2025)-tt35325519-tmdb1420361/[S][杀手正在召唤][The Killer Is Calling](2025)-1920x1080(1080p)-WEBRip-h264-8bit-aac-2.0.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/gGKjGdHZFFjmMjfR3noOyfL8azd.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    },
+    {
+      "id": "67698626-7bfd-4d64-9db6-7fbefd78ac8a",
+      "status": "pending",
+      "source": {
+        "path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/迈克尔·杰克逊：巨星之路/Michael.2026.1080p中英字幕.mp4",
+        "filename": "Michael.2026.1080p中英字幕.mp4",
+        "size": 8880852764,
+        "modified": "2026-06-21T14:49:01.814568660Z",
+        "is_sample": false,
+        "parent_dir": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/迈克尔·杰克逊：巨星之路"
+      },
+      "parsed": {
+        "title": null,
+        "original_title": "Michael",
+        "year": 2026,
+        "confidence": 0.70000005
+      },
+      "movie_metadata": {
+        "tmdb_id": 936075,
+        "imdb_id": "tt11378946",
+        "original_title": "Michael",
+        "title": "迈克尔·杰克逊：巨星之路",
+        "original_language": "en",
+        "year": 2026,
+        "release_date": "2026-04-22",
+        "overview": "　　本片将通过一段从未展现过的深度视角，真实记录传奇巨星迈克尔·杰克逊的复杂人生。影片不仅再现了他最具标志性的艺术表演瞬间，更深入挖掘了他的内心世界——从天才神童的成长阵痛到全球偶像背后的争议与坚韧，全面呈现这位伟大艺术家的辉煌与坎坷。",
+        "tagline": "",
+        "runtime": 136,
+        "genres": [
+          "音乐",
+          "剧情"
+        ],
+        "countries": [
+          "United States"
+        ],
+        "country_codes": [
+          "US"
+        ],
+        "studios": [
+          "Lionsgate",
+          "GK Films",
+          "Optimum Productions"
+        ],
+        "rating": 8.684,
+        "votes": 2894,
+        "poster_urls": [
+          "https://image.tmdb.org/t/p/w780/1hPSbiyfAhtWAIBf2XtDPA0NyvS.jpg"
+        ],
+        "backdrop_url": "https://image.tmdb.org/t/p/w780/ufSwlnECLoUbBjPrFqEQcWBzHwc.jpg",
+        "directors": [
+          "安东尼·福奎阿"
+        ],
+        "writers": [
+          "约翰·洛根"
+        ],
+        "actors": [
+          "贾法尔·杰克逊",
+          "科尔曼·多明戈",
+          "尼娅·朗",
+          "Juliano Krue Valdi",
+          "迈尔斯·特勒",
+          "凯琳·杜雷尔·琼斯",
+          "肯德里克·桑普森",
+          "约瑟夫·戴维-琼斯",
+          "Rhyan Hill",
+          "杰马尔·亨德森",
+          "Trey Horton",
+          "Jessica Sula",
+          "拉伦茨·泰特",
+          "劳拉·哈里尔",
+          "麦克·梅尔斯"
+        ],
+        "actor_roles": [
+          "Michael Jackson",
+          "Joseph Jackson",
+          "Katherine Jackson",
+          "Young Michael Jackson",
+          "John Branca",
+          "Bill Bray",
+          "Quincy Jones",
+          "Jackie Jackson",
+          "Tito Jackson",
+          "Jermaine Jackson",
+          "Marlon Jackson",
+          "LaToya Jackson",
+          "Berry Gordy",
+          "Suzanne de Passe",
+          "Walter Yetnikoff"
+        ],
+        "actors_info": [
+          {
+            "name": "贾法尔·杰克逊",
+            "role": "Michael Jackson",
+            "order": 0
+          },
+          {
+            "name": "科尔曼·多明戈",
+            "role": "Joseph Jackson",
+            "order": 1
+          },
+          {
+            "name": "尼娅·朗",
+            "role": "Katherine Jackson",
+            "order": 2
+          },
+          {
+            "name": "Juliano Krue Valdi",
+            "role": "Young Michael Jackson",
+            "order": 3
+          },
+          {
+            "name": "迈尔斯·特勒",
+            "role": "John Branca",
+            "order": 4
+          },
+          {
+            "name": "凯琳·杜雷尔·琼斯",
+            "role": "Bill Bray",
+            "order": 5
+          },
+          {
+            "name": "肯德里克·桑普森",
+            "role": "Quincy Jones",
+            "order": 6
+          },
+          {
+            "name": "约瑟夫·戴维-琼斯",
+            "role": "Jackie Jackson",
+            "order": 7
+          },
+          {
+            "name": "Rhyan Hill",
+            "role": "Tito Jackson",
+            "order": 8
+          },
+          {
+            "name": "杰马尔·亨德森",
+            "role": "Jermaine Jackson",
+            "order": 9
+          },
+          {
+            "name": "Trey Horton",
+            "role": "Marlon Jackson",
+            "order": 10
+          },
+          {
+            "name": "Jessica Sula",
+            "role": "LaToya Jackson",
+            "order": 11
+          },
+          {
+            "name": "拉伦茨·泰特",
+            "role": "Berry Gordy",
+            "order": 12
+          },
+          {
+            "name": "劳拉·哈里尔",
+            "role": "Suzanne de Passe",
+            "order": 13
+          },
+          {
+            "name": "麦克·梅尔斯",
+            "role": "Walter Yetnikoff",
+            "order": 14
+          }
+        ],
+        "certification": "PG-13",
+        "collection_id": 1687197,
+        "collection_name": "Michael Collection",
+        "collection_overview": null,
+        "collection_total_movies": 2
+      },
+      "video_metadata": {
+        "width": 1920,
+        "height": 1040,
+        "resolution": "1080p",
+        "format": "Unknown",
+        "video_codec": "h264",
+        "bit_depth": 8,
+        "audio_codec": "aac",
+        "audio_channels": "5.1"
+      },
+      "target": {
+        "folder": "[M][迈克尔·杰克逊：巨星之路][Michael](2026)-tt11378946-tmdb936075",
+        "filename": "[M][迈克尔·杰克逊：巨星之路][Michael](2026)-1920x1040(1080p)-h264-8bit-aac-5.1.mp4",
+        "full_path": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-tt11378946-tmdb936075/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-1920x1040(1080p)-h264-8bit-aac-5.1.mp4",
+        "nfo": "[M][迈克尔·杰克逊：巨星之路][Michael](2026)-1920x1040(1080p)-h264-8bit-aac-5.1.nfo",
+        "poster": "poster.jpg"
+      },
+      "operations": [
+        {
+          "op": "mkdir",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-tt11378946-tmdb936075"
+        },
+        {
+          "op": "move",
+          "from": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP/迈克尔·杰克逊：巨星之路/Michael.2026.1080p中英字幕.mp4",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-tt11378946-tmdb936075/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-1920x1040(1080p)-h264-8bit-aac-5.1.mp4"
+        },
+        {
+          "op": "create",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-tt11378946-tmdb936075/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-1920x1040(1080p)-h264-8bit-aac-5.1.nfo",
+          "content_ref": "nfo"
+        },
+        {
+          "op": "download",
+          "to": "/run/media/johnny/JMedia_S02/johnny/Media/Movies_00_TMP_organized/EN_English/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-tt11378946-tmdb936075/[M][迈克尔·杰克逊：巨星之路][Michael](2026)-1920x1040(1080p)-h264-8bit-aac-5.1.jpg",
+          "url": "https://image.tmdb.org/t/p/w780/1hPSbiyfAhtWAIBf2XtDPA0NyvS.jpg"
+        }
+      ],
+      "poster_download": "Download"
+    }
+  ],
+  "samples": [],
+  "unknown": [],
+  "poster_stats": {
+    "download_count": 12,
+    "skipped_count": 0
+  }
+}

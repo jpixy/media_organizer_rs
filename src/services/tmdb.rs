@@ -1,6 +1,7 @@
  //! TMDB API client.
 
 use crate::Result;
+use crate::utils::http_client::{create_http_client, HttpClientConfig};
 use serde::Deserialize;
 
 const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
@@ -447,27 +448,12 @@ pub struct CrewMember {
 impl TmdbClient {
     /// Create a new TMDB client.
     pub fn new(config: TmdbConfig) -> Self {
-        let mut client_builder = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60));
-
-        // Configure proxy if enabled
-        if config.proxy_enabled {
-            if let Some(ref proxy_url) = config.proxy {
-                match reqwest::Proxy::all(proxy_url) {
-                    Ok(proxy) => {
-                        client_builder = client_builder.proxy(proxy);
-                        tracing::info!("TMDB client using proxy: {}", proxy_url);
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to configure proxy {}: {}", proxy_url, e);
-                    }
-                }
-            }
-        }
-
-        let client = client_builder
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+        let http_client_config = HttpClientConfig {
+            timeout_secs: 60,
+            proxy_enabled: config.proxy_enabled,
+            proxy: config.proxy.clone(),
+        };
+        let client = create_http_client(&http_client_config);
         Self { config, client }
     }
 

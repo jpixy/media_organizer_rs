@@ -846,6 +846,56 @@ TV_00_TMP/
                 └── {集号}.{集名}.{格式}
 ```
 
+### 4.5.1 海报下载优化（2026-06-23 更新）
+
+为解决 TMDB 图片服务器并发限制导致的下载失败问题，实施了以下优化：
+
+**问题现象**：
+```
+Failed items: 7
+  - [W][危机解密][The Fifth Estate](2013)-1024x576(480p)-HDTV-h264-8bit-ac3-5.1.jpg:
+    HTTP error: error sending request for url (https://image.tmdb.org/t/p/w780/...):
+    error trying to connect: Connection reset by peer (os error 104)
+```
+
+**根本原因**：
+- TMDB 图片服务器对并发请求有限制
+- 短时间内发起大量图片下载请求时，服务器会主动断开连接
+
+**解决方案**：
+
+1. **创建公共下载模块** (`src/utils/download.rs`)
+   - 实现带重试机制的下载函数
+   - 支持指数退避策略
+   - 统一配置下载参数
+
+2. **降低并发数**
+   - 从 4 个并发降低到 2 个并发
+   - 避免触发 TMDB 服务器限制
+
+3. **重试机制配置**
+   ```rust
+   DownloadConfig {
+       max_retries: 3,           // 最多重试3次
+       retry_delay_ms: 1000,     // 基础延迟1秒
+       exponential_backoff: true, // 启用指数退避
+   }
+   ```
+
+4. **统一调用点**
+   - `executor.rs`: 计划执行时的海报下载
+   - `poster.rs`: 独立的海报下载命令
+
+**优化效果**：
+- 下载成功率显著提升
+- 网络波动自动恢复
+- 避免因并发过高导致的连接重置
+
+**代码位置**：
+- 公共下载函数: `src/utils/download.rs`
+- 执行器集成: `src/core/executor.rs`
+- 海报命令集成: `src/cli/commands/poster.rs`
+
 ---
 
 ## 5. 文件命名规范

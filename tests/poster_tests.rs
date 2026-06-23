@@ -1,6 +1,7 @@
 //! Unit tests for poster download command.
 
-use media_organizer::cli::commands::poster::{download_file, download_file_with_size, extract_season_from_dirname, is_video_file, parse_tmdb_id_from_folder_name, format_size};
+use media_organizer::cli::commands::poster::{extract_season_from_dirname, is_video_file, parse_tmdb_id_from_folder_name, format_size};
+use media_organizer::utils::download::{download_file_with_retry, DownloadConfig};
 use std::path::PathBuf;
 
 #[test]
@@ -68,36 +69,45 @@ fn test_extract_season_from_dirname() {
 }
 
 #[tokio::test]
-async fn test_download_file() {
-    // Test that download_file function signature works
+async fn test_download_file_with_retry() {
+    // Test that download_file_with_retry function signature works
     // Note: We test with an invalid URL to avoid network dependency
-    let result = download_file("https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", &PathBuf::from("/tmp/test_poster.jpg"), false, &None).await;
+    let config = DownloadConfig {
+        max_retries: 1,
+        retry_delay_ms: 100,
+        exponential_backoff: false,
+        timeout_secs: 5,
+    };
+    
+    let result = download_file_with_retry(
+        "https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", 
+        &PathBuf::from("/tmp/test_poster.jpg"), 
+        &config,
+        false, 
+        &None
+    ).await;
     
     // The download should fail because the URL is invalid
     assert!(result.is_err(), "Download should fail with invalid URL");
     
-    println!("test_download_file: passed");
-}
-
-#[tokio::test]
-async fn test_download_file_with_size() {
-    // Test that download_file_with_size function signature works
-    // Note: We test with an invalid URL to avoid network dependency
-    let result = download_file_with_size("https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", &PathBuf::from("/tmp/test_poster_size.jpg"), false, &None).await;
-    
-    // The download should fail because the URL is invalid
-    assert!(result.is_err(), "Download should fail with invalid URL");
-    
-    println!("test_download_file_with_size: passed");
+    println!("test_download_file_with_retry: passed");
 }
 
 #[tokio::test]
 async fn test_download_file_with_proxy() {
-    // Test that download_file function works with proxy configuration
+    // Test that download_file_with_retry function works with proxy configuration
+    let config = DownloadConfig {
+        max_retries: 1,
+        retry_delay_ms: 100,
+        exponential_backoff: false,
+        timeout_secs: 5,
+    };
+    
     // We test with proxy_enabled=true but invalid proxy to avoid network dependency
-    let result = download_file(
+    let result = download_file_with_retry(
         "https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", 
         &PathBuf::from("/tmp/test_poster_proxy.jpg"), 
+        &config,
         true, 
         &Some("http://127.0.0.1:7897".to_string())
     ).await;
@@ -106,9 +116,10 @@ async fn test_download_file_with_proxy() {
     assert!(result.is_err(), "Download should fail with invalid URL even with proxy");
     
     // Test with proxy_enabled=false
-    let result_no_proxy = download_file(
+    let result_no_proxy = download_file_with_retry(
         "https://invalid-url-that-does-not-exist-12345.test/invalid.jpg", 
         &PathBuf::from("/tmp/test_poster_no_proxy.jpg"), 
+        &config,
         false, 
         &Some("http://127.0.0.1:7897".to_string())
     ).await;

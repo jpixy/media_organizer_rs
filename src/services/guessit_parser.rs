@@ -128,8 +128,9 @@ pub struct GuessItResult {
     pub release_group: Option<String>,
     /// Container format (e.g., "mkv", "mp4").
     pub container: Option<String>,
-    /// Audio codec (e.g., "DTS", "AAC").
-    pub audio_codec: Option<String>,
+    /// Audio codec (e.g., "DTS", "AAC"). Can be a single string or multiple codecs as array.
+    #[serde(deserialize_with = "deserialize_optional_string_or_vec")]
+    pub audio_codec: Option<Vec<String>>,
     /// Audio channels (e.g., "5.1").
     pub audio_channels: Option<String>,
     /// Edition (e.g., "Director's Cut", "Extended").

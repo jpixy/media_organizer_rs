@@ -4,7 +4,7 @@
 //! - mkdir: Create directories
 //! - move: Move video files
 //! - create: Generate NFO files
-//! - download: Download posters (parallel)
+//! - download: Download posters (parallel with retry)
 
 use crate::generators::nfo;
 use crate::models::media::MediaType;
@@ -12,6 +12,7 @@ use crate::models::plan::{Operation, OperationType, Plan, PlanItem, PlanItemStat
 use crate::models::rollback::{
     Rollback, RollbackAction, RollbackActionType, RollbackOpType, RollbackOperation,
 };
+use crate::utils::download::DownloadConfig;
 use crate::utils::hash;
 use crate::Result;
 use chrono::Utc;
@@ -53,7 +54,6 @@ impl Default for ExecutorConfig {
 /// Plan executor.
 pub struct Executor {
     config: ExecutorConfig,
-    http_client: reqwest::Client,
 }
 
 impl Executor {
@@ -61,29 +61,13 @@ impl Executor {
     pub fn new() -> Self {
         Self {
             config: ExecutorConfig::default(),
-            http_client: reqwest::Client::new(),
         }
     }
 
     /// Create a new executor with custom configuration.
     pub fn with_config(config: ExecutorConfig) -> Self {
-        let mut client_builder = reqwest::Client::builder();
-        
-        if config.proxy_enabled {
-            if let Some(proxy_url) = &config.proxy {
-                if let Ok(proxy) = reqwest::Proxy::all(proxy_url) {
-                    client_builder = client_builder.proxy(proxy);
-                }
-            }
-        }
-        
-        let http_client = client_builder
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
-        
         Self {
             config,
-            http_client,
         }
     }
 
@@ -181,11 +165,20 @@ impl Executor {
             }
         }
 
-        // Phase 2: Execute downloads in parallel (up to 4 concurrent)
+        // Phase 2: Execute downloads in parallel (up to 2 concurrent with retry)
         if !download_ops.is_empty() {
             tracing::info!("Downloading {} posters in parallel...", download_ops.len());
 
-            const DOWNLOAD_CONCURRENCY: usize = 4;
+            // Reduced concurrency to avoid TMDB rate limiting
+            const DOWNLOAD_CONCURRENCY: usize = 2;
+
+            // Download configuration with retry mechanism
+            let download_config = DownloadConfig {
+                max_retries: 3,
+                retry_delay_ms: 1000,
+                exponential_backoff: true,
+                timeout_secs: 30,
+            };
 
             // Statistics for poster downloads
             let mut downloaded_count = 0;
@@ -196,11 +189,19 @@ impl Executor {
 
             let download_results: Vec<_> = stream::iter(download_ops.iter())
                 .map(|(op, _item)| {
-                    let client = &self.http_client;
                     let op_to = op.to.clone();
                     let op_url = op.url.clone();
+                    let config = download_config.clone();
+                    let proxy_enabled = self.config.proxy_enabled;
+                    let proxy = self.config.proxy.clone();
                     async move {
-                        let result = Self::execute_download_static(client, &op_url, &op_to).await;
+                        let result = Self::execute_download_static_with_retry(
+                            &op_url,
+                            &op_to,
+                            &config,
+                            proxy_enabled,
+                            &proxy,
+                        ).await;
                         (op_to, result)
                     }
                 })
@@ -304,11 +305,13 @@ impl Executor {
         Ok(final_rollback)
     }
 
-    /// Static download function for parallel execution.
-    async fn execute_download_static(
-        client: &reqwest::Client,
+    /// Static download function with retry mechanism for parallel execution.
+    async fn execute_download_static_with_retry(
         url: &Option<String>,
         path: &Path,
+        config: &DownloadConfig,
+        proxy_enabled: bool,
+        proxy: &Option<String>,
     ) -> Result<Option<RollbackOperation>> {
         let url = url.as_ref().ok_or_else(|| {
             crate::Error::ExecuteError("Download operation missing 'url'".to_string())
@@ -320,27 +323,16 @@ impl Executor {
             return Ok(None);
         }
 
-        // Create parent directory if needed
-        if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                fs::create_dir_all(parent)?;
-            }
-        }
+        // Download with retry mechanism
+        let size = crate::utils::download::download_file_with_retry(
+            url,
+            path,
+            config,
+            proxy_enabled,
+            proxy,
+        ).await.map_err(|e| crate::Error::ExecuteError(e.to_string()))?;
 
-        // Download file
-        let response = client.get(url).send().await?;
-        if !response.status().is_success() {
-            return Err(crate::Error::ExecuteError(format!(
-                "Download failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let bytes = response.bytes().await?;
-        let mut file = fs::File::create(path)?;
-        file.write_all(&bytes)?;
-
-        tracing::debug!("Downloaded: {:?}", path);
+        tracing::debug!("Downloaded: {:?} ({} bytes)", path, size);
 
         Ok(Some(RollbackOperation {
             seq: 0,
@@ -738,7 +730,7 @@ impl Executor {
         }))
     }
 
-    /// Execute download operation (poster).
+    /// Execute download operation (poster) with retry mechanism.
     async fn execute_download(&self, op: &Operation) -> Result<Option<RollbackOperation>> {
         let url = op.url.as_ref().ok_or_else(|| {
             crate::Error::ExecuteError("Download operation missing 'url'".to_string())
@@ -751,24 +743,23 @@ impl Executor {
             return Ok(None);
         }
 
-        // Create parent directory if needed
-        if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                fs::create_dir_all(parent)?;
-            }
-        }
+        // Download with retry mechanism
+        let config = DownloadConfig {
+            max_retries: 3,
+            retry_delay_ms: 1000,
+            exponential_backoff: true,
+            timeout_secs: 30,
+        };
 
-        // Download file
-        let response = self.http_client.get(url).send().await?;
+        let size = crate::utils::download::download_file_with_retry(
+            url,
+            path,
+            &config,
+            self.config.proxy_enabled,
+            &self.config.proxy,
+        ).await.map_err(|e| crate::Error::ExecuteError(e.to_string()))?;
 
-        if !response.status().is_success() {
-            tracing::warn!("Failed to download poster: {} - {}", url, response.status());
-            return Ok(None);
-        }
-
-        let bytes = response.bytes().await?;
-        fs::write(path, &bytes)?;
-        tracing::debug!("Downloaded: {} -> {:?}", url, path);
+        tracing::debug!("Downloaded: {} -> {:?} ({} bytes)", url, path, size);
 
         Ok(Some(RollbackOperation {
             seq: 0,
