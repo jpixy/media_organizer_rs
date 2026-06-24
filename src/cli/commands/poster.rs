@@ -501,10 +501,11 @@ async fn process_tv_show_seasons(
         let poster_size_clone = poster_size.clone();
         let proxy_clone = proxy.clone();
         let tmdb_config_clone = tmdb_config.clone();
+        let show_tmdb_id = tmdb_id;  // Use show-level TMDB ID
         
         let season_task = tokio::spawn(async move {
             download_single_tv_season_poster(
-                tmdb_id,
+                show_tmdb_id,
                 &folder_name_clone,
                 season_num,
                 &season_path,
@@ -565,7 +566,7 @@ async fn process_tv_show_seasons(
 
 /// Download a single TV season poster.
 async fn download_single_tv_season_poster(
-    tmdb_id: u64,
+    show_tmdb_id: u64,  // Show-level TMDB ID (used to query season details)
     folder_name: &str,
     season_num: u32,
     season_path: &Path,
@@ -586,24 +587,36 @@ async fn download_single_tv_season_poster(
         }
     }
     
-    // Season poster name: [TV名称]-seasonXX.jpg (same naming as NFO)
-    let show_title = folder_name.split('-').next().unwrap_or(folder_name).trim().trim_matches(|c| c == '[' || c == ']');
-    let poster_name = format!("[{}]-season{:02}.jpg", show_title, season_num);
+    // Season poster name: [A][中文标题][英文标题]-seasonXX.jpg (same naming as NFO)
+    // Extract sort prefix, Chinese title, and original title from folder name
+    let poster_name = generate_season_poster_name(folder_name, season_num);
     let poster_full_path = season_path.join(&poster_name);
     
     // Skip if poster already exists - check BEFORE calling TMDB API to save network requests
     if poster_full_path.exists() {
-        tracing::info!("Poster already exists, skipping: {}", poster_full_path.display());
-        return DownloadResult::Skipped;
+        // Check if file is valid (non-empty)
+        match fs::metadata(&poster_full_path) {
+            Ok(metadata) => {
+                if metadata.len() > 0 {
+                    tracing::info!("Poster already exists and is valid, skipping: {}", poster_full_path.display());
+                    return DownloadResult::Skipped;
+                } else {
+                    tracing::info!("Poster exists but is empty, re-downloading: {}", poster_full_path.display());
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to check poster file metadata: {}", e);
+            }
+        }
     }
     
     let tmdb = TmdbClient::new(tmdb_config);
     
-    // Fetch season details
-    let season_details = match tmdb.get_season_details(tmdb_id, season_num as u16).await {
+    // Fetch season details using show-level TMDB ID
+    let season_details = match tmdb.get_season_details(show_tmdb_id, season_num as u16).await {
         Ok(details) => details,
         Err(e) => {
-            tracing::warn!("Failed to fetch season {} details for tmdb{}: {}", season_num, tmdb_id, e);
+            tracing::warn!("Failed to fetch season {} details for show tmdb{}: {}", season_num, show_tmdb_id, e);
             return DownloadResult::Failed {
                 folder_name: folder_name.to_string(),
                 reason: format!("Failed to fetch season details: {}", e),
@@ -658,6 +671,12 @@ async fn download_single_tv_season_poster(
 }
 
 /// Recursively find all directories containing tmdb ID (identified as TV series)
+/// Only returns show-level folders, not season-level folders
+/// 
+/// Show-level folders are identified by:
+/// 1. Containing TMDB ID (e.g., tmdb86831)
+/// 2. Containing IMDB ID (e.g., tt9561862) - this distinguishes show-level from season-level folders
+/// 3. Not containing season info (e.g., S03, Season 03)
 fn find_tv_show_dirs(path: &Path, result: &mut Vec<PathBuf>) {
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
@@ -665,7 +684,13 @@ fn find_tv_show_dirs(path: &Path, result: &mut Vec<PathBuf>) {
             if entry_path.is_dir() {
                 // Check if this directory name contains tmdb ID
                 if let Some(dir_name) = entry_path.file_name().and_then(|n| n.to_str()) {
-                    if parse_tmdb_id_from_folder_name(dir_name).is_some() {
+                    // Only add show-level folders (not season-level folders)
+                    // Show-level folders must contain both TMDB ID and IMDB ID
+                    let has_tmdb_id = parse_tmdb_id_from_folder_name(dir_name).is_some();
+                    let has_imdb_id = parse_imdb_id_from_folder_name(dir_name).is_some();
+                    let has_season_info = extract_season_from_dirname(dir_name).is_some();
+                    
+                    if has_tmdb_id && has_imdb_id && !has_season_info {
                         result.push(entry_path.clone());
                     }
                 }
@@ -682,6 +707,44 @@ pub fn is_video_file(path: PathBuf) -> bool {
     matches!(ext.as_str(), "mp4" | "mkv" | "avi" | "mov" | "wmv" | "flv" | "webm" | "m4v")
 }
 
+/// Generate season poster name in unified format.
+/// 
+/// Format: `[A][中文标题][英文标题]-seasonXX.jpg`
+/// 
+/// Extracts sort prefix, Chinese title, and original title from folder name.
+/// Handles both simple format like "[A][爱，死亡和机器人][Love, Death & Robots](2019)"
+/// and full format with IDs like "[A][爱，死亡和机器人][Love, Death & Robots](2019)-tt1234567-tmdb86831"
+pub fn generate_season_poster_name(folder_name: &str, season_num: u32) -> String {
+    // Extract parts within square brackets
+    let bracket_re = regex::Regex::new(r"\[([^\]]+)\]").unwrap();
+    let mut parts: Vec<String> = bracket_re
+        .captures_iter(folder_name)
+        .filter_map(|c| Some(c[1].to_string()))
+        .collect();
+    
+    // Build poster name: [sort_prefix][chinese_title][original_title]-seasonXX.jpg
+    // We need at least the sort prefix and one title
+    if parts.is_empty() {
+        // Fallback: use folder name without extension
+        let clean_name = folder_name.split('-').next().unwrap_or(folder_name);
+        return format!("[{}]-season{:02}.jpg", clean_name, season_num);
+    }
+    
+    // Keep only the first few bracket parts (sort prefix, title, original title)
+    // Skip parts that look like years (4 digits) or IDs
+    parts.retain(|p| {
+        !p.chars().all(|c| c.is_ascii_digit()) || p.len() != 4 // Not a 4-digit year
+    });
+    
+    // Build the poster name prefix
+    let prefix: String = parts.iter()
+        .take(3) // At most 3 parts: [sort_prefix][title][original_title]
+        .map(|p| format!("[{}]", p))
+        .collect();
+    
+    format!("{}-season{:02}.jpg", prefix, season_num)
+}
+
 /// Parse TMDB ID from folder name.
 pub fn parse_tmdb_id_from_folder_name(folder_name: &str) -> Option<u32> {
     // Look for patterns like "tmdb123456"
@@ -693,14 +756,65 @@ pub fn parse_tmdb_id_from_folder_name(folder_name: &str) -> Option<u32> {
     }
 }
 
-/// Extract season number from directory name.
-pub fn extract_season_from_dirname(dir_name: &str) -> Option<u32> {
-    let re = regex::Regex::new(r"(?i)season\s*(\d+)").unwrap();
-    if let Some(captures) = re.captures(dir_name) {
-        captures[1].parse().ok()
+/// Parse IMDB ID from folder name.
+pub fn parse_imdb_id_from_folder_name(folder_name: &str) -> Option<String> {
+    // Look for patterns like "tt1234567"
+    let re = regex::Regex::new(r"tt(\d+)").unwrap();
+    if let Some(captures) = re.captures(folder_name) {
+        Some(format!("tt{}", &captures[1]))
     } else {
         None
     }
+}
+
+/// Extract season number from directory name.
+/// 
+/// Supports multiple formats:
+/// - Simple season directories: "Season 01", "S01", "第1季" (standalone)
+/// - Complex folder names: "[S03][Season 03]-[A][爱，死亡和机器人]..." (contains season info)
+pub fn extract_season_from_dirname(dir_name: &str) -> Option<u32> {
+    // Pattern 1: "Season 01", "Season 1", "season 01", "season 1" (case insensitive, standalone)
+    let season_re = regex::Regex::new(r"(?i)^season\s*(\d+)$").unwrap();
+    if let Some(captures) = season_re.captures(dir_name) {
+        if let Ok(num) = captures[1].parse() {
+            return Some(num);
+        }
+    }
+    
+    // Pattern 2: "S01", "S1", "s01", "s1" (single letter S followed by digits only)
+    let s_re = regex::Regex::new(r"(?i)^S(\d+)$").unwrap();
+    if let Some(captures) = s_re.captures(dir_name) {
+        if let Ok(num) = captures[1].parse() {
+            return Some(num);
+        }
+    }
+    
+    // Pattern 3: "第1季", "第01季" (Chinese season format, standalone)
+    let chinese_re = regex::Regex::new(r"^第(\d+)季$").unwrap();
+    if let Some(captures) = chinese_re.captures(dir_name) {
+        if let Ok(num) = captures[1].parse() {
+            return Some(num);
+        }
+    }
+    
+    // Pattern 4: Extract season number from complex folder names like "[S03][Season 03]-[A][...]"
+    // Match SXX pattern within brackets (e.g., [S03])
+    let bracket_s_re = regex::Regex::new(r"\[S(\d+)\]").unwrap();
+    if let Some(captures) = bracket_s_re.captures(dir_name) {
+        if let Ok(num) = captures[1].parse() {
+            return Some(num);
+        }
+    }
+    
+    // Pattern 5: Extract "Season XX" pattern within brackets (e.g., [Season 03])
+    let bracket_season_re = regex::Regex::new(r"(?i)\[Season\s*(\d+)\]").unwrap();
+    if let Some(captures) = bracket_season_re.captures(dir_name) {
+        if let Ok(num) = captures[1].parse() {
+            return Some(num);
+        }
+    }
+    
+    None
 }
 
 /// Format byte size to human readable string.

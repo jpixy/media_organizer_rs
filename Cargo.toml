@@ -1,6 +1,6 @@
 [package]
 name = "media_organizer"
-version = "0.12.6"
+version = "0.15.0"
 edition = "2021"
 authors = ["jpixy"]
 description = "A CLI tool for organizing video files (movies and TV shows) using AI and TMDB"

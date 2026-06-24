@@ -6345,15 +6345,23 @@ impl Planner {
 
     /// Resolve season-level IMDB ID with priority fallback.
     ///
+    /// Resolve the appropriate IMDB ID for a TV season.
+    /// 
     /// Priority (highest to lowest):
     /// 1. `folder_season_imdb_id` - IMDB ID from folder name (e.g., `tt21661768` from Season 04 folder)
-    /// 2. TMDB `/tv/{id}/season/{season_number}/external_ids` API - season-specific IMDB ID
-    /// 3. `show_imdb_id` - TV show-level IMDB ID (fallback for non-anthology series)
+    /// 2. `show_imdb_id` - TV show-level IMDB ID (used for all seasons)
+    /// 
+    /// NOTE: We no longer query TMDB `/tv/{id}/season/{season_number}/external_ids` API because:
+    /// 1. Season-level IMDB IDs are often missing in TMDB API responses
+    /// 2. For anthology series, while each season may have its own IMDB ID,
+    ///    the TMDB API frequently fails to return them consistently
+    /// 3. Simplifying to use show-level IMDB ID provides more reliable behavior
+    ///    across all TV series types
     async fn resolve_season_imdb_id(
         &self,
-        tmdb: &crate::services::tmdb::TmdbClient,
+        _tmdb: &crate::services::tmdb::TmdbClient,
         folder_season_imdb_id: Option<&str>,
-        show_tmdb_id: u64,
+        _show_tmdb_id: u64,
         season_number: u16,
         show_imdb_id: Option<&str>,
     ) -> Option<String> {
@@ -6366,43 +6374,23 @@ impl Planner {
             return Some(id.to_string());
         }
 
-        // Priority 2: Try TMDB season external_ids API (important for anthology series)
-        tracing::debug!(
-            "[SEASON-IMDB] Querying TMDB season external_ids for tmdb{} S{:02}",
-            show_tmdb_id,
-            season_number
-        );
-        match tmdb.get_season_external_ids(show_tmdb_id, season_number).await {
-            Ok(external_ids) => {
-                if let Some(season_imdb) = &external_ids.imdb_id {
-                    tracing::info!(
-                        "[SEASON-IMDB] Found season-specific IMDB ID from TMDB: {}",
-                        season_imdb
-                    );
-                    return Some(season_imdb.clone());
-                }
-                tracing::debug!("[SEASON-IMDB] No season-specific IMDB ID from TMDB API");
-                // Fall through to Priority 3
-            }
-            Err(e) => {
-                tracing::debug!(
-                    "[SEASON-IMDB] Failed to get season external_ids for tmdb{} S{:02}: {}",
-                    show_tmdb_id,
-                    season_number,
-                    e
-                );
-                // Fall through to Priority 3
-            }
-        }
-
-        // Priority 3: TV show-level IMDB ID (fallback for non-anthology series)
-        show_imdb_id.map(|id| {
+        // Priority 2: Use TV show-level IMDB ID directly
+        // NOTE: We no longer query TMDB season external_ids API because:
+        // 1. Season-level IMDB IDs are often missing in TMDB API responses
+        // 2. For anthology series, while each season may have its own IMDB ID,
+        //    the TMDB API frequently fails to return them consistently
+        // 3. Simplifying to use show-level IMDB ID provides more reliable behavior
+        //    across all TV series types
+        if let Some(id) = show_imdb_id {
             tracing::debug!(
-                "[SEASON-IMDB] Falling back to TV show IMDB ID: {}",
+                "[SEASON-IMDB] Using TV show IMDB ID for season {}: {}",
+                season_number,
                 id
             );
-            id.to_string()
-        })
+            return Some(id.to_string());
+        }
+
+        None
     }
 
     /// Generate target path information and operations.
@@ -6676,30 +6664,75 @@ impl Planner {
             // Poster goes in same folder as video file
             let poster_folder = target_folder.clone();
 
-            let poster_url = params.movie_metadata
-                .as_ref()
-                .and_then(|m| m.poster_urls.first().cloned())
-                .or_else(|| {
+            let poster_url = match params.media_type {
+                MediaType::Movies => {
+                    params.movie_metadata
+                        .as_ref()
+                        .and_then(|m| m.poster_urls.first().cloned())
+                }
+                MediaType::TvSeries => {
+                    // For TV series, prioritize season-level poster, then fall back to show-level poster
                     params.tv_series_metadata
                         .as_ref()
-                        .and_then(|(s, _, _)| s.poster_urls.first().cloned())
-                });
+                        .and_then(|(_, _, season_meta)| season_meta.as_ref().and_then(|s| s.poster_url.clone()))
+                        .or_else(|| {
+                            params.tv_series_metadata
+                                .as_ref()
+                                .and_then(|(s, _, _)| s.poster_urls.first().cloned())
+                        })
+                }
+            };
 
             if let Some(url) = poster_url {
-                // For movies: use video filename as poster name
-                // For TV series: use [show.name]-seasonXX.jpg (same naming as NFO)
+                // For movies: use [A][中文标题][英文标题].jpg format
+                // For TV series: use [A][中文标题][英文标题]-seasonXX.jpg (same naming as NFO)
                 let poster_filename = match params.media_type {
-                    MediaType::Movies => filename.replace(&format!(".{}", extension), ".jpg"),
+                    MediaType::Movies => {
+                        // Use [A][中文标题][英文标题].jpg format for movies
+                        if let Some(movie_meta) = &params.movie_metadata {
+                            let sort_prefix = crate::generators::folder::generate_sort_prefix(
+                                &movie_meta.title,
+                                &movie_meta.original_language,
+                            );
+                            let titles_same = movie_meta.title == movie_meta.original_title;
+                            if titles_same {
+                                format!("[{}][{}].jpg", sort_prefix, movie_meta.title)
+                            } else {
+                                format!("[{}][{}][{}].jpg", sort_prefix, movie_meta.title, movie_meta.original_title)
+                            }
+                        } else {
+                            // Fallback: use video filename as poster name
+                            filename.replace(&format!(".{}", extension), ".jpg")
+                        }
+                    }
                     MediaType::TvSeries => {
-                        // Use [show.name]-seasonXX.jpg for TV series to ensure only one poster per season
-                        // and keep consistent naming with season NFO
-                        let (show, episode, _) = params.tv_series_metadata.as_ref().unwrap();
-                        let season_num = episode
+                        // Use [A][中文标题][英文标题]-seasonXX.jpg format for TV series
+                        // to ensure consistent naming with season NFO
+                        let (show, episode, season_meta) = params.tv_series_metadata.as_ref().unwrap();
+                        // Get season number from season metadata, episode metadata, or parsed info (in that order)
+                        let season_num = season_meta
                             .as_ref()
-                            .map(|e| e.season_number)
+                            .map(|s| s.season_number)
+                            .or_else(|| {
+                                episode.as_ref().map(|e| e.season_number)
+                            })
                             .or(params.parsed.season)
                             .unwrap_or(1);
-                        format!("[{}]-season{:02}.jpg", show.name, season_num)
+                        
+                        // Generate sort prefix using show name
+                        let sort_prefix = crate::generators::folder::generate_sort_prefix(
+                            &show.name,
+                            &show.original_language,
+                        );
+                        
+                        // Build poster filename: [A][中文标题][英文标题]-seasonXX.jpg
+                        let titles_same = show.name == show.original_name;
+                        let poster_name = if titles_same {
+                            format!("[{}][{}]-season{:02}.jpg", sort_prefix, show.name, season_num)
+                        } else {
+                            format!("[{}][{}][{}]-season{:02}.jpg", sort_prefix, show.name, show.original_name, season_num)
+                        };
+                        poster_name
                     }
                 };
                 let poster_path = poster_folder.join(&poster_filename);
