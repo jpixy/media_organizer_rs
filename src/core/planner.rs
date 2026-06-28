@@ -1362,10 +1362,28 @@ impl Planner {
         } else {
             // For movies or first TV episode without cached show, try local parsing first
             let parse_input = self.build_parse_input(video);
-            let parsed = self.parser.parse(&parse_input, media_type).await?;
+            let mut parsed = self.parser.parse(&parse_input, media_type).await?;
             if !self.parser.is_valid(&parsed) {
-                tracing::debug!("Low confidence parsing for: {}", video.filename);
-                return Ok(None);
+                // Low confidence: try to use parent directory name as fallback title
+                if let Some(folder_name) = self.get_meaningful_folder_name(&video.parent_dir) {
+                    let filename_meta = metadata::extract_from_filename(&video.filename);
+                    parsed = ParsedFilename {
+                        title: Some(folder_name.clone()),
+                        original_title: filename_meta.english_title,
+                        year: filename_meta.year,
+                        season: parsed.season,
+                        episode: parsed.episode,
+                        confidence: 1.0,
+                        raw_response: Some("folder_title_fallback".to_string()),
+                    };
+                    tracing::info!(
+                        "[FOLDER-TITLE] Low confidence for {}, using folder title: {}",
+                        video.filename, folder_name
+                    );
+                } else {
+                    tracing::debug!("Low confidence parsing for: {}", video.filename);
+                    return Ok(None);
+                }
             }
 
             // Try TMDB search with local parsed result
@@ -2814,11 +2832,14 @@ impl Planner {
                         }
                     } else {
                         // Try to parse as non-standard TV Show folder
-                        let is_likely_tvshow_folder = name.contains("Season") 
-                            || name.contains("Love, Death & Robots") 
-                            || name.contains("Terminal List");
+                        // This handles folders like "投行风云 Industry (2020)" 
+                        // or any folder that is not a season directory
+                        let has_cjk = name.chars().any(|c| {
+                            matches!(c, '\u{4e00}'..='\u{9fff}' | '\u{3040}'..='\u{30ff}' | '\u{ac00}'..='\u{d7af}')
+                        });
+                        let has_meaningful_title = has_cjk || name.len() > 5;
                         
-                        if is_likely_tvshow_folder {
+                        if has_meaningful_title {
                             if let Some(title) = parser::extract_title_from_dirname(name) {
                                 let original_title = parser::extract_english_title_from_dirname(name);
                                 tracing::info!(
